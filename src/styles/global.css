@@ -972,23 +972,18 @@
     }
     .rd-source a:hover { color: var(--c-text-muted); }
 
-    /* Guestbook */
+    /* Guestbook — the card shows 5 messages and grows by 10 per "load more"
+       (no inner scroll box). Small text uses --c-text-muted for 4.5:1. */
     .guestbook-messages {
-      max-height: 240px;
-      overflow-y: auto;
       margin-bottom: 16px;
-      scrollbar-width: thin;
-      scrollbar-color: var(--c-border-light) transparent;
     }
 
-    .guestbook-messages::-webkit-scrollbar {
-      width: 4px;
+    .gb-scope {
+      font-size: 12px;
+      color: var(--c-text-muted);
     }
 
-    .guestbook-messages::-webkit-scrollbar-thumb {
-      background: var(--c-border-light);
-      border-radius: 2px;
-    }
+    .gb-msg:focus { outline: none; }
 
     .gb-msg {
       padding: 8px 0;
@@ -1009,7 +1004,7 @@
     }
 
     .gb-time {
-      color: var(--c-border-light);
+      color: var(--c-text-muted);
       margin-left: 8px;
     }
 
@@ -1025,7 +1020,7 @@
       padding: 2px 0 2px 8px;
       border-left: 2px solid rgba(var(--c-overlay-rgb), 0.18);
       font-size: 12px;
-      color: var(--c-text-secondary, var(--c-border-light));
+      color: var(--c-text-muted);
       line-height: 1.5;
       word-break: break-word;
       display: -webkit-box;
@@ -1039,19 +1034,19 @@
       padding: 0 5px;
       border-radius: 3px;
       background: rgba(var(--c-overlay-rgb), 0.06);
-      color: var(--c-text-secondary, var(--c-border-light));
-      font-size: 10px;
+      color: var(--c-text-muted);
+      font-size: 12px;
       letter-spacing: 0.02em;
     }
 
     .gb-from {
       margin-top: 4px;
-      font-size: 11px;
-      color: var(--c-border-light);
+      font-size: 12px;
+      color: var(--c-text-muted);
     }
 
     .gb-src {
-      color: var(--c-text-secondary, var(--c-border-light));
+      color: var(--c-text-muted);
       text-decoration: none;
       border-bottom: 1px dotted rgba(var(--c-overlay-rgb), 0.25);
     }
@@ -1063,12 +1058,13 @@
 
     .gb-load-more {
       width: 100%;
+      min-height: 32px;
       margin: 4px 0 12px;
       padding: 6px 0;
       background: transparent;
       border: 1px solid rgba(var(--c-overlay-rgb), 0.1);
       border-radius: 6px;
-      color: var(--c-border-light);
+      color: var(--c-text-muted);
       font-size: 12px;
       font-family: inherit;
       cursor: pointer;
@@ -1106,6 +1102,23 @@
       flex-wrap: wrap;
     }
 
+    /* Label + input stay on one line; below 390px the two fields stack. */
+    .gb-field {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 390px) {
+      .gb-name-row { flex-direction: column; align-items: stretch; }
+      .gb-field { display: flex; }
+      .gb-field > span { min-width: 3em; }
+      .gb-field .gb-name-input,
+      .gb-field .gb-email-input { flex: 1; width: auto; min-width: 0; }
+      .gb-field-sep { display: none; }
+    }
+
     .gb-name-input {
       background: transparent;
       border: 1px solid rgba(var(--c-overlay-rgb), 0.1);
@@ -1127,6 +1140,22 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      border-radius: 4px;
+    }
+
+    /* Keyboard/typing focus: a ring around the whole "> message ↵" row keeps
+       the bare terminal prompt look while making focus visible. */
+    .gb-input-row:focus-within {
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+
+    .gb-input-row:has(.gb-input[aria-invalid="true"]) {
+      box-shadow: 0 0 0 1px #ef4444;
+    }
+
+    :is(.gb-submit, .gb-load-more, .gb-retry, .gb-src, .gb-name-input, .gb-email-input):focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
     }
 
     .gb-prompt {
@@ -1137,6 +1166,8 @@
 
     .gb-input {
       flex: 1;
+      min-width: 0;
+      min-height: 32px;
       background: transparent;
       border: none;
       color: var(--c-text);
@@ -1146,7 +1177,7 @@
     }
 
     .gb-input::placeholder {
-      color: var(--c-border-light);
+      color: var(--c-text-muted);
     }
 
     .gb-field-sep {
@@ -1171,8 +1202,52 @@
       border-color: var(--accent);
     }
 
+    .gb-email-input[aria-invalid="true"] { border-color: #ef4444; }
+
+    /* Inline status under the form (replaces alert()); same strip as .gb-pending. */
+    .gb-status {
+      margin: 8px 0 0;
+      padding: 6px 10px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--c-text-muted);
+      background: rgba(var(--c-overlay-rgb), 0.04);
+      border: 1px solid rgba(var(--c-overlay-rgb), 0.1);
+      border-radius: 4px;
+    }
+
+    .gb-status:empty { display: none; }
+
+    .gb-status.is-error {
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.08);
+      border-color: rgba(239, 68, 68, 0.2);
+    }
+
+    .gb-status.is-ok { color: var(--accent); }
+
+    /* Light mode: darken the red/accent text toward --c-text for 4.5:1. */
+    [data-mode="light"] .gb-status.is-error,
+    [data-mode="light"] .gb-empty-error { color: color-mix(in srgb, #ef4444 75%, var(--c-text)); }
+    [data-mode="light"] .gb-status.is-ok { color: color-mix(in srgb, var(--accent) 75%, var(--c-text)); }
+
+    .gb-retry {
+      margin-left: 6px;
+      min-height: 32px;
+      padding: 4px 12px;
+      background: transparent;
+      border: 1px solid rgba(var(--c-overlay-rgb), 0.15);
+      border-radius: 4px;
+      color: var(--c-text);
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .gb-retry:hover { border-color: var(--accent); }
+
     .gb-pending {
-      font-size: 11px;
+      font-size: 12px;
       color: #f59e0b;
       background: rgba(245, 158, 11, 0.08);
       border: 1px solid rgba(245, 158, 11, 0.15);
@@ -1199,6 +1274,8 @@
       color: var(--c-text-muted);
       font-family: inherit;
       font-size: 12px;
+      min-width: 32px;
+      min-height: 32px;
       padding: 4px 10px;
       cursor: pointer;
       transition: color 0.2s, border-color 0.2s;
@@ -1211,11 +1288,13 @@
     }
 
     .gb-empty {
-      color: var(--c-border-light);
+      color: var(--c-text-muted);
       font-size: 12px;
       text-align: center;
       padding: 20px 0;
     }
+
+    .gb-empty-error { color: #ef4444; }
 
     /* Subscribe Card */
     .sub-header {

@@ -1,0 +1,39 @@
+---
+/**
+ * Boots the shared comment runtime. Place after CommentSection and
+ * InlineCommentLayer (the script reads their elements synchronously).
+ */
+import commentAvatarJs from '../../lib/comment-avatar.js?raw';
+import commentsClientJs from './comments-client.js?raw';
+import { commentStrings, type CommentLang } from './strings';
+
+interface Props {
+  lang?: CommentLang;
+  /** Which page shell hosts the comments; the API slug is derived from the URL. */
+  kind: 'post' | 'note';
+}
+const { lang = 'zh', kind } = Astro.props;
+const t = commentStrings(lang);
+const config = kind === 'post'
+  ? { content: '#postContent', grid: '#contentGrid', rail: '#commentRail', mobileMax: 1100, anchors: true }
+  : { content: '.note-detail-page .prose', grid: '.three-col', rail: '.meta-sidebar', mobileMax: 960, anchors: false };
+const boot = { kind, lang, t, ...config };
+---
+<script is:inline set:html={commentAvatarJs}></script>
+<script is:inline set:html={commentsClientJs}></script>
+<script is:inline define:vars={{ boot }}>
+  (function () {
+    var path = location.pathname;
+    var cfg = Object.assign({}, boot);
+    if (boot.kind === 'post') {
+      // /posts/foo/ and /en/posts/foo/ share one slug: views, likes, comments.
+      var slug = path.replace(/^\/(?:en\/)?posts\//, '').replace(/\/$/, '');
+      cfg.slug = slug;
+      cfg.otherLangPath = (boot.lang === 'zh' ? '/en/posts/' : '/posts/') + slug + '/';
+    } else {
+      cfg.slug = 'note/' + path.replace(/^\/(?:en\/)?notes\//, '').replace(/\/$/, '');
+      cfg.otherLangPath = null;
+    }
+    window.BlogComments.init(cfg);
+  })();
+</script>

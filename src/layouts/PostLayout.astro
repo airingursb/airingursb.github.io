@@ -1,8 +1,11 @@
 ---
-import commentAvatarJs from '../lib/comment-avatar.js?raw';
 import ArticleTransition from '../components/ArticleTransition.astro';
 import LivingCover from '../components/photo-motion/LivingCover.astro';
 import SiteHeader from "../components/SiteHeader.astro";
+import CommentSection from '../components/comments/CommentSection.astro';
+import InlineCommentLayer from '../components/comments/InlineCommentLayer.astro';
+import CommentsRuntime from '../components/comments/CommentsRuntime.astro';
+import { commentStrings } from '../components/comments/strings';
 /**
  * B1 + Inline Comments — Google Docs / 飞书 / 微信读书风格划线评论
  *
@@ -97,6 +100,7 @@ const codaDate = lang === 'en'
   : toChineseDate(date);
 
 const prefix = lang === 'en' ? '/en' : '';
+const ct = commentStrings(lang);
 const hasEnVersion = !!hreflang?.en;
 const canonicalUrl = new URL(`${prefix}/posts/${Astro.params.slug}/`, Astro.site).href;
 
@@ -278,63 +282,18 @@ const jsonLd = {
       <!-- Right column: relative container for absolute-positioned cards -->
       <aside class="comment-rail" id="commentRail">
         <div class="cr-header">
-          <span class="cr-label">Comments</span>
+          <span class="cr-label">{ct.railLabel}</span>
         </div>
         <div class="cr-cards" id="commentCards">
           <!-- Cards positioned absolutely here -->
         </div>
         <div class="cr-empty" id="crEmpty">
-          <p>Select text to add an inline comment.</p>
+          <p>{ct.railEmpty}</p>
         </div>
       </aside>
     </div>
 
-    <!-- FAB -->
-    <button class="fab-comment" id="fabComment" aria-label="Add comment">
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-        <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      </svg>
-    </button>
-
-    <!-- Comment input popover (desktop) — now with nickname/email -->
-    <div class="comment-input-popover" id="commentPopover">
-      <div class="cip-header">
-        <span class="cip-selected" id="cipSelectedText"></span>
-      </div>
-      <div class="cip-identity">
-        <input type="text" class="cip-input" id="cipNickname" placeholder="Nickname" />
-        <input type="email" class="cip-input" id="cipEmail" placeholder="Email" />
-      </div>
-      <textarea class="cip-textarea" id="cipTextarea" placeholder="Write a comment..." rows="3"></textarea>
-      <div class="cip-actions">
-        <button class="cip-cancel" id="cipCancel">Cancel</button>
-        <button class="cip-submit" id="cipSubmit">Comment</button>
-      </div>
-    </div>
-
-    <!-- Mobile bottom sheet -->
-    <div class="mobile-sheet-overlay" id="mobileOverlay"></div>
-    <div class="mobile-sheet" id="mobileSheet">
-      <div class="ms-handle"></div>
-      <div class="ms-quote" id="msQuote"></div>
-      <div class="ms-body" id="msBody"></div>
-      <div class="ms-author" id="msAuthor"></div>
-      <div class="ms-time" id="msTime"></div>
-      <div class="ms-replies" id="msReplies"></div>
-      <button class="ms-reply-toggle" id="msReplyToggle">Reply</button>
-      <div class="ms-reply-form" id="msReplyForm" style="display:none;">
-        <div class="ms-rf-identity">
-          <input type="text" class="ms-rf-input" id="msRfNickname" placeholder="Nickname" />
-          <input type="email" class="ms-rf-input" id="msRfEmail" placeholder="Email" />
-        </div>
-        <textarea class="ms-rf-textarea" id="msRfTextarea" placeholder="Write a reply..." rows="2"></textarea>
-        <label class="ms-rf-notify"><input type="checkbox" id="msRfNotify" checked /> Notify me of replies</label>
-        <div class="ms-rf-actions">
-          <button class="ms-rf-cancel" id="msRfCancel">Cancel</button>
-          <button class="ms-rf-submit" id="msRfSubmit">Reply</button>
-        </div>
-      </div>
-    </div>
+    <InlineCommentLayer lang={lang} />
 
     <!-- Article Like -->
     <div class="article-like-section">
@@ -365,38 +324,7 @@ const jsonLd = {
       </div>
     </section>
 
-    <!-- Bottom Comment Section -->
-    <section class="bottom-comments" id="bottomComments">
-      <div class="bc-inner">
-        <div class="bc-header">
-          <h2 class="bc-title">Comments</h2>
-          <span class="bc-count" id="bcCount">0 comments</span>
-        </div>
-        <div class="bc-thread" id="bcThread">
-          <!-- Comments rendered by JS -->
-        </div>
-        <div class="bc-compose">
-          <div class="bc-compose-avatar">
-            <img id="bcComposeAvatar" src="https://gravatar.com/avatar/00000000000000000000000000000000?d=robohash&s=80" alt="" class="bc-avatar-img" />
-          </div>
-          <div class="bc-compose-form">
-            <div class="bc-compose-fields">
-              <input type="text" class="bc-input" id="bcNickname" placeholder="Nickname" />
-              <input type="email" class="bc-input" id="bcEmail" placeholder="Email" />
-              <input type="url" class="bc-input" id="bcWebsite" placeholder="Website (optional)" />
-            </div>
-            <textarea class="bc-textarea" id="bcTextarea" placeholder="Write a comment..." rows="4"></textarea>
-            <div class="bc-compose-footer">
-              <label class="bc-notify-label">
-                <input type="checkbox" id="bcNotify" />
-                <span>Notify me of replies via email</span>
-              </label>
-              <button class="bc-submit" id="bcSubmit">Submit</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+    <CommentSection lang={lang} />
 
     <footer class="page-footer">
       <div class="footer-inner">
@@ -897,7 +825,6 @@ const jsonLd = {
     .img-zoom-img { max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); }
   }
 </style>
-<script is:inline set:html={commentAvatarJs}></script>
 <script is:inline>
 (function() {
   var API = 'https://chat.ursb.me';
@@ -938,90 +865,11 @@ const jsonLd = {
     })
     .catch(function() {});
 
-  var postContent = document.getElementById('postContent');
-  var contentGrid = document.getElementById('contentGrid');
-  var commentRail = document.getElementById('commentRail');
-  var commentCards = document.getElementById('commentCards');
-  var fab = document.getElementById('fabComment');
-  var popover = document.getElementById('commentPopover');
-  var cipText = document.getElementById('cipSelectedText');
-  var cipNickname = document.getElementById('cipNickname');
-  var cipEmailInput = document.getElementById('cipEmail');
-  var cipArea = document.getElementById('cipTextarea');
-  var cipCancel = document.getElementById('cipCancel');
-  var cipSubmit = document.getElementById('cipSubmit');
-  var crEmpty = document.getElementById('crEmpty');
-  var mobileOverlay = document.getElementById('mobileOverlay');
-  var mobileSheet = document.getElementById('mobileSheet');
-  var msQuote = document.getElementById('msQuote');
-  var msBody = document.getElementById('msBody');
-  var msAuthor = document.getElementById('msAuthor');
-  var msTime = document.getElementById('msTime');
-
-  // Bottom comments
-  var bcThread = document.getElementById('bcThread');
-  var bcCount = document.getElementById('bcCount');
-  var bcNickname = document.getElementById('bcNickname');
-  var bcEmail = document.getElementById('bcEmail');
-  var bcWebsite = document.getElementById('bcWebsite');
-  var bcTextarea = document.getElementById('bcTextarea');
-  var bcNotify = document.getElementById('bcNotify');
-  var bcSubmit = document.getElementById('bcSubmit');
-  var bcComposeAvatar = document.getElementById('bcComposeAvatar');
-
   // Article like
   var articleLikeBtn = document.getElementById('articleLikeBtn');
   var articleLikeCount = document.getElementById('articleLikeCount');
 
-  var pendingRange = null;
-  var activeMobileCommentId = null;
-  var inlineComments = [];
-  var bottomComments = [];
-
-  function isMobile() { return window.innerWidth <= 1100; }
-
-  // --- User identity persistence ---
-  function getSavedIdentity() {
-    try { return JSON.parse(localStorage.getItem(USER_KEY)) || {}; } catch(e) { return {}; }
-  }
-  function saveIdentity(nickname, email, website) {
-    localStorage.setItem(USER_KEY, JSON.stringify({ nickname: nickname, email: email, website: website || '' }));
-  }
-  function restoreIdentity() {
-    var id = getSavedIdentity();
-    if (id.nickname) {
-      cipNickname.value = id.nickname;
-      bcNickname.value = id.nickname;
-    }
-    if (id.email) {
-      cipEmailInput.value = id.email;
-      bcEmail.value = id.email;
-      updateComposeAvatar(id.email);
-    }
-    if (id.website) {
-      bcWebsite.value = id.website;
-    }
-  }
-
-  // Avatars: see src/lib/comment-avatar.js (authors -> GitHub avatar, everyone
-  // else -> per-email SHA-256 Gravatar with robohash fallback). Pending emails
-  // render a neutral placeholder and are swapped in by the observer.
-  var CA = window.CommentAvatar;
-  CA.observe();
-  function commentAvatarAttrs(comment) { return CA.imgAttrs(comment); }
-  function updateComposeAvatar(email) {
-    if (!email) return;
-    CA.resolve(email).then(function(url) { if (!bcEmail || CA.normalize(bcEmail.value) === CA.normalize(email)) bcComposeAvatar.src = url; });
-  }
-
-  // Debounced avatar update on email input
-  var avatarTimer;
-  bcEmail.addEventListener('input', function() {
-    clearTimeout(avatarTimer);
-    avatarTimer = setTimeout(function() { updateComposeAvatar(bcEmail.value); }, 500);
-  });
-
-  // --- API helpers ---
+  // --- API helpers (likes; comments live in components/comments) ---
   function handleResponse(r) {
     return r.json().then(function(data) {
       if (!r.ok) return Promise.reject(data);
@@ -1038,668 +886,6 @@ const jsonLd = {
       body: JSON.stringify(body)
     }).then(handleResponse);
   }
-  function apiDelete(path) {
-    return fetch(API + path, { method: 'DELETE' }).then(handleResponse);
-  }
-
-  // =====================================================================
-  // INLINE (HIGHLIGHT) COMMENTS — right rail
-  // =====================================================================
-
-  function wrapRange(range, id) {
-    var mark = document.createElement('mark');
-    mark.className = 'comment-highlight';
-    mark.dataset.commentId = id;
-    mark.id = 'inline-' + id; // deep-link target for the guestbook feed
-    try { range.surroundContents(mark); }
-    catch(e) {
-      var fragment = range.extractContents();
-      mark.appendChild(fragment);
-      range.insertNode(mark);
-    }
-    return mark;
-  }
-
-  // Find a Range spanning `searchText` inside `root`. Walks all text nodes,
-  // concatenates them into a single string, indexOf, then maps back to the
-  // (startNode, startOffset, endNode, endOffset) the Range API needs. This
-  // handles selections that cross element boundaries (e.g. text inside <a>
-  // followed by sibling text after </a>) — the original single-node search
-  // would never match those.
-  function findRangeByText(root, searchText, fromIndex) {
-    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
-    var nodes = [];
-    var fullText = '';
-    var n;
-    while (n = walker.nextNode()) {
-      nodes.push({ node: n, start: fullText.length });
-      fullText += n.textContent;
-    }
-    // Bias the search toward the stored offset so a passage that repeats inside
-    // the same block resolves to the right occurrence; fall back to the first.
-    var idx = fullText.indexOf(searchText, fromIndex || 0);
-    if (idx === -1 && fromIndex) idx = fullText.indexOf(searchText);
-    if (idx === -1) return null;
-    var endIdx = idx + searchText.length;
-
-    var startNode = null, startOffset = 0, endNode = null, endOffset = 0;
-    for (var i = 0; i < nodes.length; i++) {
-      var entry = nodes[i];
-      var entryEnd = entry.start + entry.node.textContent.length;
-      if (startNode === null && idx >= entry.start && idx <= entryEnd) {
-        startNode = entry.node;
-        startOffset = idx - entry.start;
-      }
-      if (endIdx >= entry.start && endIdx <= entryEnd) {
-        endNode = entry.node;
-        endOffset = endIdx - entry.start;
-        break;
-      }
-    }
-    if (!startNode || !endNode) return null;
-    var range = document.createRange();
-    range.setStart(startNode, startOffset);
-    range.setEnd(endNode, endOffset);
-    return range;
-  }
-
-  // The block element a comment is anchored to, matched by language-independent
-  // data-aid. Null for legacy rows (no anchor_id) or when translations drifted
-  // structurally so the id no longer exists in this version.
-  function anchorBlock(c) {
-    if (!c.anchor_id) return null;
-    return postContent.querySelector('[data-aid="' + c.anchor_id + '"]');
-  }
-
-  // The DOM element used to position/scroll a comment's rail card: the exact
-  // <mark> for a painted highlight, else the zero-size block-level anchor.
-  function anchorElFor(id) {
-    return postContent.querySelector(
-      'mark[data-comment-id="' + id + '"], .cm-block-anchor[data-comment-id="' + id + '"]'
-    );
-  }
-
-  // Cross-language (or quote-not-found) fallback: we can't paint the exact
-  // words, so tag the corresponding block and drop a zero-size anchor at its
-  // start for the rail card to line up against.
-  function markBlockLevel(block, id) {
-    block.classList.add('has-inline-note');
-    var a = document.createElement('span');
-    a.className = 'cm-block-anchor';
-    a.dataset.commentId = id;
-    a.setAttribute('aria-hidden', 'true');
-    block.insertBefore(a, block.firstChild);
-    return a;
-  }
-
-  // Nearest ancestor block carrying a data-aid, for a selection endpoint.
-  function nearestAnchorBlock(node) {
-    var el = node && node.nodeType === 3 ? node.parentNode : node;
-    while (el && el !== postContent) {
-      if (el.dataset && el.dataset.aid != null) return el;
-      el = el.parentNode;
-    }
-    return null;
-  }
-
-  // Character offset of (container, offset) within a block's concatenated text.
-  // Mirrors findRangeByText's text-node walk so create-time and restore-time
-  // offsets line up.
-  function offsetWithinBlock(block, container, offset) {
-    var walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, null, false);
-    var total = 0, n;
-    while (n = walker.nextNode()) {
-      if (n === container) return total + offset;
-      total += n.textContent.length;
-    }
-    return total;
-  }
-
-  // The same post's other-language URL (zh <-> en), used to resolve anchors for
-  // legacy cross-language highlights that predate the anchor_id column.
-  function otherLangPostPath() {
-    return (PAGE_LANG === 'zh' ? '/en/posts/' : '/posts/') + POST_SLUG + '/';
-  }
-
-  // Fetch + parse the other-language rendered blocks once: [{aid, text}, ...].
-  // data-aid is language-independent, so a block found here maps 1:1 to the
-  // same-aid block in this page.
-  var _otherLangBlocks = null;
-  function getOtherLangBlocks() {
-    if (_otherLangBlocks) return _otherLangBlocks;
-    _otherLangBlocks = fetch(otherLangPostPath(), { credentials: 'omit' })
-      .then(function(r) { return r.ok ? r.text() : ''; })
-      .then(function(html) {
-        if (!html) return [];
-        var doc = new DOMParser().parseFromString(html, 'text/html');
-        var root = doc.getElementById('postContent') || doc.body;
-        if (!root) return [];
-        var out = [];
-        root.querySelectorAll('[data-aid]').forEach(function(el) {
-          out.push({ aid: el.getAttribute('data-aid'), text: el.textContent });
-        });
-        return out;
-      })
-      .catch(function() { return []; });
-    return _otherLangBlocks;
-  }
-
-  // For cross-language highlights without an anchor_id (created before the
-  // feature), locate the quoted passage in the OTHER language's blocks and adopt
-  // that block's data-aid, so they anchor to the matching block on this page and
-  // read inline with same-language notes instead of being orphaned.
-  function resolveCrossLangAnchors() {
-    var needy = inlineComments.filter(function(c) {
-      return c.selected_text && !c.anchor_id && commentLang(c) !== PAGE_LANG
-        && !findRangeByText(postContent, c.selected_text);
-    });
-    if (!needy.length) return Promise.resolve();
-    return getOtherLangBlocks().then(function(blocks) {
-      if (!blocks.length) return;
-      needy.forEach(function(c) {
-        for (var i = 0; i < blocks.length; i++) {
-          if (blocks[i].text.indexOf(c.selected_text) !== -1) { c.anchor_id = blocks[i].aid; break; }
-        }
-      });
-    });
-  }
-
-  function restoreHighlights() {
-    inlineComments.forEach(function(c) {
-      if (!c.selected_text) return;
-      if (anchorElFor(c.id)) return; // already painted/anchored
-      var block = anchorBlock(c);
-      if (commentLang(c) === PAGE_LANG) {
-        // Same language: paint the exact words. Prefer searching inside the
-        // anchored block (biased by the stored offset) so repeated passages and
-        // duplicate phrasing elsewhere in the article don't grab the highlight.
-        var range = block
-          ? findRangeByText(block, c.selected_text, c.range_start || 0)
-          : findRangeByText(postContent, c.selected_text);
-        if (range) { wrapRange(range, c.id); return; }
-        // Words moved/edited but we still know the block → mark it.
-        if (block) markBlockLevel(block, c.id);
-      } else if (block) {
-        // Other language: exact words don't exist here — anchor to the block.
-        markBlockLevel(block, c.id);
-      }
-      // else: legacy other-language row with no block → left unanchored;
-      // renderInlineComments() surfaces it in the "other language" group.
-    });
-  }
-
-  // Deep-link support: /posts/foo#inline-<id> (from the homepage guestbook feed)
-  // scrolls to and flashes that highlight once it has been painted.
-  function scrollToHashHighlight() {
-    var m = /^#inline-(\d+)$/.exec(location.hash || '');
-    if (!m) return;
-    var target = anchorElFor(m[1]);
-    if (!target) return;
-    var flashEl = target.tagName === 'MARK' ? target : target.closest('[data-aid]') || target;
-    requestAnimationFrame(function() {
-      flashEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      flashEl.classList.add('highlight-flash');
-      setTimeout(function() { flashEl.classList.remove('highlight-flash'); }, 1200);
-    });
-  }
-
-  function removeHighlight(id) {
-    var marks = postContent.querySelectorAll('mark[data-comment-id="' + id + '"]');
-    marks.forEach(function(mark) {
-      var parent = mark.parentNode;
-      while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
-      parent.removeChild(mark);
-      parent.normalize();
-    });
-    // Block-level (cross-language) anchors: remove the marker and drop the
-    // block tint if no other note remains on that block.
-    postContent.querySelectorAll('.cm-block-anchor[data-comment-id="' + id + '"]').forEach(function(a) {
-      var block = a.closest('[data-aid]');
-      a.parentNode.removeChild(a);
-      if (block && !block.querySelector('.cm-block-anchor')) block.classList.remove('has-inline-note');
-    });
-  }
-
-  function offsetFromGrid(el) {
-    var top = 0;
-    while (el && el !== contentGrid) { top += el.offsetTop; el = el.offsetParent; }
-    return top;
-  }
-
-  function layoutCards() {
-    // Only the anchored cards are absolutely positioned next to their passage;
-    // the collapsed "other language" group (if any) is laid out after them.
-    var cards = commentCards.querySelectorAll(':scope > .cm-card');
-    var railOffset = offsetFromGrid(commentRail);
-    var positions = [];
-    cards.forEach(function(card) {
-      var id = card.dataset.commentId;
-      var anchor = anchorElFor(id);
-      var desiredTop = 0;
-      if (anchor) desiredTop = offsetFromGrid(anchor) - railOffset;
-      positions.push({ card: card, desired: desiredTop, height: card.offsetHeight });
-    });
-    positions.sort(function(a, b) { return a.desired - b.desired; });
-    var GAP = 8, nextAvailable = 0;
-    positions.forEach(function(p) {
-      var top = Math.max(p.desired, nextAvailable);
-      p.card.style.top = top + 'px';
-      nextAvailable = top + p.height + GAP;
-    });
-    commentCards.style.minHeight = nextAvailable + 'px';
-  }
-
-  function buildInlineCard(c) {
-    if (!c.replies) c.replies = [];
-    var card = document.createElement('div');
-    card.className = 'cm-card';
-    card.dataset.commentId = c.id;
-
-    // Anchor element: the exact <mark> for same-language highlights, or the
-    // zero-size block anchor for cross-language / imprecise ones. When neither
-    // exists the card is un-positioned (rendered in the collapsed group).
-    var anchorEl = anchorElFor(c.id);
-    var isMark = !!anchorEl && anchorEl.tagName === 'MARK';
-    var hlEl = isMark ? anchorEl : (anchorEl ? anchorEl.closest('[data-aid]') : null);
-    var activeClass = isMark ? 'highlight-active' : 'inline-note-active';
-    var crossLang = commentLang(c) !== PAGE_LANG;
-
-    var time = new Date(c.created_at);
-    var timeStr = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
-      + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-
-    var repliesHtml = '';
-    if (c.replies && c.replies.length) {
-      repliesHtml = '<div class="cm-replies">';
-      c.replies.forEach(function(r) {
-        var rTime = new Date(r.created_at);
-        var rTimeStr = rTime.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
-          + ' ' + rTime.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-        repliesHtml +=
-          '<div class="cm-reply">' +
-            '<div class="cm-reply-header">' +
-              '<img class="cm-reply-avatar" ' + commentAvatarAttrs(r) + ' />' +
-              '<span class="cm-reply-name">' + esc(r.nickname) + countryFlag(r) + '</span>' +
-              '<span class="cm-reply-time">' + rTimeStr + '</span>' +
-            '</div>' +
-            '<div class="cm-reply-body">' + esc(r.comment) + '</div>' +
-          '</div>';
-      });
-      repliesHtml += '</div>';
-    }
-
-    // Tag a card whose highlight was made on the *other* language version so the
-    // foreign quote isn't mistaken for a broken same-language highlight.
-    var langTag = crossLang
-      ? '<span class="cm-card-lang" title="\u6765\u81ea\u53e6\u4e00\u8bed\u8a00\u7248\u672c\u7684\u5212\u7ebf">' + (commentLang(c) === 'en' ? 'EN' : '\u4e2d') + '</span>'
-      : '';
-
-    card.innerHTML =
-      '<div class="cm-card-author">' +
-        '<img ' + commentAvatarAttrs(c) + ' class="cm-card-avatar" />' +
-        '<span class="cm-card-name">' + esc(c.nickname) + countryFlag(c) + '</span>' +
-      '</div>' +
-      '<div class="cm-card-quote">' + langTag + '\u201c' + esc(trunc(c.selected_text, 50)) + '\u201d</div>' +
-      '<div class="cm-card-body">' + esc(c.comment) + '</div>' +
-      '<div class="cm-card-footer">' +
-        '<span class="cm-card-time">' + timeStr + '</span>' +
-      '</div>' +
-      repliesHtml +
-      '<button class="cm-reply-btn" data-parent-id="' + c.id + '">Reply</button>' +
-      '<div class="cm-reply-form" style="display:none;">' +
-        '<div class="cm-rf-identity">' +
-          '<input class="cm-rf-input" placeholder="Nickname" />' +
-          '<input class="cm-rf-input" placeholder="Email" />' +
-        '</div>' +
-        '<textarea class="cm-rf-textarea" placeholder="Write a reply..." rows="2"></textarea>' +
-        '<label class="cm-rf-notify"><input type="checkbox" checked /> Notify me of replies</label>' +
-        '<div class="cm-rf-actions">' +
-          '<button class="cm-rf-cancel">Cancel</button>' +
-          '<button class="cm-rf-submit">Reply</button>' +
-        '</div>' +
-      '</div>';
-
-    card.addEventListener('mouseenter', function() {
-      if (hlEl) hlEl.classList.add(activeClass);
-      card.classList.add('cm-card-active');
-    });
-    card.addEventListener('mouseleave', function() {
-      if (hlEl) hlEl.classList.remove(activeClass);
-      card.classList.remove('cm-card-active');
-    });
-    card.addEventListener('click', function(e) {
-      if (e.target.closest('.cm-reply-btn') || e.target.closest('.cm-reply-form')) return;
-      if (hlEl) {
-        hlEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        hlEl.classList.add('highlight-flash');
-        setTimeout(function() { hlEl.classList.remove('highlight-flash'); }, 1000);
-      }
-    });
-    if (anchorEl) {
-      anchorEl.addEventListener('mouseenter', function() { card.classList.add('cm-card-active'); if (hlEl) hlEl.classList.add(activeClass); });
-      anchorEl.addEventListener('mouseleave', function() { card.classList.remove('cm-card-active'); if (hlEl) hlEl.classList.remove(activeClass); });
-      anchorEl.addEventListener('click', function(e) {
-        if (!isMobile()) return;
-        e.preventDefault(); e.stopPropagation();
-        openMobileSheet(c);
-      });
-    }
-
-    // Reply button handler
-    var replyBtn = card.querySelector('.cm-reply-btn');
-    var replyForm = card.querySelector('.cm-reply-form');
-    var rfInputs = replyForm.querySelectorAll('.cm-rf-input');
-    var rfNickname = rfInputs[0];
-    var rfEmail = rfInputs[1];
-    var rfTextarea = replyForm.querySelector('.cm-rf-textarea');
-    var rfNotify = replyForm.querySelector('.cm-rf-notify input');
-    var rfCancel = replyForm.querySelector('.cm-rf-cancel');
-    var rfSubmit = replyForm.querySelector('.cm-rf-submit');
-
-    replyBtn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      replyForm.style.display = '';
-      replyBtn.style.display = 'none';
-      var identity = getSavedIdentity();
-      if (identity.nickname) rfNickname.value = identity.nickname;
-      if (identity.email) rfEmail.value = identity.email;
-      rfNickname.focus();
-      layoutCards();
-    });
-
-    rfCancel.addEventListener('click', function(e) {
-      e.stopPropagation();
-      replyForm.style.display = 'none';
-      replyBtn.style.display = '';
-      layoutCards();
-    });
-
-    rfSubmit.addEventListener('click', function(e) {
-      e.stopPropagation();
-      var nickname = rfNickname.value.trim();
-      var email = rfEmail.value.trim();
-      var comment = rfTextarea.value.trim();
-      var rfValid = true;
-      rfNickname.classList.remove('cip-error');
-      rfTextarea.classList.remove('cip-error');
-      if (!nickname) { rfNickname.classList.add('cip-error'); rfValid = false; }
-      if (!comment) { rfTextarea.classList.add('cip-error'); rfValid = false; }
-      if (!rfValid) return;
-
-      saveIdentity(nickname, email);
-      rfSubmit.disabled = true;
-
-      apiPost('/api/inline-comments', {
-        post_slug: POST_SLUG,
-        nickname: nickname,
-        email: email,
-        comment: comment,
-        parent_id: c.id,
-        notify_replies: rfNotify.checked
-      }).then(function(res) {
-        if (res.comment) {
-          c.replies.push(res.comment);
-          renderInlineComments();
-        }
-      }).finally(function() {
-        rfSubmit.disabled = false;
-      });
-    });
-
-    return card;
-  }
-
-  function renderInlineComments() {
-    commentCards.innerHTML = '';
-    crEmpty.style.display = inlineComments.length ? 'none' : '';
-
-    // Every highlight renders as a positioned card — same-language ones next to
-    // their exact <mark>, cross-language ones next to the matching block marker.
-    // layoutCards() interleaves them by vertical position, so zh and en notes
-    // sit together against the passage they belong to.
-    inlineComments.forEach(function(c) {
-      commentCards.appendChild(buildInlineCard(c));
-    });
-
-    requestAnimationFrame(function() { requestAnimationFrame(layoutCards); });
-  }
-
-  // --- Mobile bottom sheet ---
-  function openMobileSheet(comment) {
-    activeMobileCommentId = comment.id;
-    msQuote.textContent = '\u201c' + trunc(comment.selected_text, 80) + '\u201d';
-    msBody.textContent = comment.comment;
-    msAuthor.innerHTML = esc(comment.nickname) + countryFlag(comment);
-    var time = new Date(comment.created_at);
-    msTime.textContent = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
-      + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-
-    // Render replies
-    var repliesEl = document.getElementById('msReplies');
-    repliesEl.innerHTML = '';
-    if (comment.replies && comment.replies.length) {
-      comment.replies.forEach(function(r) {
-        var rTime = new Date(r.created_at);
-        var rTimeStr = rTime.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
-          + ' ' + rTime.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-        var div = document.createElement('div');
-        div.className = 'ms-reply-item';
-        div.innerHTML =
-          '<div class="ms-reply-header">' +
-            '<img ' + commentAvatarAttrs(r) + ' class="ms-reply-avatar" />' +
-            '<span class="ms-reply-name">' + esc(r.nickname) + countryFlag(r) + '</span>' +
-            '<span class="ms-reply-time">' + rTimeStr + '</span>' +
-          '</div>' +
-          '<div class="ms-reply-body">' + esc(r.comment) + '</div>';
-        repliesEl.appendChild(div);
-      });
-    }
-
-    // Reset reply form
-    document.getElementById('msReplyForm').style.display = 'none';
-    document.getElementById('msReplyToggle').style.display = '';
-
-    mobileOverlay.classList.add('active');
-    mobileSheet.classList.add('active');
-  }
-  function closeMobileSheet() {
-    mobileOverlay.classList.remove('active');
-    mobileSheet.classList.remove('active');
-    activeMobileCommentId = null;
-  }
-  mobileOverlay.addEventListener('click', closeMobileSheet);
-  // Mobile reply toggle
-  document.getElementById('msReplyToggle').addEventListener('click', function() {
-    var form = document.getElementById('msReplyForm');
-    form.style.display = 'block';
-    this.style.display = 'none';
-    var id = getSavedIdentity();
-    if (id.nickname) document.getElementById('msRfNickname').value = id.nickname;
-    if (id.email) document.getElementById('msRfEmail').value = id.email;
-    document.getElementById('msRfNickname').focus();
-  });
-
-  document.getElementById('msRfCancel').addEventListener('click', function() {
-    document.getElementById('msReplyForm').style.display = 'none';
-    document.getElementById('msReplyToggle').style.display = '';
-  });
-
-  document.getElementById('msRfSubmit').addEventListener('click', function() {
-    var nickname = document.getElementById('msRfNickname').value.trim();
-    var email = document.getElementById('msRfEmail').value.trim();
-    var text = document.getElementById('msRfTextarea').value.trim();
-    var notify = document.getElementById('msRfNotify').checked;
-    var msNickEl = document.getElementById('msRfNickname');
-    var msTextEl = document.getElementById('msRfTextarea');
-    var msValid = true;
-    msNickEl.classList.remove('cip-error');
-    msTextEl.classList.remove('cip-error');
-    if (!nickname) { msNickEl.classList.add('cip-error'); msValid = false; }
-    if (!text) { msTextEl.classList.add('cip-error'); msValid = false; }
-    if (!msValid || !activeMobileCommentId) return;
-
-    saveIdentity(nickname, email);
-    var submitBtn = this;
-    submitBtn.disabled = true;
-    submitBtn.textContent = '...';
-
-    apiPost('/api/inline-comments', {
-      post_slug: POST_SLUG,
-      nickname: nickname,
-      email: email,
-      comment: text,
-      parent_id: activeMobileCommentId,
-      notify_replies: notify,
-    }).then(function(res) {
-      if (res.comment) {
-        var parent = inlineComments.find(function(c) { return c.id === activeMobileCommentId; });
-        if (parent) {
-          if (!parent.replies) parent.replies = [];
-          parent.replies.push(res.comment);
-        }
-        closeMobileSheet();
-        renderInlineComments();
-      }
-    }).finally(function() {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Reply';
-    });
-  });
-
-  // --- FAB: show on text selection ---
-  fab.style.display = 'none';
-  popover.style.display = 'none';
-
-  document.addEventListener('mouseup', function(e) {
-    if (popover.style.display !== 'none') return;
-    if (isMobile()) { fab.style.display = 'none'; return; }
-    var sel = window.getSelection();
-    if (!sel || sel.isCollapsed || !sel.rangeCount) { fab.style.display = 'none'; return; }
-    var range = sel.getRangeAt(0);
-    if (!postContent.contains(range.commonAncestorContainer)) { fab.style.display = 'none'; return; }
-    var text = sel.toString().trim();
-    if (!text) { fab.style.display = 'none'; return; }
-    var rect = range.getBoundingClientRect();
-    fab.style.display = 'flex';
-    fab.style.top = (rect.top + window.scrollY - 36) + 'px';
-    fab.style.left = (rect.right + window.scrollX + 8) + 'px';
-    pendingRange = range.cloneRange();
-  });
-
-  document.addEventListener('selectionchange', function() {
-    if (!isMobile()) return;
-    var sel = window.getSelection();
-    if (!sel || sel.isCollapsed || !sel.rangeCount) { fab.style.display = 'none'; return; }
-    var range = sel.getRangeAt(0);
-    if (!postContent.contains(range.commonAncestorContainer)) { fab.style.display = 'none'; return; }
-    var text = sel.toString().trim();
-    if (!text) { fab.style.display = 'none'; return; }
-    var rect = range.getBoundingClientRect();
-    fab.style.display = 'flex';
-    fab.style.top = (rect.bottom + window.scrollY + 8) + 'px';
-    fab.style.left = (rect.left + window.scrollX + (rect.width / 2) - 14) + 'px';
-    pendingRange = range.cloneRange();
-  });
-
-  document.addEventListener('mousedown', function(e) {
-    if (fab.contains(e.target) || popover.contains(e.target)) return;
-    if (popover.style.display === 'none') fab.style.display = 'none';
-  });
-
-  fab.addEventListener('click', function(e) {
-    e.preventDefault(); e.stopPropagation();
-    if (!pendingRange) return;
-    var selectedText = pendingRange.toString().trim();
-    if (!selectedText) return;
-    cipText.textContent = '\u201c' + trunc(selectedText, 60) + '\u201d';
-    cipArea.value = '';
-    var rect = pendingRange.getBoundingClientRect();
-    if (isMobile()) {
-      popover.style.top = (rect.bottom + window.scrollY + 12) + 'px';
-      popover.style.left = '50%';
-      popover.style.transform = 'translateX(-50%)';
-    } else {
-      popover.style.top = (rect.top + window.scrollY) + 'px';
-      popover.style.left = (postContent.getBoundingClientRect().right + 24) + 'px';
-      popover.style.transform = '';
-    }
-    popover.style.display = 'block';
-    fab.style.display = 'none';
-    cipNickname.focus();
-  });
-
-  cipCancel.addEventListener('click', function() {
-    popover.style.display = 'none';
-    pendingRange = null;
-    window.getSelection().removeAllRanges();
-  });
-
-  cipSubmit.addEventListener('click', function() {
-    var text = cipArea.value.trim();
-    var nickname = cipNickname.value.trim();
-    var email = cipEmailInput.value.trim();
-
-    // Validate required fields with red border feedback
-    var valid = true;
-    cipNickname.classList.remove('cip-error');
-    cipArea.classList.remove('cip-error');
-    if (!nickname) { cipNickname.classList.add('cip-error'); valid = false; }
-    if (!text) { cipArea.classList.add('cip-error'); valid = false; }
-    if (!valid || !pendingRange) return;
-
-    var selectedText = pendingRange.toString().trim();
-    saveIdentity(nickname, email);
-
-    // Anchor the highlight to a language-independent block id + block-local
-    // offsets so it can be re-located on the other-language version of the post.
-    var block = nearestAnchorBlock(pendingRange.startContainer);
-    var anchorId = block ? (block.dataset.aid || '') : '';
-    var rangeStart = 0, rangeEnd = selectedText.length;
-    if (block) {
-      rangeStart = offsetWithinBlock(block, pendingRange.startContainer, pendingRange.startOffset);
-      rangeEnd = offsetWithinBlock(block, pendingRange.endContainer, pendingRange.endOffset);
-    }
-
-    cipSubmit.disabled = true;
-    cipSubmit.textContent = '...';
-
-    apiPost('/api/inline-comments', {
-      post_slug: POST_SLUG,
-      nickname: nickname,
-      email: email,
-      selected_text: selectedText,
-      comment: text,
-      anchor_id: anchorId,
-      lang: PAGE_LANG,
-      range_start: rangeStart,
-      range_end: rangeEnd,
-      notify_replies: true
-    }).then(function(res) {
-      if (res.comment) {
-        if (!res.comment.lang) res.comment.lang = PAGE_LANG;
-        wrapRange(pendingRange, res.comment.id);
-        inlineComments.push(res.comment);
-        renderInlineComments();
-      }
-      popover.style.display = 'none';
-      pendingRange = null;
-      window.getSelection().removeAllRanges();
-    }).finally(function() {
-      cipSubmit.disabled = false;
-      cipSubmit.textContent = 'Comment';
-    });
-  });
-
-  cipArea.addEventListener('keydown', function(e) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') cipSubmit.click();
-    if (e.key === 'Escape') cipCancel.click();
-  });
-
-  var layoutTimer;
-  window.addEventListener('resize', function() {
-    clearTimeout(layoutTimer);
-    layoutTimer = setTimeout(layoutCards, 60);
-  });
 
   // =====================================================================
   // ARTICLE LIKES
@@ -1862,203 +1048,16 @@ const jsonLd = {
   });
 
   // =====================================================================
-  // BOTTOM COMMENTS
+  // BOTTOM COMMENTS — rendered by src/components/comments (CommentsRuntime);
+  // the shared runtime reports the count so the sidebar can show it.
   // =====================================================================
-
-  function loadBottomComments() {
-    apiGet('/api/comments?post_slug=' + encodeURIComponent(POST_SLUG)).then(function(res) {
-      bottomComments = res.comments || [];
-      CA.prime(CA.emailsOf(bottomComments)).then(renderBottomComments);
-    });
-  }
-
-  // Re-render comments when crossing the mobile/desktop breakpoint so the
-  // nesting cap (1 vs 4 levels) follows the viewport.
-  var bcLastMaxDepth = bcMaxDepth();
-  var bcResizeTimer;
-  window.addEventListener('resize', function() {
-    clearTimeout(bcResizeTimer);
-    bcResizeTimer = setTimeout(function() {
-      var d = bcMaxDepth();
-      if (d !== bcLastMaxDepth && bottomComments.length) {
-        bcLastMaxDepth = d;
-        renderBottomComments();
-      }
-    }, 200);
-  });
-
-  function renderBottomComments() {
-    bcThread.innerHTML = '';
-    var count = bottomComments.length;
-    bcCount.textContent = count + ' comment' + (count !== 1 ? 's' : '');
-    // Populate sidebar comments
-    if (count > 0) {
-      var cmEl = document.getElementById('postCommentsCount');
-      var cmBlock = document.getElementById('postCommentsBlock');
-      if (cmEl) cmEl.textContent = count.toLocaleString();
-      if (cmBlock) cmBlock.style.display = '';
-    }
-
-    // Build tree
-    var roots = [];
-    var byId = {};
-    bottomComments.forEach(function(c) { c._replies = []; byId[c.id] = c; });
-    bottomComments.forEach(function(c) {
-      if (c.parent_id && byId[c.parent_id]) byId[c.parent_id]._replies.push(c);
-      else roots.push(c);
-    });
-
-    // Cap visual nesting: desktop indents up to 4 levels, mobile to 1.
-    // Replies deeper than the cap are flattened as siblings at the capped level
-    // (they already carry an "@name" prefix, so the thread stays legible).
-    var maxDepth = bcMaxDepth();
-    roots.forEach(function(c) { appendThread(c, bcThread, 0, maxDepth); });
-  }
-
-  function bcMaxDepth() {
-    return window.matchMedia('(max-width: 640px)').matches ? 1 : 4;
-  }
-
-  // Append a comment and its descendants, capping the nesting depth.
-  function appendThread(c, container, depth, maxDepth) {
-    var div = buildCommentEl(c, depth);
-    container.appendChild(div);
-    // Within the cap, children nest into this comment's own container;
-    // at/beyond the cap they flatten into the same container as this comment.
-    var childContainer = depth < maxDepth
-      ? div.querySelector('.bc-replies-container')
-      : container;
-    var childDepth = Math.min(depth + 1, maxDepth);
-    if (c._replies && c._replies.length) {
-      c._replies.forEach(function(r) { appendThread(r, childContainer, childDepth, maxDepth); });
-    }
-  }
-
-  // Builds a single comment element (no recursion — see appendThread).
-  function buildCommentEl(c, depth) {
-    var isReply = depth > 0;
-    var div = document.createElement('div');
-    div.className = 'bc-item' + (isReply ? ' bc-reply' : '');
-
-    var time = new Date(c.created_at);
-    var timeStr = time.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' });
-
-    var avatarSize = isReply ? 32 : 40;
-    var nameHtml = c.website
-      ? '<a class="bc-name bc-name-link" href="' + esc(c.website) + '" target="_blank" rel="noopener noreferrer">' + esc(c.nickname) + '</a>' + countryFlag(c)
-      : '<span class="bc-name">' + esc(c.nickname) + '</span>' + countryFlag(c);
-    div.innerHTML =
-      '<div class="bc-avatar-wrap"><img ' + commentAvatarAttrs(c) + ' class="bc-avatar-img" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px" /></div>' +
-      '<div class="bc-body">' +
-        '<div class="bc-meta">' +
-          nameHtml +
-          '<span class="bc-dot">&middot;</span>' +
-          '<time class="bc-time">' + timeStr + '</time>' +
-        '</div>' +
-        '<div class="bc-text"><p>' + linkify(esc(c.content)).replace(/\n/g, '<br>') + '</p></div>' +
-        '<div class="bc-actions">' +
-          '<button class="bc-like-btn' + (c._userLiked ? ' liked' : '') + '" data-id="' + c.id + '">' +
-            '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>' +
-            '<span>' + (c.likes || 0) + '</span>' +
-          '</button>' +
-          '<button class="bc-reply-btn" data-id="' + c.id + '">Reply</button>' +
-        '</div>' +
-        '<div class="bc-replies-container"></div>' +
-      '</div>';
-
-    // Like button — optimistic update
-    div.querySelector('.bc-like-btn').addEventListener('click', function() {
-      var btn = this;
-      var icon = btn.querySelector('path');
-      var span = btn.querySelector('span');
-      var wasLiked = btn.classList.contains('liked');
-      var prevCount = parseInt(span.textContent) || 0;
-      var newLiked = !wasLiked;
-      var newCount = newLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
-
-      btn.classList.toggle('liked', newLiked);
-      span.textContent = newCount;
-      icon.setAttribute('fill', newLiked ? 'currentColor' : 'none');
-
-      apiPost('/api/comments/' + c.id + '/like', {}).then(function(res) {
-        btn.classList.toggle('liked', res.liked);
-        span.textContent = res.count;
-        icon.setAttribute('fill', res.liked ? 'currentColor' : 'none');
-      }).catch(function() {
-        btn.classList.toggle('liked', wasLiked);
-        span.textContent = prevCount;
-        icon.setAttribute('fill', wasLiked ? 'currentColor' : 'none');
-      });
-    });
-
-    // Reply button
-    div.querySelector('.bc-reply-btn').addEventListener('click', function() {
-      // Scroll to compose and pre-fill with @mention
-      bcTextarea.value = '@' + c.nickname + ' ';
-      bcTextarea.dataset.parentId = c.id;
-      bcTextarea.focus();
-      bcTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    });
-
-    return div;
-  }
-
-  // Submit bottom comment
-  bcSubmit.addEventListener('click', function() {
-    var content = bcTextarea.value.trim();
-    var nickname = bcNickname.value.trim();
-    var email = bcEmail.value.trim();
-    var website = bcWebsite.value.trim();
-    if (!content || !nickname || !email) return;
-
-    saveIdentity(nickname, email, website);
-    bcSubmit.disabled = true;
-    bcSubmit.textContent = '...';
-
-    var parentId = bcTextarea.dataset.parentId || null;
-
-    var body = {
-      post_slug: POST_SLUG,
-      nickname: nickname,
-      email: email,
-      content: content,
-      parent_id: parentId ? parseInt(parentId) : null,
-      notify_replies: bcNotify.checked
-    };
-    if (website) body.website = website;
-
-    apiPost('/api/comments', body).then(function(res) {
-      if (res.comment) {
-        bottomComments.push(res.comment);
-        renderBottomComments();
-        bcTextarea.value = '';
-        delete bcTextarea.dataset.parentId;
-      }
-    }).finally(function() {
-      bcSubmit.disabled = false;
-      bcSubmit.textContent = 'Submit';
-    });
-  });
-
-  bcTextarea.addEventListener('keydown', function(e) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') bcSubmit.click();
-  });
-
-  // =====================================================================
-  // INIT — load everything from API
-  // =====================================================================
-  restoreIdentity();
-
-  apiGet('/api/inline-comments?post_slug=' + encodeURIComponent(POST_SLUG)).then(function(res) {
-    inlineComments = res.comments || [];
-    var avatarsReady = CA.prime(CA.emailsOf(inlineComments));
-    // Resolve anchors for legacy cross-language highlights (async, best-effort),
-    // then paint + lay out. Never let a failed lookup block rendering.
-    Promise.all([resolveCrossLangAnchors().catch(function() {}), avatarsReady]).then(function() {
-      restoreHighlights();
-      renderInlineComments();
-      scrollToHashHighlight();
-    });
+  document.addEventListener('comments:count', function(e) {
+    var count = e.detail && e.detail.count;
+    if (!(count > 0)) return;
+    var cmEl = document.getElementById('postCommentsCount');
+    var cmBlock = document.getElementById('postCommentsBlock');
+    if (cmEl) cmEl.textContent = count.toLocaleString();
+    if (cmBlock) cmBlock.style.display = '';
   });
 
   loadArticleLikes();
@@ -2066,28 +1065,14 @@ const jsonLd = {
   // (US residential-proxy crawlers survive datacenter + UA + engagement filters),
   // so the region map misrepresents the real audience. Code kept for a possible
   // filtered revival; the clean signal is the likes-based map at the article foot.
-  loadBottomComments();
 
   // --- Helpers ---
-  function trunc(s, n) { return s.length > n ? s.slice(0, n) + '\u2026' : s; }
-  function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-  // Region flag for a commenter. Returns a self-hosted square SVG <img>
-  // (flag-icons, /flags/<cc>.svg) with a localized region tooltip, or '' when
-  // there's no resolvable ISO 3166-1 alpha-2 code. Leading space included.
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   var _regionNames = null;
   try { _regionNames = new Intl.DisplayNames(['zh-CN'], { type: 'region' }); } catch (e) {}
-  function countryFlag(c) {
-    var up = (c && c.country ? String(c.country) : '').toUpperCase();
-    if (!/^[A-Z]{2}$/.test(up)) return '';
-    var region = up;
-    if (_regionNames) { try { region = _regionNames.of(up) || up; } catch (e) {} }
-    var label = (c.city ? c.city + ' \u00b7 ' : '') + region;
-    return ' <img class="c-flag" src="/flags/' + up.toLowerCase() + '.svg" alt="' + esc(region) +
-      '" title="' + esc(label) + '" loading="lazy" onerror="this.style.display=\'none\'" />';
-  }
-  function linkify(s) { return s.replace(/(https?:\/\/[^\s<)]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'); }
 })();
 </script>
+<CommentsRuntime lang={lang} kind="post" />
 
 <!-- Online presence (per-post) -->
 <script is:inline>
@@ -2554,58 +1539,8 @@ const jsonLd = {
     font-weight: 700;
   }
 
-  /* ===== Highlights ===== */
-  .post-content :global(mark.comment-highlight) {
-    background: rgba(var(--accent-rgb), 0.08);
-    color: inherit;
-    border-bottom: 2px solid rgba(var(--accent-rgb), 0.35);
-    padding: 1px 0;
-    border-radius: 2px;
-    cursor: pointer;
-    transition: background 0.2s, border-color 0.2s;
-  }
-  .post-content :global(mark.comment-highlight.highlight-active) {
-    background: rgba(var(--accent-rgb), 0.18);
-    border-bottom-color: var(--accent);
-  }
-  .post-content :global(mark.comment-highlight.highlight-flash) {
-    animation: highlightFlash 1s ease;
-  }
-
-  /* Block-level anchor for cross-language / imprecise highlights: the exact
-     words can't be underlined (they live in the other language), so we tag the
-     corresponding block with a subtle left rule + a gutter dot. */
-  .post-content :global(.has-inline-note) { position: relative; }
-  .post-content :global(.cm-block-anchor) {
-    position: absolute;
-    left: -16px;
-    top: 0.4em;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: rgba(var(--accent-rgb), 0.55);
-    pointer-events: none;
-  }
-  .post-content :global(.has-inline-note.inline-note-active) {
-    box-shadow: -10px 0 0 -8px var(--accent);
-  }
-  .post-content :global(.has-inline-note.highlight-flash) {
-    animation: highlightFlash 1s ease;
-  }
-  /* On mobile the comment rail is hidden, so the gutter dot is the only handle
-     for a cross-language note — make it a real tap target that opens the sheet
-     (same as tapping a same-language highlight). Kept fully on-screen (left
-     gutter, no negative viewport x) so it never triggers horizontal scroll. */
-  @media (max-width: 1100px) {
-    .post-content :global(.cm-block-anchor) {
-      pointer-events: auto;
-      cursor: pointer;
-      width: 14px;
-      height: 14px;
-      left: -18px;
-      top: 0.1em;
-    }
-  }
+  /* Highlights, block anchors, rail cards, popover and sheet styles live in
+     src/components/comments/comments.css. */
 
   /* ===== Comment Rail (right column) ===== */
   .comment-rail {
@@ -2618,225 +1553,16 @@ const jsonLd = {
     padding-left: 16px; margin-bottom: 12px;
   }
   .cr-label {
-    font-size: 9px; color: var(--c-text-dim);
+    font-size: 11px; color: var(--c-text-muted);
     text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600;
   }
 
   /* Cards container: no extra positioning needed, rail is the context */
   .cr-cards { }
   .cr-empty {
-    color: var(--c-text-dim); font-size: 12px; padding: 16px 16px;
-    opacity: 0.6;
+    color: var(--c-text-muted); font-size: 12px; padding: 16px 16px;
   }
   .cr-empty p { margin: 0; }
-
-  /* Comment card */
-  .comment-rail :global(.cm-card) {
-    position: absolute;
-    left: 0; right: 0;
-    background: transparent;
-    border: 1px solid var(--c-border);
-    border-radius: 6px;
-    padding: 12px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
-    animation: fadeInCard 0.2s ease;
-  }
-  .comment-rail :global(.cm-card-active),
-  .comment-rail :global(.cm-card:hover) {
-    border-color: rgba(74,222,128,0.4);
-    background: rgba(74,222,128,0.03);
-    box-shadow: -3px 0 0 0 var(--accent);
-  }
-  .comment-rail :global(.cm-card-quote) {
-    color: var(--accent); font-size: 11px; font-style: italic;
-    margin-bottom: 8px; padding-bottom: 8px;
-    border-bottom: 1px solid rgba(var(--c-overlay-rgb),0.04);
-    line-height: 1.4; opacity: 0.7;
-  }
-  /* "EN"/"中" tag on a card whose highlight was made on the other language. */
-  .comment-rail :global(.cm-card-lang) {
-    display: inline-block;
-    font-style: normal;
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    line-height: 1;
-    padding: 2px 4px;
-    margin-right: 5px;
-    border-radius: 3px;
-    color: var(--accent);
-    background: rgba(var(--accent-rgb), 0.12);
-    vertical-align: 1px;
-  }
-  .comment-rail :global(.cm-card-body) {
-    color: var(--c-text); line-height: 1.5; margin-bottom: 8px; word-break: break-word;
-    white-space: pre-wrap;
-  }
-  .comment-rail :global(.cm-card-footer) {
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  .comment-rail :global(.cm-card-time) { color: var(--c-border-light); font-size: 10px; }
-  .comment-rail :global(.cm-card-delete) {
-    background: none; border: none; color: var(--c-border-light); cursor: pointer;
-    font-size: 14px; padding: 0 4px; border-radius: 3px; transition: all 0.15s; line-height: 1;
-  }
-  .comment-rail :global(.cm-card-delete:hover) {
-    color: #f85149; background: rgba(248,81,73,0.1);
-  }
-
-  /* ===== Reply Elements ===== */
-  .comment-rail :global(.cm-replies) { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(127,127,127,0.12); }
-  .comment-rail :global(.cm-reply) { margin-bottom: 6px; }
-  .comment-rail :global(.cm-reply-header) { display: flex; align-items: center; gap: 4px; margin-bottom: 2px; }
-  .comment-rail :global(.cm-reply-avatar) { width: 16px; height: 16px; border-radius: 50%; }
-  .comment-rail :global(.cm-reply-name) { font-size: 11px; font-weight: 600; color: var(--c-text-muted, #666); }
-  .comment-rail :global(.cm-reply-time) { font-size: 10px; color: var(--c-text-dim, #999); margin-left: auto; }
-  .comment-rail :global(.cm-reply-body) { font-size: 11px; line-height: 1.4; color: var(--c-text, #333); padding-left: 20px; white-space: pre-wrap; overflow-wrap: break-word; }
-  .comment-rail :global(.cm-reply-btn) { display: block; margin-top: 6px; padding: 2px 8px; font-size: 11px; color: var(--accent, #4ade80); background: none; border: 1px solid var(--accent, #4ade80); border-radius: 4px; cursor: pointer; opacity: 0.7; transition: opacity 0.2s; }
-  .comment-rail :global(.cm-reply-btn:hover) { opacity: 1; }
-  .comment-rail :global(.cm-reply-form) { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(127,127,127,0.12); }
-  .comment-rail :global(.cm-rf-identity) { display: flex; gap: 4px; margin-bottom: 4px; }
-  .comment-rail :global(.cm-rf-input) { flex: 1; padding: 4px 6px; font-size: 11px; border: 1px solid rgba(127,127,127,0.2); border-radius: 4px; background: var(--c-bg-alt, #f9f9f9); color: var(--c-text, #333); }
-  .comment-rail :global(.cm-rf-textarea) { width: 100%; padding: 4px 6px; font-size: 11px; border: 1px solid rgba(127,127,127,0.2); border-radius: 4px; background: var(--c-bg-alt, #f9f9f9); color: var(--c-text, #333); resize: vertical; box-sizing: border-box; }
-  .comment-rail :global(.cm-rf-notify) { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--c-text-dim, #999); margin: 4px 0; }
-  .comment-rail :global(.cm-rf-notify input) { width: 12px; height: 12px; }
-  .comment-rail :global(.cm-rf-actions) { display: flex; justify-content: flex-end; gap: 4px; margin-top: 4px; }
-  .comment-rail :global(.cm-rf-cancel), .comment-rail :global(.cm-rf-submit) { padding: 3px 10px; font-size: 11px; border-radius: 4px; cursor: pointer; border: none; }
-  .comment-rail :global(.cm-rf-cancel) { background: transparent; color: var(--c-text-dim, #999); }
-  .comment-rail :global(.cm-rf-submit) { background: var(--accent, #4ade80); color: #000; font-weight: 600; }
-  .comment-rail :global(.cm-rf-submit:disabled) { opacity: 0.5; cursor: default; }
-
-  /* ===== FAB ===== */
-  .fab-comment {
-    position: absolute; z-index: 100; display: none;
-    align-items: center; justify-content: center;
-    width: 28px; height: 28px; border-radius: 50%;
-    background: var(--accent); color: var(--c-bg); border: none; cursor: pointer;
-    box-shadow: 0 2px 8px rgba(74,222,128,0.3);
-    transition: transform 0.15s, box-shadow 0.15s;
-  }
-  .fab-comment:hover { transform: scale(1.1); box-shadow: 0 3px 12px rgba(74,222,128,0.4); }
-
-  /* ===== Comment Input Popover ===== */
-  .comment-input-popover {
-    position: absolute; z-index: 200; width: 300px; display: none;
-    background: var(--c-bg-alt); border: 1px solid var(--c-border-light); border-radius: 8px;
-    padding: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-    animation: fadeInCard 0.15s ease;
-  }
-  .cip-header { margin-bottom: 10px; }
-  .cip-selected {
-    font-size: 12px; color: var(--accent); font-style: italic;
-    line-height: 1.5; display: -webkit-box;
-    -webkit-line-clamp: 4; -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-  .cip-textarea {
-    width: 100%; box-sizing: border-box;
-    background: rgba(var(--c-overlay-rgb),0.03);
-    border: 1px solid var(--c-border-light); border-radius: 4px;
-    color: var(--c-text); font-family: inherit; font-size: 13px;
-    padding: 8px 10px; resize: vertical; min-height: 60px;
-    outline: none; transition: border-color 0.2s;
-  }
-  .cip-textarea:focus { border-color: var(--accent); }
-  .cip-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
-  .cip-cancel, .cip-submit {
-    font-family: inherit; font-size: 12px; padding: 5px 14px;
-    border-radius: 4px; cursor: pointer; border: none; transition: all 0.15s;
-  }
-  .cip-cancel { background: none; color: var(--c-text-muted); }
-  .cip-cancel:hover { color: var(--c-text); }
-  .cip-submit { background: var(--accent); color: var(--c-bg); font-weight: 600; }
-  .cip-submit:hover { background: #6ee7a0; }
-  .cip-error { border-color: #ef4444 !important; }
-
-  /* ===== Mobile Bottom Sheet ===== */
-  .mobile-sheet-overlay {
-    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 900;
-  }
-  .mobile-sheet-overlay.active { display: block; }
-  .mobile-sheet {
-    display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 901;
-    background: var(--c-bg-alt); border-top: 1px solid var(--c-border-light);
-    border-radius: 16px 16px 0 0; padding: 12px 20px 32px;
-    transform: translateY(100%); transition: transform 0.3s ease;
-  }
-  .mobile-sheet.active { display: block; transform: translateY(0); }
-  .ms-handle {
-    width: 36px; height: 4px; background: var(--c-border-light); border-radius: 2px;
-    margin: 0 auto 16px;
-  }
-  .ms-quote {
-    font-size: 13px; color: var(--accent); font-style: italic;
-    margin-bottom: 12px; padding-bottom: 12px;
-    border-bottom: 1px solid rgba(var(--c-overlay-rgb),0.06);
-    line-height: 1.5;
-  }
-  .ms-body {
-    font-size: 14px; color: var(--c-text); line-height: 1.6; margin-bottom: 12px;
-    white-space: pre-wrap; overflow-wrap: break-word;
-  }
-  .ms-time {
-    font-size: 11px; color: var(--c-text-dim); margin-bottom: 16px;
-  }
-  .ms-delete {
-    width: 100%; padding: 10px; border-radius: 8px;
-    background: rgba(248,81,73,0.08); border: 1px solid rgba(248,81,73,0.2);
-    color: #f85149; font-family: inherit; font-size: 13px;
-    cursor: pointer; transition: background 0.2s;
-  }
-  .ms-delete:hover { background: rgba(248,81,73,0.15); }
-  .ms-replies { margin-top: 12px; padding-top: 8px; border-top: 1px solid rgba(127,127,127,0.12); }
-  .ms-replies:empty { display: none; }
-  .ms-reply-item { margin-bottom: 10px; }
-  .ms-reply-header { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-  .ms-reply-avatar { width: 20px; height: 20px; border-radius: 50%; }
-  .ms-reply-name { font-size: 13px; font-weight: 600; }
-  .ms-reply-time { font-size: 11px; color: #999; margin-left: auto; }
-  .ms-reply-body { font-size: 13px; line-height: 1.5; padding-left: 26px; white-space: pre-wrap; overflow-wrap: break-word; }
-  .ms-reply-toggle { display: block; width: 100%; margin-top: 12px; padding: 8px; font-size: 14px; color: var(--accent, #4ade80); background: none; border: 1px solid var(--accent, #4ade80); border-radius: 8px; cursor: pointer; }
-  .ms-reply-form { margin-top: 12px; }
-  .ms-rf-identity { display: flex; gap: 8px; margin-bottom: 8px; }
-  .ms-rf-input { flex: 1; padding: 8px; font-size: 14px; border: 1px solid rgba(127,127,127,0.2); border-radius: 6px; background: var(--bg-secondary, #f9f9f9); color: var(--text-primary, #333); }
-  .ms-rf-textarea { width: 100%; padding: 8px; font-size: 14px; border: 1px solid rgba(127,127,127,0.2); border-radius: 6px; background: var(--bg-secondary, #f9f9f9); color: var(--text-primary, #333); resize: vertical; box-sizing: border-box; }
-  .ms-rf-notify { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted, #999); margin: 8px 0; }
-  .ms-rf-actions { display: flex; justify-content: flex-end; gap: 8px; }
-  .ms-rf-cancel { padding: 6px 16px; font-size: 14px; border-radius: 6px; background: transparent; color: var(--text-muted, #999); border: none; cursor: pointer; }
-  .ms-rf-submit { padding: 6px 16px; font-size: 14px; border-radius: 6px; background: var(--accent, #4ade80); color: #000; font-weight: 600; border: none; cursor: pointer; }
-  .ms-rf-submit:disabled { opacity: 0.5; }
-  .ms-author {
-    font-size: 12px; color: var(--c-text-muted); margin-bottom: 4px; font-weight: 500;
-  }
-
-  /* ===== Inline Comment Popover Identity ===== */
-  .cip-identity {
-    display: flex; gap: 8px; margin-bottom: 10px;
-  }
-  .cip-input {
-    flex: 1; min-width: 0; padding: 7px 10px;
-    background: rgba(var(--c-overlay-rgb),0.03);
-    border: 1px solid var(--c-border-light); border-radius: 4px;
-    color: var(--c-text); font-family: inherit; font-size: 12px;
-    outline: none; transition: border-color 0.2s;
-    box-sizing: border-box;
-  }
-  .cip-input:focus { border-color: var(--accent); }
-  .cip-input::placeholder { color: var(--c-text-dim); }
-
-  /* ===== Comment Rail Card Author ===== */
-  .comment-rail :global(.cm-card-author) {
-    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
-  }
-  .comment-rail :global(.cm-card-avatar) {
-    width: 20px; height: 20px; border-radius: 50%;
-    object-fit: cover; background: var(--c-border);
-  }
-  .comment-rail :global(.cm-card-name) {
-    font-size: 11px; font-weight: 600; color: var(--c-text);
-  }
 
   /* ===== Article Like Section ===== */
   .article-like-section {
@@ -2986,193 +1712,13 @@ const jsonLd = {
     .article-afterword { padding-inline: 20px; }
   }
 
-  /* ===== Bottom Comment Section ===== */
-  .bottom-comments {
+  /* ===== Bottom Comment Section (outer layout; inside: components/comments) ===== */
+  :global(.post-page .bottom-comments) {
     max-width: 1440px; margin: 0 auto;
     padding: 0 48px 48px;
     padding-left: calc(48px + 160px + 40px);
     padding-right: calc(48px + 280px + 40px);
   }
-  .bc-inner {
-    max-width: 720px;
-  }
-  .bc-header {
-    display: flex; align-items: center; gap: 12px;
-    margin-bottom: 32px; padding-top: 48px;
-  }
-  .bc-title {
-    font-size: 20px; font-weight: 700; color: var(--c-text);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-  }
-  .bc-count {
-    font-size: 13px; color: var(--c-text-dim);
-    background: rgba(var(--c-overlay-rgb),0.06);
-    padding: 2px 10px; border-radius: 10px;
-  }
-
-  /* Comment items */
-  .bottom-comments :global(.bc-item) {
-    display: flex; gap: 16px;
-    padding: 24px 0;
-    border-top: 1px solid var(--c-border);
-  }
-  .bottom-comments :global(.bc-item.bc-reply) {
-    padding: 16px 0 0;
-    border-top: none;
-  }
-  .bottom-comments :global(.bc-avatar-wrap) {
-    flex-shrink: 0;
-  }
-  .bottom-comments :global(.bc-avatar-img) {
-    width: 40px; height: 40px; border-radius: 50%;
-    object-fit: cover; background: var(--c-border);
-  }
-  .bottom-comments :global(.bc-body) {
-    flex: 1; min-width: 0;
-  }
-  .bottom-comments :global(.bc-meta) {
-    display: flex; align-items: center; gap: 6px;
-    margin-bottom: 8px;
-  }
-  .bottom-comments :global(.bc-name) {
-    font-size: 14px; font-weight: 600; color: var(--c-text);
-  }
-  .bottom-comments :global(.bc-name-link) {
-    text-decoration: none; color: var(--accent);
-  }
-  .bottom-comments :global(.bc-name-link:hover) {
-    text-decoration: underline;
-  }
-  .bottom-comments :global(.bc-dot) {
-    color: var(--c-border-light);
-  }
-  .bottom-comments :global(.bc-time) {
-    font-size: 13px; color: var(--c-text-dim);
-  }
-  .bottom-comments :global(.bc-text) {
-    overflow-wrap: anywhere;
-  }
-  .bottom-comments :global(.bc-text p) {
-    font-size: 15px; color: var(--c-text); line-height: 1.7;
-    margin: 0;
-  }
-  .bottom-comments :global(.bc-text a) {
-    color: var(--accent);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-    transition: opacity 0.2s;
-  }
-  .bottom-comments :global(.bc-text a:hover) {
-    opacity: 0.7;
-  }
-  .bottom-comments :global(.bc-actions) {
-    display: flex; align-items: center; gap: 16px;
-    margin-top: 10px; flex-wrap: wrap;
-  }
-  .bottom-comments :global(.bc-like-btn) {
-    display: flex; align-items: center; gap: 5px;
-    padding: 4px 10px;
-    border-radius: 100px;
-    border: 1px solid transparent;
-    background: none; cursor: pointer;
-    font-size: 12px; color: var(--c-text-dim);
-    transition: all 0.2s;
-  }
-  .bottom-comments :global(.bc-like-btn:hover) {
-    background: rgba(239,68,68,0.06);
-    border-color: rgba(239,68,68,0.15);
-    color: #ef4444;
-  }
-  .bottom-comments :global(.bc-like-btn.liked) {
-    color: #ef4444;
-    background: rgba(239,68,68,0.08);
-    border-color: rgba(239,68,68,0.2);
-  }
-  .bottom-comments :global(.bc-like-btn span) {
-    font-size: 12px; font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    min-width: 8px;
-  }
-  .bottom-comments :global(.bc-reply-btn) {
-    font-size: 12px; color: var(--c-text-dim);
-    background: none; border: none; cursor: pointer;
-    transition: color 0.15s; font-family: inherit;
-  }
-  .bottom-comments :global(.bc-reply-btn:hover) {
-    color: var(--c-text-muted);
-  }
-  /* One indent step per nested level. Nesting depth is capped structurally in
-     JS (appendThread): 4 levels on desktop, 1 on mobile — so this never compounds
-     past the cap. Empty containers (leaf comments / flattened replies) collapse. */
-  .bottom-comments :global(.bc-replies-container) {
-    border-left: 2px solid var(--c-border);
-    margin-left: 4px; padding-left: 20px;
-  }
-  .bottom-comments :global(.bc-replies-container:empty) { display: none; }
-  @media (max-width: 640px) {
-    .bottom-comments :global(.bc-replies-container) {
-      margin-left: 0; padding-left: 12px;
-    }
-  }
-
-  /* Compose form */
-  .bc-compose {
-    display: flex; gap: 16px;
-    padding-top: 32px;
-    border-top: 1px solid var(--c-border);
-    margin-top: 8px;
-  }
-  .bc-compose-avatar { flex-shrink: 0; }
-  .bc-compose-avatar .bc-avatar-img {
-    width: 40px; height: 40px; border-radius: 50%;
-    object-fit: cover; background: var(--c-border);
-  }
-  .bc-compose-form { flex: 1; }
-  .bc-compose-fields {
-    display: flex; gap: 12px; margin-bottom: 12px;
-  }
-  .bc-input {
-    flex: 1; padding: 10px 14px;
-    background: rgba(var(--c-overlay-rgb),0.04);
-    border: 1px solid var(--c-border-light); border-radius: 8px;
-    color: var(--c-text); font-size: 14px; font-family: inherit;
-    transition: border-color 0.2s; outline: none;
-  }
-  .bc-input:focus { border-color: var(--accent); }
-  .bc-input::placeholder { color: var(--c-text-dim); }
-  .bc-textarea {
-    width: 100%; padding: 12px 14px;
-    background: rgba(var(--c-overlay-rgb),0.04);
-    border: 1px solid var(--c-border-light); border-radius: 8px;
-    color: var(--c-text); font-size: 14px; font-family: inherit;
-    resize: vertical; min-height: 100px;
-    transition: border-color 0.2s; outline: none;
-  }
-  .bc-textarea:focus { border-color: var(--accent); }
-  .bc-textarea::placeholder { color: var(--c-text-dim); }
-  .bc-compose-footer {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-top: 12px;
-  }
-  .bc-notify-label {
-    display: flex; align-items: center; gap: 6px;
-    font-size: 12px; color: var(--c-text-dim); cursor: pointer;
-    user-select: none;
-  }
-  .bc-notify-label input[type="checkbox"] {
-    accent-color: var(--accent, #4ade80);
-    cursor: pointer;
-  }
-  .bc-submit {
-    padding: 8px 20px; border-radius: 8px;
-    background: var(--accent); color: var(--c-bg);
-    font-size: 14px; font-weight: 600;
-    border: none; cursor: pointer; font-family: inherit;
-    transition: opacity 0.2s;
-  }
-  .bc-submit:hover { opacity: 0.85; }
-  .bc-submit:disabled { opacity: 0.5; cursor: not-allowed; }
-
   /* ===== Footer ===== */
   .page-footer { max-width: 1440px; margin: 0 auto; padding: 0 48px 48px; }
   .footer-rule { height: 4px; background: var(--c-text); margin-bottom: 14px; }
@@ -3183,16 +1729,6 @@ const jsonLd = {
   }
   .footer-bar a:hover { color: var(--c-text); }
   .footer-copy { font-size: var(--text-xs); color: var(--c-text-muted); }
-
-  /* ===== Animations ===== */
-  @keyframes fadeInCard {
-    from { opacity: 0; transform: translateY(-4px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes highlightFlash {
-    0%, 100% { background: rgba(var(--accent-rgb), 0.08); }
-    30% { background: rgba(var(--accent-rgb), 0.3); }
-  }
 
   /* ===== Responsive ===== */
   @media (max-width: 1100px) {
@@ -3241,17 +1777,10 @@ const jsonLd = {
     .headline-section, .content-grid, .cover-section, .page-footer { padding-left: 20px; padding-right: 20px; }
     .mast-date { display: none; }
 
-    /* Mobile: comment popover adjustments */
-    .comment-input-popover { width: calc(100vw - 40px); max-width: 360px; }
-    .cip-identity { flex-direction: column; gap: 6px; }
-
     /* Article like & bottom comments mobile */
     .article-like-section { padding: 24px 20px 0 !important; gap: 16px; }
     .article-like-btn { padding: 10px 20px; }
-    .bottom-comments { padding: 0 20px 48px; }
-    .bc-compose-fields { flex-direction: column; gap: 8px; }
-    .bc-compose-avatar .bc-avatar-img { width: 32px; height: 32px; }
-    .bc-compose { gap: 12px; }
+    :global(.post-page .bottom-comments) { padding: 0 20px 48px; }
   }
   @media (max-width: 600px) {
     .post-content { font-size: 17px; line-height: 1.85; }
@@ -3262,22 +1791,6 @@ const jsonLd = {
 </style>
 
 <style is:global>
-  /* Commenter region flag — self-hosted rectangular 4:3 SVG injected after
-     nicknames across all comment surfaces (flag-icons, /flags/<cc>.svg). */
-  img.c-flag {
-    display: inline-block;
-    height: 0.82em;
-    width: auto;
-    margin-left: 5px;
-    border-radius: 2px;
-    vertical-align: -0.04em;
-    /* hairline ring so all-light flags (e.g. JP) stay visible on white */
-    box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.12);
-    cursor: default;
-    -webkit-user-select: none;
-    user-select: none;
-  }
-
   body:has(.post-page) {
     display: block;
     padding: 0;
