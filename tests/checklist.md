@@ -1,5 +1,13 @@
 # Browser QA Checklist
 
+### Echo covers + diorama strips in the new avatar (October 18)
+
+- [x] All twelve Echo cover illustrations keep their watercolor scenes, size and composition; only the brown bear became the beret panda. Each cover's crop (`coverPosition`) still shows the panda's face.
+- [x] All 24 share cards (`public/echo/share/NN-zh|en.png`, 540×720) were re-rendered from the live `EchoCover` at 540px and checked by eye; titles, teasers and colophon are unchanged.
+- [x] Cover alt text says panda instead of bear in both languages.
+- [x] The four diorama source strips (`public/diorama/comic-8/15/16/17.webp`) are the redrawn issues.
+- [x] `tsx --test tests/echo.test.mjs tests/echo-postage.test.mjs` passes 11/11.
+
 ### Comics publishing WebP + replace (October 18)
 
 - [x] `publish.mjs` 上传 PNG 原图和 WebP（质量 85、尺寸不变）到 `strip/<id>/v1/`，`panels.url` 指向 WebP，`panels.original` 存 PNG；Telegram 预览用 PNG。

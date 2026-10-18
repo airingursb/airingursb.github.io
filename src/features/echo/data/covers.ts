@@ -21,9 +21,9 @@ export function issueArt(number: string) {
 }
 export function shareCover(number: string, lang: Locale) { return `/echo/share/${number}-${lang}.png`; }
 export function artDescription(number: string, lang: Locale) {
-  if (Number(number) >= 4) return (lang === 'en' ? 'A watercolor illustration of Airing’s bear. ' : 'Airing 的小熊水彩插画。') + editionCaption(number, lang);
-  if (number === '03') return lang === 'en' ? 'Airing’s bear sets down a letter and looks through a post-office window at the evening light.' : '小熊把信暂放桌上，望着邮局窗外的傍晚。';
+  if (Number(number) >= 4) return (lang === 'en' ? 'A watercolor illustration of Airing’s panda. ' : 'Airing 的熊猫水彩插画。') + editionCaption(number, lang);
+  if (number === '03') return lang === 'en' ? 'Airing’s panda sets down a letter and looks through a post-office window at the evening light.' : '熊猫把信暂放桌上，望着邮局窗外的傍晚。';
   return lang === 'en'
-    ? number === '02' ? 'Airing’s bear watches two paper boats take different channels in a stream.' : 'Airing’s bear writes a first letter as a paper bird takes flight.'
-    : number === '02' ? '小熊在岔流边，望着驶向两条水路的纸船。' : '小熊写下第一封信，一只纸鸟从书桌起飞。';
+    ? number === '02' ? 'Airing’s panda watches two paper boats take different channels in a stream.' : 'Airing’s panda writes a first letter as a paper bird takes flight.'
+    : number === '02' ? '熊猫在岔流边，望着驶向两条水路的纸船。' : '熊猫写下第一封信，一只纸鸟从书桌起飞。';
 }
