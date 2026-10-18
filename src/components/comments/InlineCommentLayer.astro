@@ -1,0 +1,56 @@
+---
+/**
+ * Inline (highlight) comment chrome shared by posts and notes: the selection
+ * FAB, the "add comment" popover and the mobile sheet. The rail that holds the
+ * cards (#commentCards) belongs to each page's own grid.
+ */
+import { commentStrings, type CommentLang } from './strings';
+import './comments.css';
+
+interface Props { lang?: CommentLang }
+const { lang = 'zh' } = Astro.props;
+const t = commentStrings(lang);
+---
+<button type="button" class="fab-comment" id="fabComment" aria-label={t.fab}>
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+    <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>
+</button>
+
+<div class="comment-input-popover" id="commentPopover">
+  <div class="cip-header">
+    <span class="cip-selected" id="cipSelectedText"></span>
+  </div>
+  <div class="cip-identity">
+    <input type="text" class="cip-input" id="cipNickname" placeholder={t.nickname} />
+    <input type="email" class="cip-input" id="cipEmail" placeholder={t.email} />
+  </div>
+  <textarea class="cip-textarea" id="cipTextarea" placeholder={t.placeholder} rows="3"></textarea>
+  <div class="cip-actions">
+    <button type="button" class="cip-cancel" id="cipCancel">{t.cancel}</button>
+    <button type="button" class="cip-submit" id="cipSubmit">{t.inlineSubmit}</button>
+  </div>
+</div>
+
+<div class="mobile-sheet-overlay" id="mobileOverlay"></div>
+<div class="mobile-sheet" id="mobileSheet">
+  <div class="ms-handle"></div>
+  <div class="ms-quote" id="msQuote"></div>
+  <div class="ms-body" id="msBody"></div>
+  <div class="ms-author" id="msAuthor"></div>
+  <div class="ms-time" id="msTime"></div>
+  <div class="ms-replies" id="msReplies"></div>
+  <button type="button" class="ms-reply-toggle" id="msReplyToggle">{t.reply}</button>
+  <div class="ms-reply-form" id="msReplyForm" style="display:none;">
+    <div class="ms-rf-identity">
+      <input type="text" class="ms-rf-input" id="msRfNickname" placeholder={t.nickname} />
+      <input type="email" class="ms-rf-input" id="msRfEmail" placeholder={t.email} />
+    </div>
+    <textarea class="ms-rf-textarea" id="msRfTextarea" placeholder={t.replyPlaceholder} rows="2"></textarea>
+    <label class="ms-rf-notify"><input type="checkbox" id="msRfNotify" checked /> {t.notifyShort}</label>
+    <div class="ms-rf-actions">
+      <button type="button" class="ms-rf-cancel" id="msRfCancel">{t.cancel}</button>
+      <button type="button" class="ms-rf-submit" id="msRfSubmit">{t.reply}</button>
+    </div>
+  </div>
+</div>
