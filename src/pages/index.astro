@@ -2116,26 +2116,35 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
 
       <!-- Guestbook -->
       <div class="card card-guestbook" id="guestbook">
-        <div class="section-title" data-i18n="sec_guestbook">Guestbook</div>
-        <div class="guestbook-messages" id="guestbookMessages">
-          <div class="gb-empty" data-i18n="gb_empty">Be the first to leave a message :)</div>
+        <div class="section-title-row">
+          <div class="section-title" id="gbTitle" data-i18n="sec_guestbook">Guestbook</div>
+          <!-- The feed is every post's latest comments, not only guestbook messages. -->
+          <span class="gb-scope" id="gbScope">latest across the site</span>
         </div>
-        <button type="button" class="gb-load-more" id="gbLoadMore" style="display:none"></button>
+        <div class="guestbook-messages" id="guestbookMessages" aria-labelledby="gbTitle">
+          <div class="gb-empty" role="status">loading…</div>
+        </div>
+        <button type="button" class="gb-load-more" id="gbLoadMore" hidden></button>
         <hr class="gb-divider">
-        <form class="gb-form" id="guestbookForm">
+        <form class="gb-form" id="guestbookForm" novalidate>
           <div class="gb-name-row">
-            <span data-i18n="gb_name">Name</span>
-            <input type="text" class="gb-name-input" id="gbName" placeholder="anonymous" maxlength="20">
-            <span class="gb-field-sep">·</span>
-            <span data-i18n="gb_email">Email</span>
-            <input type="email" class="gb-email-input" id="gbEmail" data-i18n-placeholder="gb_email_placeholder" placeholder="optional" maxlength="100">
+            <label class="gb-field" for="gbName">
+              <span data-i18n="gb_name">Name</span>
+              <input type="text" class="gb-name-input" id="gbName" placeholder="anonymous" maxlength="20" autocomplete="nickname">
+            </label>
+            <span class="gb-field-sep" aria-hidden="true">·</span>
+            <label class="gb-field" for="gbEmail">
+              <span data-i18n="gb_email">Email</span>
+              <input type="email" class="gb-email-input" id="gbEmail" data-i18n-placeholder="gb_email_placeholder" placeholder="optional" maxlength="100" autocomplete="email">
+            </label>
           </div>
           <div class="gb-input-row">
-            <span class="gb-prompt">&gt;</span>
-            <input type="text" class="gb-input" id="gbMessage" data-i18n-placeholder="gb_msg_placeholder" placeholder="Type your message here..." maxlength="200" required>
-            <button type="submit" class="gb-submit">↵</button>
+            <span class="gb-prompt" aria-hidden="true">&gt;</span>
+            <input type="text" class="gb-input" id="gbMessage" data-i18n-placeholder="gb_msg_placeholder" placeholder="Type your message here..." maxlength="200" required aria-label="Message" aria-describedby="gbStatus">
+            <button type="submit" class="gb-submit" id="gbSubmit" aria-label="Send message">↵</button>
           </div>
         </form>
+        <p class="gb-status" id="gbStatus" role="status" aria-live="polite"></p>
         <div class="gb-pending" id="gbPending">
           <span class="gb-pending-dot"></span>
           <span data-i18n="gb_pending">AI reviewing your message, it will be visible after approval</span>
@@ -3036,22 +3045,58 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
       var nameInput = document.getElementById('gbName');
       var emailInput = document.getElementById('gbEmail');
       var msgInput = document.getElementById('gbMessage');
-      var submitBtn = form.querySelector('.gb-submit');
+      var submitBtn = document.getElementById('gbSubmit');
+      var statusEl = document.getElementById('gbStatus');
+      var scopeEl = document.getElementById('gbScope');
+      // #gbPending ("AI reviewing…") stays hidden: the comment API returns the
+      // created comment with no moderation status, so there is nothing to key
+      // it on. Show it here if the API ever reports a pending state.
       var pendingEl = document.getElementById('gbPending');
 
-      // --- User identity persistence (shared with PostLayout) ---
+      // Copy that has no key in /i18n/*.json; follows window.currentLang.
+      var GB_COPY = {
+        zh: { loading: '加载中…', retry: '重试', more: '加载更多', scope: '全站最新', send: '发送留言', message: '留言内容',
+              sending: '发送中…', sent: '留言已发送。', empty: '请先写下留言内容。', badEmail: '邮箱格式不正确。' },
+        en: { loading: 'loading…', retry: 'Retry', more: 'Load more', scope: 'latest across the site', send: 'Send message', message: 'Message',
+              sending: 'Sending…', sent: 'Message sent.', empty: 'Please write a message first.', badEmail: 'Please enter a valid email address.' }
+      };
+      function gbLang() { return window.currentLang === 'en' ? 'en' : 'zh'; }
+      function c(key) { return GB_COPY[gbLang()][key]; }
+      function applyGbCopy() {
+        scopeEl.textContent = c('scope');
+        msgInput.setAttribute('aria-label', c('message'));
+        submitBtn.setAttribute('aria-label', c('send'));
+      }
+      applyGbCopy();
+      var initialState = messagesEl.querySelector('.gb-empty');
+      if (initialState) initialState.textContent = c('loading');
+
+      // --- User identity persistence (shared with the post/note comment forms) ---
+      // Merge so the website saved by a post comment survives a guestbook send.
       var USER_KEY = 'blog-user-identity';
       function getSavedIdentity() {
         try { return JSON.parse(localStorage.getItem(USER_KEY)) || {}; } catch(e) { return {}; }
       }
       function saveIdentity(nickname, email) {
-        localStorage.setItem(USER_KEY, JSON.stringify({ nickname: nickname, email: email }));
+        try {
+          var cur = getSavedIdentity();
+          cur.nickname = nickname;
+          cur.email = email;
+          localStorage.setItem(USER_KEY, JSON.stringify(cur));
+        } catch (e) {}
       }
       (function restoreGuestbookIdentity() {
         var id = getSavedIdentity();
         if (id.nickname) nameInput.value = id.nickname;
         if (id.email) emailInput.value = id.email;
       })();
+
+      // Inline status line (replaces alert()): kind = 'error' | 'ok' | ''.
+      function setStatus(msg, kind) {
+        statusEl.textContent = msg || '';
+        statusEl.classList.toggle('is-error', kind === 'error');
+        statusEl.classList.toggle('is-ok', kind === 'ok');
+      }
 
       // Client-side rate limit: max 5 messages per 10 minutes
       var RATE_LIMIT = 5;
@@ -3076,7 +3121,7 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         if (h < 24) return h + ' ' + t('time_h_ago');
         var d = Math.floor(h / 24);
         if (d < 30) return d + ' ' + t('time_d_ago');
-        return new Date(dateStr).toLocaleDateString();
+        return new Date(dateStr).toLocaleDateString(gbLang() === 'en' ? 'en-US' : 'zh-CN');
       }
 
       function escapeHtml(s) {
@@ -3090,11 +3135,15 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
       var feedItems = [];
       var feedCursor = null;
       var feedLoading = false;
+      // The card shows 5 messages, then 10 more per "load more" (no inner
+      // scroll box). Fetched pages stay larger; the server caches them.
+      var FIRST_SHOWN = 5, SHOW_STEP = 10;
+      var shownCount = FIRST_SHOWN;
 
       // "· from «Post Title»" link — slug→title resolved from the build-time
       // map injected as window.__GB_TITLES__; language follows window.currentLang.
       function sourceHtml(slug, anchor) {
-        var lang = (window.currentLang === 'en') ? 'en' : 'zh';
+        var lang = gbLang();
         if (slug === 'guestbook') {
           return (lang === 'en' ? 'on ' : '来自 ') +
             '<a class="gb-src" href="#guestbook">' + (lang === 'en' ? 'Guestbook' : '留言板') + '</a>';
@@ -3118,7 +3167,7 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
       }
 
       function renderItem(m) {
-        var lang = (window.currentLang === 'en') ? 'en' : 'zh';
+        var lang = gbLang();
         var replies = '';
         if (m.replies > 0) {
           replies = ' · ' + m.replies + (lang === 'en' ? (m.replies > 1 ? ' replies' : ' reply') : ' 条回复');
@@ -3133,7 +3182,7 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         var quote = (isInline && m.selected_text)
           ? '<div class="gb-quote">' + escapeHtml(m.selected_text) + '</div>'
           : '';
-        return '<div class="gb-msg">' +
+        return '<div class="gb-msg" tabindex="-1">' +
           '<div class="gb-meta">' +
             '<span class="gb-name">&gt; ' + escapeHtml(m.nickname || t('gb_anonymous')) + '</span>' +
             '<span class="gb-time">' + timeAgo(m.created_at) + '</span>' +
@@ -3144,42 +3193,58 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         '</div>';
       }
 
-      function renderFeed() {
+      function renderFeed(focusIndex) {
         if (!feedItems.length) {
           messagesEl.innerHTML = '<div class="gb-empty">' + t('gb_empty') + '</div>';
-          loadMoreBtn.style.display = 'none';
+          loadMoreBtn.hidden = true;
           return;
         }
-        messagesEl.innerHTML = feedItems.map(renderItem).join('');
-        if (feedCursor) {
-          loadMoreBtn.style.display = '';
-          loadMoreBtn.disabled = false;
-          loadMoreBtn.textContent = (window.currentLang === 'en') ? 'Load more' : '加载更多';
-        } else {
-          loadMoreBtn.style.display = 'none';
+        messagesEl.innerHTML = feedItems.slice(0, shownCount).map(renderItem).join('');
+        loadMoreBtn.hidden = !(feedItems.length > shownCount || feedCursor);
+        loadMoreBtn.disabled = false;
+        loadMoreBtn.textContent = c('more');
+        if (focusIndex != null) {
+          var target = messagesEl.children[focusIndex];
+          if (target) target.focus();
         }
       }
 
+      function renderLoadFail() {
+        // The request can fail before the translations arrive; wait for them so
+        // the message is never the raw i18n key.
+        Promise.resolve(window._i18nReady).catch(function () {}).then(function () {
+          messagesEl.innerHTML = '<div class="gb-empty gb-empty-error" role="status">' + escapeHtml(t('gb_load_fail')) +
+            ' <button type="button" class="gb-retry">' + c('retry') + '</button></div>';
+          messagesEl.querySelector('.gb-retry').addEventListener('click', function () {
+            messagesEl.innerHTML = '<div class="gb-empty" role="status" tabindex="-1">' + c('loading') + '</div>';
+            messagesEl.firstChild.focus();
+            loadFeed(true);
+          });
+        });
+      }
+
       // First batch is large (covers most history; server-cached so it's free
-      // on repeat pageviews). "Load more" pulls older comments in 50s.
+      // on repeat pageviews). Older comments are fetched in 50s when "load
+      // more" runs past what is already loaded.
       var FIRST_LIMIT = 100, MORE_LIMIT = 50;
-      function loadFeed(reset) {
+      function loadFeed(reset, focusIndex) {
         if (feedLoading) return;
         feedLoading = true;
-        if (reset) { feedItems = []; feedCursor = null; }
-        if (!reset && loadMoreBtn) { loadMoreBtn.disabled = true; loadMoreBtn.textContent = '...'; }
+        if (reset) { feedItems = []; feedCursor = null; shownCount = FIRST_SHOWN; }
+        if (!reset && loadMoreBtn) { loadMoreBtn.disabled = true; loadMoreBtn.textContent = c('loading'); }
         var url = CHAT_API + '/api/comments/recent?limit=' + (reset ? FIRST_LIMIT : MORE_LIMIT);
         if (!reset && feedCursor) url += '&cursor=' + encodeURIComponent(feedCursor);
         fetch(url, { headers: { 'Origin': location.origin } })
-          .then(function (r) { return r.json(); })
+          .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
           .then(function (data) {
             var items = data.comments || [];
             feedItems = reset ? items : feedItems.concat(items);
             feedCursor = data.nextCursor || null;
-            renderFeed();
+            renderFeed(focusIndex);
           })
           .catch(function () {
-            if (reset) messagesEl.innerHTML = '<div class="gb-empty">' + t('gb_load_fail') + '</div>';
+            if (reset) renderLoadFail();
+            else { loadMoreBtn.disabled = false; loadMoreBtn.textContent = c('more'); setStatus(t('gb_load_fail'), 'error'); }
           })
           .finally(function () { feedLoading = false; });
       }
@@ -3187,22 +3252,49 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
       // alias kept for the submit handler + initial load
       function loadMessages() { loadFeed(true); }
 
-      if (loadMoreBtn) loadMoreBtn.addEventListener('click', function () { loadFeed(false); });
+      if (loadMoreBtn) loadMoreBtn.addEventListener('click', function () {
+        var firstNew = shownCount;
+        shownCount += SHOW_STEP;
+        if (feedItems.length < shownCount && feedCursor) loadFeed(false, firstNew);
+        else renderFeed(firstNew);
+      });
+
+      function setInvalid(el, on) {
+        if (on) el.setAttribute('aria-invalid', 'true'); else el.removeAttribute('aria-invalid');
+      }
+      [msgInput, emailInput].forEach(function (el) {
+        el.addEventListener('input', function () { setInvalid(el, false); });
+      });
 
       form.addEventListener('submit', function (e) {
         e.preventDefault();
+        if (submitBtn.disabled) return;
         var nickname = nameInput.value.trim() || 'anonymous';
         var email = emailInput.value.trim();
         var message = msgInput.value.trim();
-        if (!message) return;
+        if (!message) {
+          setInvalid(msgInput, true);
+          setStatus(c('empty'), 'error');
+          msgInput.focus();
+          return;
+        }
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          setInvalid(emailInput, true);
+          setStatus(c('badEmail'), 'error');
+          emailInput.focus();
+          return;
+        }
+        setInvalid(msgInput, false);
+        setInvalid(emailInput, false);
 
         if (!checkRateLimit()) {
-          alert(t('gb_too_many'));
+          setStatus(t('gb_too_many'), 'error');
           return;
         }
 
         submitBtn.disabled = true;
         submitBtn.textContent = '...';
+        setStatus(c('sending'), '');
 
         var body = {
           post_slug: SLUG,
@@ -3221,13 +3313,15 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
           if (res.comment) {
             saveIdentity(nickname, email);
             msgInput.value = '';
+            setStatus(c('sent'), 'ok');
             loadMessages();
           } else {
             throw new Error('No comment returned');
           }
         })
         .catch(function () {
-          alert(t('gb_send_fail'));
+          // Keep the draft in the input and say so inline.
+          setStatus(t('gb_send_fail'), 'error');
         })
         .finally(function () {
           submitBtn.disabled = false;
@@ -3240,6 +3334,8 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
       // Re-render in place on language switch (relocalize titles/time, keep
       // already-loaded pages) instead of refetching.
       window.addEventListener('langchange', function() {
+        applyGbCopy();
+        setStatus('');
         if (feedItems.length) renderFeed(); else loadMessages();
       });
     })();
