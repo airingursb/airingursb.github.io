@@ -149,3 +149,12 @@ test('share previews are lightweight in both locales while downloads retain the 
     assert.equal(Number(attribute(image, 'height')), small.height);
   }
 });
+
+test('every issue keeps its share cover under /reading/weekly/<issue>/assets/ (newsletter sender contract)', () => {
+  // blog-server blog-api/lib/ai-weekly.js rejects the whole published catalog otherwise.
+  for (const issue of aiWeeklyIssues) {
+    for (const lang of ['zh', 'en']) {
+      assert.ok(issue.shareCover[lang].startsWith(`/reading/weekly/${issue.number}/assets/`), `${issue.number} ${lang}: ${issue.shareCover[lang]}`);
+    }
+  }
+});
