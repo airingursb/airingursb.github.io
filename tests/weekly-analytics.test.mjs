@@ -22,6 +22,12 @@ test('new edition topics and feature targets remain attributable alongside stabl
     }
   }
   assert.equal(weeklyDestination('https://ursb.me/reading/weekly/002/#arbitrary-user-input').target, '');
+  for (const target of ['personal-agent-4', 'engineering-4', 'research-4', 'tool-magpie', 'people-5', 'source-34']) {
+    assert.equal(weeklyDestination(`https://ursb.me/reading/weekly/004/#${target}`).target, target);
+  }
+  for (const target of ['personal-agent-99', 'source-35', 'source-email@example.com']) {
+    assert.equal(weeklyDestination(`https://ursb.me/reading/weekly/004/#${target}`).target, '');
+  }
 });
 
 test('published reader attributes source, image, share, background and column-view events to the editorial unit', async () => {
@@ -63,6 +69,19 @@ test('published reader attributes source, image, share, background and column-vi
     assert.equal(events[0].data.kind,'reading');assert.equal(events[1].data.domain,'earendil.com');
     assert.equal(events[4].data.action,'cover-download');assert.equal(events[5].data.target,'runtime');
     assert.equal(events[6].data.kind,'background');
+    events.length = 0;
+    location.href = 'https://ursb.me/en/reading/weekly/004/';
+    initWeeklyAnalytics();
+    handlers.click({target:new Link('https://ursb.me/reading/weekly/004/magpie-full.webp')});
+    handlers.click({target:new Link('https://ursb.me/reading/weekly/004/cover-en.png',['save-cover'])});
+    handlers.click({target:new Link('https://ursb.me/reading/weekly/004/scion-full.webp',['figure-open'])});
+    handlers.toggle({target:new Detail('', ['all-readings'])});
+    handlers.toggle({target:new Detail('', ['comic004 details'])});
+    assert.deepEqual(events.map(event=>event.name), ['weekly-image-open','weekly-share','weekly-image-open','weekly-details-open','weekly-details-open']);
+    assert.ok(events.every(event=>event.data.issue==='004'));
+    assert.equal(events[1].data.action,'cover-download');
+    assert.equal(events[3].data.kind,'sources');
+    assert.equal(events[4].data.kind,'transcript');
   } finally {
     for(const [key,descriptor] of Object.entries(originals)) {if(descriptor) Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];}
   }

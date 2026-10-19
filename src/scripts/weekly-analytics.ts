@@ -9,6 +9,14 @@ type WeeklyDestination = {
 
 const issue003Targets = new Set(["mathematics-feature","context","durable","dream","panda","rea","designeer","gitagent","monid","openbot","rill","mintlify","lapis","vphone","t3","correct","instructions","embedding","jev","dex","founderpark","thin","aigc","a16z","zeno","llm-book","mathematics","engineering","research","tools","notes","math-overview","math-ai-work","math-debate","math-formalization","math-ownership","math-history","math-relationship","math-understanding","math-riemann","math-matrix","math-kakeya"]);
 
+const issue004Targets = new Set([
+  'personal-agent', 'engineering', 'research', 'tools', 'people',
+  ...['personal-agent', 'engineering', 'research'].flatMap(group => Array.from({ length: 4 }, (_, i) => `${group}-${i + 1}`)),
+  ...Array.from({ length: 5 }, (_, i) => `people-${i + 1}`),
+  ...['excaliclaw', 'magpie', 'mobile', 'blender', 'jev'].map(id => `tool-${id}`),
+  ...Array.from({ length: 34 }, (_, i) => `source-${i + 1}`),
+]);
+
 export function weeklyDestination(href: string): WeeklyDestination | null {
   const url = new URL(href);
   if (url.hostname !== 'ursb.me' && url.origin !== (typeof location === 'undefined' ? '' : location.origin)) return null;
@@ -18,7 +26,7 @@ export function weeklyDestination(href: string): WeeklyDestination | null {
   return {
     kind: match[2] ? 'issue' : match[3] ? 'rss' : 'archive',
     issue: match[2] || '', lang: match[1] ? 'en' : 'zh',
-    target: /^(column-\d+|agents|creation|science|life|issue-guide|top|runtime|quality|tools|signals|contents|sources|subscribe|film|context|durable|mods|routing|eval|stamps|art-history|creativity|sre|teams|advisor|sonnet|devday|dex|aigc|assistant-demand|distribution|terminology|product-[a-z-]+)$/.test(anchor) || issue003Targets.has(anchor) ? anchor : '',
+    target: /^(column-\d+|agents|creation|science|life|issue-guide|top|runtime|quality|tools|signals|contents|sources|subscribe|film|context|durable|mods|routing|eval|stamps|art-history|creativity|sre|teams|advisor|sonnet|devday|dex|aigc|assistant-demand|distribution|terminology|product-[a-z-]+)$/.test(anchor) || issue003Targets.has(anchor) || (match[2] === '004' && issue004Targets.has(anchor)) ? anchor : '',
   };
 }
 
@@ -36,13 +44,16 @@ export function initWeeklyAnalytics() {
     const column = unit?.dataset.weeklyColumn || unit?.id || '';
     const context = { issue, lang: language(), surface, column };
     if (control.matches('.share-trigger')) trackEvent('weekly-share-open', context);
-    if (control.matches('.figure-open')) trackEvent('weekly-image-open', context);
+    if (control.matches('.figure-open')) {
+      trackEvent('weekly-image-open', context);
+      return;
+    }
     if (!(control instanceof HTMLAnchorElement)) return;
     if (control.matches('.save-cover, #share-x, #share-threads')) {
       trackEvent('weekly-share', { ...context, action: control.matches('.save-cover') ? 'cover-download' : control.id.replace('share-', ''), result: 'click' });
       return;
     }
-    if (/^\/reading\/weekly\/\d{3,}\/assets\//.test(new URL(control.href).pathname)) {
+    if (/^\/reading\/weekly\/\d{3,}\/(?:assets\/|[^/]+\.(?:webp|png|jpe?g)$)/.test(new URL(control.href).pathname)) {
       trackEvent('weekly-image-open', context);
       return;
     }
@@ -60,9 +71,9 @@ export function initWeeklyAnalytics() {
   document.addEventListener('toggle', (event) => {
     const detail = event.target;
     if (!(detail instanceof HTMLDetailsElement) || !detail.open || !issue) return;
-    if (!detail.matches('.article-sources, .issue-index, .reading-register details, #math-background')) return;
+    if (!detail.matches('.article-sources, .issue-index, .reading-register details, .all-readings, .comic004 details, #math-background')) return;
     const unit = detail.closest<HTMLElement>('[data-weekly-column], .column-article');
-    trackEvent('weekly-details-open', { issue, lang: language(), kind: detail.id === 'math-background' ? 'background' : detail.matches('.article-sources, .reading-register details') ? 'sources' : 'contents', column: unit?.dataset.weeklyColumn || unit?.id || '' });
+    trackEvent('weekly-details-open', { issue, lang: language(), kind: detail.id === 'math-background' ? 'background' : detail.matches('.comic004 details') ? 'transcript' : detail.matches('.article-sources, .reading-register details, .all-readings') ? 'sources' : 'contents', column: unit?.dataset.weeklyColumn || unit?.id || '' });
   }, true);
   if (!issue) return;
   const seen = new Set<string>();

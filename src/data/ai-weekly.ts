@@ -1,3 +1,4 @@
+import issue004Columns from './ai-weekly/004.columns.json' with { type: 'json' };
 import issue003Columns from './ai-weekly/003.columns.json' with { type: 'json' };
 import issue002Columns from './ai-weekly/002.columns.json' with { type: 'json' };
 import issue001Columns from './ai-weekly/001.columns.json' with { type: 'json' };
@@ -27,6 +28,105 @@ export type AIWeeklyIssue = {
 };
 
 export const aiWeeklyIssues = [
+{
+  "number": "004",
+  "startDate": "2026-10-11",
+  "endDate": "2026-10-17",
+  "publishedAt": "2026-10-19",
+  "href": {
+    "zh": "/reading/weekly/004/",
+    "en": "/en/reading/weekly/004/"
+  },
+  "cover": {
+    "zh": "/reading/weekly/004/shelf-cover-zh.webp",
+    "en": "/reading/weekly/004/shelf-cover-en.webp"
+  },
+  "shareCover": {
+    "zh": "/reading/weekly/004/cover-zh.png",
+    "en": "/reading/weekly/004/cover-en.png"
+  },
+  "socialImage": {
+    "zh": "/reading/weekly/004/social-zh.jpg",
+    "en": "/reading/weekly/004/social-en.jpg"
+  },
+  "columns": issue004Columns,
+  "title": {
+    "zh": [
+      "Agent 常驻之后，",
+      "怎样放心交付？"
+    ],
+    "en": [
+      "Always on.",
+      "Ready to hand over?"
+    ]
+  },
+  "description": {
+    "zh": "这周，AI 开始长期待在工位上。我们把问题往前推一步：它忙了一夜之后，怎样留下别人能接手的工作？",
+    "en": "AI is staying at its desk. This week, we ask what it should leave behind so someone else can confidently pick up the work."
+  },
+  "topics": [
+    {
+      "anchor": "personal-agent",
+      "title": {
+        "zh": "Personal Agent",
+        "en": "Personal agents"
+      },
+      "description": {
+        "zh": "从常驻产品到持久任务，追问谁负责、谁验收、怎样接着做。",
+        "en": "From persistent agents to durable tasks: ownership, acceptance and continuity."
+      },
+      "count": 4
+    },
+    {
+      "anchor": "engineering",
+      "title": {
+        "zh": "Agent 工程",
+        "en": "Agent engineering"
+      },
+      "description": {
+        "zh": "让正确发生在流程里，把人的精力留给重要判断。",
+        "en": "Build correctness into the workflow; save attention for judgment."
+      },
+      "count": 4
+    },
+    {
+      "anchor": "research",
+      "title": {
+        "zh": "研究观察",
+        "en": "Research"
+      },
+      "description": {
+        "zh": "灵感、改进、解释与自主性，需要不同的验证。",
+        "en": "Ideas, improvement, explanations and autonomy need different tests."
+      },
+      "count": 4
+    },
+    {
+      "anchor": "tools",
+      "title": {
+        "zh": "本周工具架",
+        "en": "Tools to try"
+      },
+      "description": {
+        "zh": "画图、路由、真机测试与可继续编辑的产物。",
+        "en": "Diagrams, routing, mobile testing and work you can keep editing."
+      },
+      "count": 5
+    },
+    {
+      "anchor": "people",
+      "title": {
+        "zh": "人与产品",
+        "en": "People & products"
+      },
+      "description": {
+        "zh": "长期信任、研究证据，以及新人怎样学会判断。",
+        "en": "Long-term trust, research evidence and how beginners learn judgment."
+      },
+      "count": 5
+    }
+  ]
+},
   {
     "number": "003",
     "startDate": "2026-10-04",

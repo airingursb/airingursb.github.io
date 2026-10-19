@@ -1,0 +1,99 @@
+---
+import columns from '../../../data/ai-weekly/004.columns.json' with { type: 'json' };
+import draft from '../../../data/ai-weekly/004.json';
+import images from '../../../data/ai-weekly/004.images.json';
+import Issue003HeadingText from './Issue003HeadingText.astro';
+interface Props { type:string; lang:'zh'|'en'; preview?:boolean }
+const {type,lang,preview = true} = Astro.props;
+const anchor = (id:string) => columns.find(column => column.id === `tool-${id}`)!.anchor;
+const zh = lang === 'zh';
+const v = (zhText:string,enText:string)=>zh?zhText:enText;
+const t = (x:{zh:string;en:string})=>x[lang];
+const asset = '/reading/weekly/004/';
+---
+{type==='handoff' && <figure class="exhibit004 handoff004">
+<figcaption><p class="kicker">01 / THE HANDOFF</p><h5><Issue003HeadingText text={v('把“完成了”写成一份交接单','Turn “done” into a usable handoff')} lang={lang}/></h5><p>{v('编者示例 · 周刊草稿的交接单，不是实际执行记录。','Editorial example: a newsletter-draft handoff, not a run log.')}</p></figcaption>
+<div class="handoff-document"><div class="document-top"><span>WEEKLY / 004</span><strong>{v('交给下一位编辑','FOR THE NEXT EDITOR')}</strong></div>
+<dl>{[
+[v('任务与边界','Assignment'),v('整理公开收藏，交可读草稿','Turn public saves into a readable draft'),v('本轮停在预览，发布另行决定。','This assignment ends at a preview; publication is a separate decision.')],
+[v('进展与证据','Progress & evidence'),v('文章、来源编号、页面截图','Prose, source references, page captures'),v('每一项结论，都能回到相应文件或材料。','Each result points back to an inspectable artifact.')],
+[v('未解决的问题','Unresolved'),v('两条收益说法缺完整账本','Two return claims lack complete ledgers'),v('保留疑点，不能归入“已验证”。','Keep uncertainty visible rather than marking it verified.')],
+[v('下一步与负责人','Next step & owner'),v('编辑看稿，决定修改与发布','Editor reviews and decides what follows'),v('下一位不用重读整段聊天，便知道从哪里开始。','The next person can continue without rereading the whole chat.')]
+].map(([label,title,text],i)=><div><dt><span>0{i+1}</span>{label}</dt><dd><strong>{title}</strong><p>{text}</p></dd></div>)}</dl></div>
+<p class="figure-note">{v('验收对象：交付物。聊天记录能提供线索，不能替代这些材料。','Inspect the deliverable. Conversation history provides clues, not a substitute for these artifacts.')}</p>
+</figure>}
+
+{type==='recovery' && <figure class="exhibit004 recovery004">
+<figcaption><p class="kicker">02 / RECOVERY</p><h5><Issue003HeadingText text={v('回来以后，先分清是哪一种状态','On return, identify the state first')} lang={lang}/></h5><p>{v('依据 Pi 教程整理的恢复判断；不是对任意外部服务的保证。','An editorial recovery model informed by the Pi tutorial, not a guarantee for every external service.')}</p></figcaption>
+<div class="recovery-start"><span>{v('同一任务 ID','Same task ID')}</span><span class="recovery-arrow" aria-hidden="true">→</span><span><Issue003HeadingText text={v('查看持久记录与回执','Inspect durable state and receipts')} lang={lang}/></span></div>
+<div class="recovery-branches">{[
+['✓',v('已确认完成','Confirmed complete'),v('找到可验证的结果','A verifiable result exists'),v('返回已有产物，不重复执行。','Return the existing output; do not repeat it.')],
+['…',v('尚未执行','Not yet executed'),v('记录显示仍在等待','The record shows pending work'),v('从未完成的步骤继续。','Continue from the unfinished step.')],
+['?',v('结果未知','Outcome unknown'),v('请求发出，回执丢失','The request left; the receipt did not arrive'),v('先查询外部状态，再决定重试。','Check external state before retrying.')]
+].map(([symbol,title,desc,next])=><div><span class="state-symbol" aria-hidden="true">{symbol}</span><h6>{title}</h6><p>{desc}</p><strong>{next}</strong></div>)}</div>
+<p class="figure-note">{v('要点：恢复工作，不等于把邮件、订单或写入再做一遍。','Recovery does not mean repeating an email, order or write.')}{' '}<a href="#source-30">[30]</a></p>
+</figure>}
+
+{type==='scion' && <figure class="exhibit004 scion004">
+<figcaption><p class="kicker">03 / A CHANGED WORKLOAD</p><h5><Issue003HeadingText text={v('先看负载，再看架构','Measure the workload before changing the architecture')} lang={lang}/></h5></figcaption>
+<div class="scion-data"><div class="merge-chart"><p>{v('Anthropic 报告的单日合并次数','Daily merges reported by Anthropic')}</p>
+<div class="bar-row"><span>{v('5 月','May')}</span><div><i style="width:8.33%"></i></div><strong>~2,500</strong></div>
+<div class="bar-row"><span>{v('9 月','Sept')}</span><div><i style="width:100%"></i></div><strong>&gt;30,000</strong></div>
+<p class="figure-note">{v('长度以 30,000 为参照。约 12 倍的量级变化，不是生产率测量。','Bars use 30,000 as the reference. An approximately 12× change in volume is not a productivity measure.')}</p></div>
+<aside><strong>25M</strong><p>{v('每天 CI 检出次数','CI checkouts per day')}</p><span>{v('数据移动、缓存与排队，成为需要重新设计的问题。','Data movement, caches and queues become design problems.')}</span></aside></div>
+<a class="figure-enlarge" href={asset+'scion-full.webp'} target="_blank" rel="noopener" aria-label={v('放大 Scion 原始架构图','Enlarge the original Scion architecture figure')}><img src={asset+'scion-full.webp'} width="1600" height="716" loading="lazy" decoding="async" alt={v('Anthropic 的 Scion 架构图：客户端、节点守护进程、区域缓存与服务端存储之间的关系。','Anthropic’s Scion architecture: clients, node daemons, regional caches and server storage.')}/></a>
+<p class="figure-note">{v('原图与数字：Anthropic 工程文章；图片保留原比例。200 倍的说法限定于其版本控制基础设施 CPU / 内存比较。','Original figure and metrics: Anthropic’s engineering article. The 200× claim is limited to its source-control infrastructure CPU/memory comparison.')}{' '}<a href={images.scion.page} target="_blank" rel="noopener">{v('查看原文','Source')} ↗</a></p>
+</figure>}
+
+{type==='trust' && <figure class="exhibit004 trust004">
+<figcaption><p class="kicker">04 / WHERE TRUST COMES FROM</p><h5><Issue003HeadingText text={v('把反复提醒，变成更早的反馈','Turn repeated reminders into earlier feedback')} lang={lang}/></h5><p>{v('按 @poteto 的投入顺序重绘；宽度表示优先级示意，不表示时间占比。','Adapted from @poteto’s ordering. Width suggests priority, not a measured share of time.')}</p></figcaption>
+<ol>{[
+[v('代码结构','Code structure'),v('类型、边界、不变量','Types, boundaries, invariants'),v('让常见错误更难发生','Make recurring errors harder to introduce')],
+[v('自动检查','Automated checks'),v('Lint、测试、CI','Lint, tests, CI'),v('让偏差尽早显形','Expose deviations early')],
+[v('文字指导','Written guidance'),v('规则、注释、经验','Rules, comments, experience'),v('解释工具不能表达的意图','Explain intent that tools cannot encode')],
+[v('人工判断','Human judgment'),v('需求、设计、取舍','Requirements, design, trade-offs'),v('决定做什么，以及何时接受','Decide what to do and when to accept it')]
+].map(([title,detail,why],i)=><li style={`--tier:${100-i*8}%`}><span>0{i+1}</span><div><h6>{title}</h6><p>{detail}</p></div><strong><Issue003HeadingText text={why} lang={lang}/></strong></li>)}</ol><p class="figure-note">{v('自动检查覆盖已定义的性质；通过检查，不等于需求和设计天然正确。','Checks cover defined properties; passing them does not establish that requirements or design are right.')}{' '}<a href="#source-32">[32]</a></p>
+</figure>}
+
+{type==='research' && <figure class="exhibit004 research004">
+<figcaption><p class="kicker">05 / TWO DIFFERENT LOOPS</p><h5><Issue003HeadingText text={v('一个寻找解法，一个学习怎样改进','One seeks ideas; the other learns how to improve')} lang={lang}/></h5></figcaption>
+<div class="research-tracks"><section><h6>IdeaScientist</h6><p>{v('产物：有依据的研究提案','Output: a grounded research proposal')}</p><ol>{[v('找出当前研究的缺口','Find a gap'),v('检索其他领域的类似机制','Retrieve analogous mechanisms'),v('形成可研究的提案','Develop a proposal')].map(x=><li>{x}</li>)}</ol><strong>{v('下一关：实验能否支持？','Next test: does an experiment support it?')}</strong></section>
+<section><h6>Evo²</h6><p>{v('产物：改进模型及其工作环境','Output: an improved model and harness')}</p><ol>{[v('提出运行环境的修改','Propose harness edits'),v('执行、评估、诊断','Execute, evaluate, diagnose'),v('把结果用于训练改进者','Train the improver from outcomes')].map(x=><li>{x}</li>)}</ol><strong>{v('回到下一轮改进 ↺','Return to the next improvement round ↺')}</strong></section></div>
+<p class="figure-note">{v('编者按论文机制整理。两条流程不共享分数刻度，也不构成通用能力排名。','Editorial diagrams of the papers’ mechanisms. The two processes do not share a scoring scale or establish a general capability ranking.')}{' '}<a href="#source-7">[07]</a>{' '}<a href="#source-20">[20]</a></p>
+</figure>}
+
+{type==='evidence' && <figure class="exhibit004 evidence004">
+<figcaption><p class="kicker">06 / CLAIMS & EVIDENCE</p><h5><Issue003HeadingText text={v('标题里的进步，究竟验证到了哪一步？','What, exactly, has been tested?')} lang={lang}/></h5></figcaption>
+<dl>{[
+[v('有希望的研究方向','Promising research direction'),v('构思与后续论文方向相近','Ideas align with later research'),v('还需要：实验与可复现结果','Still needed: experiments and reproducible results')],
+[v('某些机制的解释','Explanations of mechanisms'),v('解释能预测激活与干预结果','An explanation predicts activation or intervention outcomes'),v('还需要：更多机制、组合行为与完整审计','Still needed: more mechanisms, interactions and a full audit')],
+[v('受控环境的自主能力','Autonomy in a controlled setting'),v('局部能力或简化流程成功','A component or simplified sequence succeeds'),v('还需要：真实条件与端到端可靠性证据','Still needed: evidence under real conditions and end-to-end reliability')]
+].map(([claim,shown,missing])=><div><dt>{claim}</dt><dd><p>{shown}</p><strong>{missing}</strong></dd></div>)}</dl>
+<p class="figure-note">{v('编者比较的是不同结论需要的证据，不是模型高低。','This compares evidence requirements for different claims, not model rankings.')}{' '}<a href="#source-7">[07]</a>{' '}<a href="#source-27">[27]</a>{' '}<a href="#source-11">[11]</a></p>
+</figure>}
+
+{type==='portability' && <figure class="exhibit004 portability004">
+<figcaption><p class="kicker">07 / WHAT CAN YOU TAKE WITH YOU?</p><h5><Issue003HeadingText text={v('过去的记录，与未来的回应','Past records and future responses')} lang={lang}/></h5></figcaption>
+<div class="portability-pair"><section><span>01</span><h6>{v('可以保存的历史','History you can preserve')}</h6><ul><li>{v('已经发生的对话','Conversations that happened')}</li><li>{v('明确写下的设定与偏好','Explicit settings and preferences')}</li><li>{v('有结构的任务、文件与记忆','Structured tasks, files and memories')}</li></ul></section>
+<section><span>02</span><h6>{v('仍依赖运行中的系统','What still depends on the live system')}</h6><ul><li>{v('模型如何组织下一次回答','How the model composes the next reply')}</li><li>{v('哪些历史被选进上下文','Which history is selected into context')}</li><li>{v('工具、服务规则与持续可用性','Tools, policies and continued availability')}</li></ul></section></div>
+<p class="figure-note">{v('编者整理：导出有价值，但不能单凭导出文件保证体验完全延续。','Editorial distinction: export is valuable, but a file alone cannot guarantee continuity of experience.')}{' '}<a href="#source-17">[17]</a></p>
+</figure>}
+
+{type==='products' && <div class="products004 tool-grid">{draft.tools.map(tool=><article class="tool-card" id={'tool-'+tool.id} data-weekly-column={preview ? undefined : anchor(tool.id)}>
+<span class="column-anchor" id={anchor(tool.id)} aria-hidden="true"></span>
+<p class="tool-meta"><span>{t(tool.category)}</span><span>{String(tool.n).padStart(2,'0')}</span></p>
+<div class="tool-head"><h3><a href={tool.href} target="_blank" rel="noopener noreferrer">{tool.name} <span aria-hidden="true">↗</span></a></h3>
+<figure class="product-art"><a class="product-image" href={asset+tool.id+'-full.webp'} target="_blank" rel="noopener" aria-label={v('放大：','Enlarge: ')+tool.name}><img src={asset+tool.id+'-960.webp'} srcset={`${asset}${tool.id}-480.webp 480w, ${asset}${tool.id}-960.webp 960w`} sizes="(max-width:700px) calc(100vw - 80px), (max-width:1100px) calc((100vw - 160px) / 2), 240px" width="960" height="640" loading="lazy" decoding="async" alt={t(tool.alt)}/></a><figcaption><a href={images[tool.id as keyof typeof images].page} target="_blank" rel="noopener noreferrer">{t(tool.credit)} ↗</a></figcaption></figure></div>
+<p>{t(tool.description)}</p><p class="tool-note">{t(tool.check)}</p><a class="product-source" href={'#source-'+tool.n}>{v('阅读来源','Reading source')} [{String(tool.n).padStart(2,'0')}] ↗</a>
+</article>)}</div>}
+
+{type==='comic' && <figure class="comic004">
+<div><p class="kicker">{v('小熊编辑台 / 四格','AIRING’S DESK / FOUR PANELS')}</p><h3><Issue003HeadingText text={v('下班之前','Before heading home')} lang={lang}/></h3><p>{v('从“交出去了”，到“接得住了”。','From assigning the work to making it possible to take over.')}</p>
+<details><summary>{v('阅读漫画文字稿','Read the comic transcript')}</summary><ol>{[
+v('傍晚，Airing 把工作交给 Moflow：“这次可以早点走了。”','At dusk, Airing gives the work to Moflow: “I can leave early this time.”'),
+v('到了门口又回头：“到底哪一步做完了？”','At the door, Airing turns back: “Which part is actually finished?”'),
+v('两人一起整理进度和证据。Moflow：“卡住的也写清楚。”','They organize progress and evidence. Moflow: “Write down what is blocked too.”'),
+v('两人终于离开。Airing：“明天从这里接着来。”','They finally leave. Airing: “Tomorrow, we can pick up from here.”')
+].map(x=><li>{x}</li>)}</ol></details><p class="figure-note">{v('AI 生成 · 新版角色参考 · 按左上、右上、左下、右下阅读。','AI-generated using the updated character references. Read top-left, top-right, bottom-left, bottom-right. Chinese dialogue translated in the transcript.')}</p></div>
+<a class="figure-enlarge" href={asset+'comic-handoff.png'} target="_blank" rel="noopener" aria-label={v('放大四格漫画','Enlarge the four-panel comic')}><img src={asset+'comic-1254.webp'} srcset={`${asset}comic-640.webp 640w, ${asset}comic-1254.webp 1254w`} sizes="(min-width:1000px) 700px, calc(100vw - 40px)" width="1254" height="1254" loading="lazy" decoding="async" alt={v('Airing 交出任务后又回来确认，与 Moflow 留下交接单，最后放心下班。','Airing returns to clarify a task, prepares a handoff with Moflow and leaves with confidence.')}/></a>
+</figure>}

@@ -1,0 +1,147 @@
+---
+import WeeklyShareDialog from './WeeklyShareDialog.astro';
+import SubscriptionDialog from '../../SubscriptionDialog.astro';
+import UmamiLoader from '../../UmamiLoader.astro';
+import WeeklyIssueNav from './WeeklyIssueNav.astro';
+import { aiWeeklyIssues } from '../../../data/ai-weekly';
+import columns from '../../../data/ai-weekly/004.columns.json' with { type: 'json' };
+import MarkdownIt from 'markdown-it';
+import draft from '../../../data/ai-weekly/004.json';
+import sources from '../../../data/ai-weekly/004.sources.json';
+import zhCopy from '../../../data/ai-weekly/004.zh.md?raw';
+import enCopy from '../../../data/ai-weekly/004.en.md?raw';
+import Issue004Visual from './Issue004Visual.astro';
+import Issue004Cover from './Issue004Cover.astro';
+import WeeklyFonts from './WeeklyFonts.astro';
+import WeeklyThemeMode from './WeeklyThemeMode.astro';
+import WeeklyLanguageSwitch from './WeeklyLanguageSwitch.astro';
+import Issue003HeadingText from './Issue003HeadingText.astro';
+import '../../../styles/ai-weekly-draft.css';
+import '../../../styles/ai-weekly-004.css';
+interface Props { lang: 'zh' | 'en'; preview?: boolean }
+const {lang, preview = true} = Astro.props;
+const issue = aiWeeklyIssues.find(issue => issue.number === '004')!;
+const canonical = `https://ursb.me${issue.href[lang]}`;
+const socialImage = `https://ursb.me${issue.socialImage[lang]}`;
+const columnFor = (id: string) => columns.find(column => column.id === id)!;
+const zh = lang === 'zh';
+const t = (x:{zh:string;en:string}) => x[lang];
+const md = new MarkdownIt({html:false,typographer:true});
+const render = (text:string) => md.render(text, {});
+const chunks = (zh ? zhCopy : enCopy).split(/<!-- chapter: ([\w-]+) -->/);
+const chapterText = Object.fromEntries(chunks.slice(1).reduce<string[][]>((a,x,i,rest) => { if(i%2===0) a.push([x,rest[i+1]]);return a; },[]));
+const home = (n:number) => draft.groups.find(g => g.sources.includes(n))!;
+const sections = (id:string) => chapterText[id].split(/^### /m).slice(1).map((text:string,i:number) => {
+ const newline=text.indexOf('\n');
+ return {id:`${id}-${i+1}`,title:text.slice(0,newline),parts:text.slice(newline+1).split(/<!-- visual: ([\w-]+) -->/)};
+});
+const name = zh ? 'AI 趋势周刊' : 'AI Trends Weekly';
+---
+<!doctype html>
+<html lang={zh?'zh-CN':'en'}>
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>{name} 004 · {issue.title[lang].join(' ')}{preview ? (zh?' · 编辑预览':' · Editorial preview') : ''}</title>
+<meta name="description" content={t(draft.intro)}/>{preview && <meta name="robots" content="noindex,nofollow"/>}
+<link rel="icon" href="/favicon.ico"/>
+ {!preview && <Fragment>
+  <link rel="canonical" href={canonical} />
+  <link rel="alternate" hreflang="zh-CN" href={`https://ursb.me${issue.href.zh}`} />
+  <link rel="alternate" hreflang="en" href={`https://ursb.me${issue.href.en}`} />
+  <link rel="alternate" hreflang="x-default" href={`https://ursb.me${issue.href.zh}`} />
+  <link rel="alternate" type="application/rss+xml" title={name} href={`${zh?'':'/en'}/reading/weekly/feed.xml`} />
+  <meta property="og:type" content="article" /><meta property="og:site_name" content={name} />
+  <meta property="og:locale" content={zh?'zh_CN':'en_US'} /><meta property="og:locale:alternate" content={zh?'en_US':'zh_CN'} />
+  <meta property="og:title" content={`${name} 004 · ${issue.title[lang].join(' ')}`} /><meta property="og:description" content={issue.description[lang]} />
+  <meta property="og:url" content={canonical} /><meta property="og:image" content={socialImage} /><meta property="og:image:secure_url" content={socialImage} />
+  <meta property="og:image:type" content="image/jpeg" /><meta property="og:image:width" content="1200" /><meta property="og:image:height" content="600" />
+  <meta property="og:image:alt" content={`${name} 004 · ${issue.title[lang].join(' ')} · Airing`} />
+  <meta name="twitter:card" content="summary_large_image" /><meta name="twitter:creator" content="@airingursb" />
+  <meta name="twitter:title" content={`${name} 004 · ${issue.title[lang].join(' ')}`} /><meta name="twitter:description" content={issue.description[lang]} />
+  <meta name="twitter:image" content={socialImage} /><meta name="twitter:image:alt" content={`${name} 004 · ${issue.title[lang].join(' ')} · Airing`} />
+  <UmamiLoader />
+ </Fragment>}
+
+<WeeklyThemeMode part="head"/><WeeklyFonts issue="004" lang={lang}/>
+</head>
+<body class="weekly-004" data-pagefind-ignore={preview || undefined} data-weekly-preview={preview ? "004" : undefined} data-weekly-surface={preview ? undefined : "weekly-issue"}>
+<a class="skip" href="#contents">{zh?'跳至本期目录':'Skip to contents'}</a>
+<div class="outside-bar"><a href={`${zh?'':'/en'}/reading/weekly/`}>← {zh?'周刊书架':'Weekly shelf'}</a><span>{preview ? (zh?'004 · 编辑预览':'004 · Editorial preview') : (zh?'第 004 期':'Issue 004')}</span><div class="outside-tools"><WeeklyLanguageSwitch lang={lang} href={preview ? `${zh?'/en':''}/previews/ai-weekly-004/` : issue.href[zh?'en':'zh']}/><WeeklyThemeMode part="toggle" lang={lang}/></div></div>
+<main class="paper">
+<header class="issue-front">
+<Issue004Cover lang={lang}/>
+<div class="issue-desk">
+<div class="desk-heading"><p class="kicker">AIRING’S READING DESK</p><span class="serial">004</span></div>
+<h1>{zh ? 'Agent 常驻之后，' : 'Always on.'}<br/>{zh ? '怎样放心交付？' : 'Ready to hand over?'}</h1><p class="desk-intro">{t(draft.intro)}</p>
+<dl class="issue-facts">
+<div><dt>{zh?'本期编辑':'Editor'}</dt><dd><a class="editor" href="https://ursb.me/">Airing ↗</a></dd></div>
+<div><dt>{zh?'本期范围':'Reading period'}</dt><dd>2026.10.11 — 2026.10.17</dd></div>
+<div><dt>{preview ? (zh?'计划出版':'Planned publication') : (zh?'出版日期':'Publication date')}</dt><dd>2026.10.19<span>{zh?'每周一更新':'Every Monday'}</span></dd></div>
+<div><dt>{zh?'本期收录':'Inside'}</dt><dd>{zh?'34 篇阅读 · 5 个主题':'34 saves · 5 themes'}<span>{zh?'周内 32 篇，10 月 18 日补记 2 篇':'32 in the period + 2 Sunday additions'}</span></dd></div>
+</dl>
+<blockquote class="desk-note"><p class="kicker">{zh?'本期导读':'EDITOR’S GUIDE'}</p><p>{t(draft.guide)}</p></blockquote>
+<div class="desk-actions"><a class="read-issue" href="#personal-agent">{zh?'阅读封面专题':'Read the cover story'} ↘</a><a class="outline-action" href="#contents">{zh?'本期目录':'Contents'} ↓</a>{preview ? <a class="outline-action" href={`/reading/weekly/004/cover-${lang}.png`} target="_blank" rel="noopener">{zh?'查看封面':'View cover'} ↗</a> : <button type="button" class="outline-action share-trigger">{zh?'分享本期':'Share this issue'} ↗</button>}</div>
+<p class="desk-source">{zh?'取材于':'From'} <a href={`${zh?'':'/en'}/reading/`}>{zh?'Airing 的阅读流':'Airing’s reading stream'}</a><span>{zh?'原文、核查资料与图像出处随文附上。':'Readings, supporting references and image credits included.'}</span></p>
+</div>
+</header>
+<nav class="contents" id="contents" aria-label={zh?'本期目录':'Issue contents'}>
+<div class="section-top"><h2>{zh?'本期目录':'In this issue'}</h2><a href="#sources">{zh?'完整阅读目录':'All readings'} ↓</a></div>
+<div class="theme-guide">{draft.groups.map((g,i)=><a href={'#'+g.id}><span class="guide-number">0{i+1}<small>{g.sources.length} {zh?'篇':'saves'}</small></span><h3>{t(g.name)}</h3><p>{t(g.detail)}</p></a>)}</div>
+</nav>
+{draft.groups.map((g,i)=><section id={g.id} class={`chapter chapter-${g.id}`} data-source-ids={g.sources.join(',')}>
+<div class="chapter-heading"><span>0{i+1}</span><h2>{t(g.name)}</h2><p>{t(g.detail)}</p></div>
+{g.id==='tools' ? <Fragment>
+ <div class="section-intro" set:html={render(chapterText[g.id].split('<!-- visual:')[0])}/>
+ <Issue004Visual type="products" lang={lang} preview={preview}/>
+</Fragment> : <article class="feature">
+ <div class="feature-heading"><p class="kicker">{t(g.label)}</p><h3><Issue003HeadingText text={t(g.headline)} lang={lang}/></h3></div>
+ <p class="feature-standfirst">{t(g.standfirst)}</p>
+ {g.id==='personal-agent' && <nav class="story-contents" aria-label={zh?'封面专题目录':'Cover story contents'}><span>{zh?'本文路径':'IN THIS FEATURE'}</span><ol>{sections(g.id).map((s,i)=><li><a href={'#'+s.id}><span>0{i+1}</span><span><Issue003HeadingText text={t(draft.coverSectionLabels[i])} lang={lang}/></span></a></li>)}</ol></nav>}
+ <div class:list={['feature-body',{'people-briefs':g.id==='people'}]}>{sections(g.id).map((s,i)=><section id={s.id} data-weekly-column={preview ? undefined : columnFor(s.id).anchor} class:list={['feature-section',{'lead-section':i===0}]}>
+  <span class="column-anchor" id={columnFor(s.id).anchor} aria-hidden="true"></span>
+  <h4 class="section-title"><Issue003HeadingText text={s.title} lang={lang}/></h4>
+  {s.parts.map((chunk:string,j:number)=>j%2 ? <Issue004Visual type={chunk} lang={lang}/> : <div class:list={['section-copy',{'figure-continuation':j>0}]} set:html={render(chunk)}/>)}
+ </section>)}</div>
+</article>}
+<a class="back-contents" href="#contents">↑ {zh?'返回目录':'Back to contents'}</a>
+</section>)}
+<section class="source-directory" id="sources">
+<details class="all-readings"><summary><span>{zh?'完整阅读目录':'Every saved reading'}</span><span>34 / 34 <span aria-hidden="true">＋</span></span></summary>
+<p class="editorial-method">{zh?'按收藏时间划定范围，不代表原文都发表于本周。正文结合原始研究、产品网站及保存的完整文章；社区案例未独立复测。AIGC #192 的缓存可能不全；两篇 Newsletter 没有公开原文链接。33、34 为周日补记，未混入主刊日期。':'The period follows save dates, not original publication dates. Editorial work draws on original research, product websites and saved full-text articles; community cases were not independently reproduced. AIGC #192 may be incomplete, and two newsletters have no public original URL. Readings 33 and 34 are Sunday additions.'}</p>
+<ol class="source-list">{sources.map(s=><li id={'source-'+s.n}>
+<span class="source-no">{String(s.n).padStart(2,'0')}</span>
+<div><h3>{zh?s.title:s.title_en}</h3><p>{s.author || s.source} · {new Date(s.saved_at).toLocaleDateString('en-CA',{timeZone:'Asia/Shanghai'})}{s.n>=33 && <strong> · {zh?'周日补记':'Sunday addendum'}</strong>}</p><div class="source-actions" data-weekly-column={preview ? undefined : columns.find(column => [column.source, ...(column.relatedSources ?? [])].includes(s.reading_url ?? s.original_url!))?.anchor}>{s.reading_url && <a href={`${zh?'':'/en'}/reading/${s.slug}/`}>{zh?'阅读流记录':'Saved reading'} ↗</a>}{s.original_url && /^https?:/.test(s.original_url) ? <a href={s.original_url} target="_blank" rel="noopener noreferrer">{zh?'阅读原文':'Read original'} ↗</a> : <span>{zh?'已保存邮件 · 无公开链接':'Saved newsletter · no public link'}</span>}<a href={'#'+home(s.n).id}>{zh?'本期讨论':'In this issue'} ↗</a></div></div>
+</li>)}</ol>
+</details>
+</section>
+{!preview && <section class="weekly-invitation" id="subscribe" aria-labelledby="weekly-invitation-title">
+ <div><p class="kicker">{zh?'读完这一期，还有下一期':'KEEP THE DISCOVERIES COMING'}</p><h2 id="weekly-invitation-title">{zh?'把一周的 AI 阅读，寄给你。':'A week of AI reading, sent to you.'}</h2><p>{zh?'每周一更新。可选中文或英文，封面、主题导读与全部阅读入口，每期一封。':'Every Monday. The cover, theme guide and every reading, in English or Chinese. One email per issue.'}</p></div>
+ <div class="invitation-actions"><button class="read-issue" type="button" data-subscribe-open data-subscribe-context="reading" data-subscribe-surface="weekly-issue">{zh?'订阅下一期':'Get the next issue'} →</button><a class="outline-action" href={`${zh?'':'/en'}/reading/weekly/feed.xml`}>{zh?'周刊 RSS':'Weekly RSS'} ↗</a></div>
+</section>}
+
+{!preview && <WeeklyIssueNav number="004" lang={lang}/>}
+<footer class="issue-footer"><a href="#contents">↑ {zh?'回到本期目录':'Back to contents'}</a><p>{name} · No. 004 · <a href="https://ursb.me/">Airing</a></p></footer>
+</main>
+{!preview && <Fragment><WeeklyShareDialog issue={issue} lang={lang}/><SubscriptionDialog/></Fragment>}
+<p class="outside-footer">{zh?'从每天的收藏，到一周的脉络。每周一更新。':'From daily saves to a weekly perspective. Every Monday.'}</p>
+<script is:inline>
+ document.querySelectorAll('[data-language-switch]').forEach(link => {
+  link.addEventListener('click', () => {
+   link.hash = location.hash;
+   try { localStorage.setItem('preferred_lang', document.documentElement.lang.startsWith('en') ? 'zh' : 'en'); } catch {}
+  });
+ });
+ function revealSource() {
+  if (!/^#sources?$|^#source-\d+$/.test(location.hash)) return;
+  document.querySelector('.all-readings').open = true;
+  document.querySelector(location.hash)?.scrollIntoView();
+ }
+ addEventListener('hashchange', revealSource);
+ revealSource();
+</script>
+<script>
+ import { initWeeklyAnalytics } from '../../../scripts/weekly-analytics';
+ if (document.body.dataset.weeklySurface === 'weekly-issue') initWeeklyAnalytics();
+</script>
+</body>
+</html>

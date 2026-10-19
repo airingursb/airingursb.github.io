@@ -19,6 +19,7 @@ export const CJK_RANGE = 'U+2E80-2FFF, U+3000-9FFF, U+F900-FAFF, U+FE10-FE1F, U+
 
 /** Issues to subset and the built pages (zh / en) whose text they cover. */
 export const WEEKLY_FONT_TARGETS = [
+  { issue: '004', pages: { zh: ['reading/weekly/004/index.html', 'previews/ai-weekly-004/index.html'], en: ['en/reading/weekly/004/index.html', 'en/previews/ai-weekly-004/index.html'] } },
   { issue: '002', pages: { zh: ['reading/weekly/002/index.html', 'previews/ai-weekly-002/index.html'], en: ['en/reading/weekly/002/index.html', 'en/previews/ai-weekly-002/index.html'] } },
   { issue: '003', pages: { zh: ['reading/weekly/003/index.html', 'previews/ai-weekly-003/index.html'], en: ['en/reading/weekly/003/index.html', 'en/previews/ai-weekly-003/index.html'] } },
 ];

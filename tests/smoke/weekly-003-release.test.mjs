@@ -37,8 +37,8 @@ for(const lang of ['zh','en']){
   assert.equal(issue.scheduledFor,'2026-10-12');
   assert.ok(document.some(n=>n.nodeName==='#text'&&n.value.includes('2026.10.13')));
  });
- test(lang+' issue 003 leads discovery, feed and sharing with bounded images',async()=>{
-  for(const path of [prefix+'/reading/weekly/index.html',prefix+'/reading/index.html','/index.html']){
+ test(lang+' issue 003 remains in the archive, feed and sharing with bounded images',async()=>{
+  for(const path of [prefix+'/reading/weekly/index.html']){
    const html=await readFile(built(path),'utf8');
    assert.ok(html.includes(issue.href[lang]),path);
    assert.ok(html.includes(issue.cover[lang]),path);

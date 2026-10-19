@@ -1,5 +1,17 @@
 # AI 趋势周刊 · Entry & archive
 
+## Issue 004: restore series consistency
+
+The October 18 change updated Airing's character, not the magazine template. Issue 004 must follow the actual published 001–003 covers and issue 003's editorial layout. The earlier whole generated cover and centered, uniformly boxed body were rejected by the user and are not approved references.
+
+- Reuse the real HTML cover anatomy and shared CSS: A4 `210/297`, 6px brick border (4px phone), centered serif masthead, mono edition/date, illustration with HTML cover story, two teaser columns and linked editor/count footer. Generate only the illustration: blue beret, orange scarf, no eye patches, same soft gouache as 003, pale upper space. All cover wording is live bilingual HTML.
+- Retain the shared 1240px paper shell, 40px desktop/20px phone gutters, serif/sans/mono tokens and existing theme behavior. At 1280px and above cover/editor are equal columns, aligned top/bottom; below that the 540px cover and desk stack. Use 003's desk typography and spacing.
+- Restore article hierarchy: chapter rule and number → 40px feature title (28px phone) → short standfirst → 22px section heading → 17px prose at 2 line-height. Align prose to the chapter's left edge, limit Chinese to 760px and English to a readable measure. Do not center narrow prose between full-width panels.
+- Explain with the established exhibit/figure grammar: 24px padding, ruled figure headings, 14px diagram copy and 12–13px source notes on desktop, readable phone sizing. Vary evidence naturally: handoff sheet, recovery branches, original Scion architecture, research comparison, and quiet portability spread. Do not bleed every gray block to the phone edges. Preserve all source labels, data definitions, links and transcripts.
+- Reuse tool-grid/tool-card/tool-head/product-art styles for five compact official-image entries. Product name and 3:2 image sit together, real full-image links and credit captions remain. Short readings use the existing two-column brief grammar, one column on phones; full directory is a native disclosure like prior issues, and source deep links open it automatically.
+- The page scrolls as one document; no nested scroll region. Existing content-limiter, stack, cluster and split-cover primitives are sufficient. No new animation, UI dependency, palette or decorative surface. Preserve 34 source homes and complete translations; publication reuses the same layout.
+- QA compares published references and 004 at the same viewport, measuring cover geometry, masthead font, body left edge, heading scale and product anatomy. Both locales get complete phone/desktop light/dark captures, plus tablet and interaction checks. No accepted accessibility debt.
+
 ## Issue 003: publication
 
 Publish the approved bilingual reader at /reading/weekly/003/ and /en/reading/weekly/003/. Keep the 2026-10-04–10 reading range and the planned Monday 2026-10-12 date as scheduling metadata; the actual publication date is 2026-10-13. The preview aliases remain noindex and inactive for subscription and telemetry.
@@ -140,3 +152,9 @@ Publish the approved bilingual reader at `/reading/weekly/002/` and `/en/reading
 - Twenty-nine editorial units expose stable `column-NN` anchors alongside their readable topic/feature IDs. Topic counts in the published email catalog count editorial units; the reader's directory counts all 45 saved readings. Both remain explicit and consistent with existing scheduler validation.
 - Share uses a native dialog with visible keyboard focus, focus restoration, Escape/backdrop close, selectable canonical URL, copy feedback, full PNG download, X/Threads intents and native sharing when supported. No essential content depends on an external social SDK.
 - Existing weekly telemetry records the publication number, locale, source, column, topic navigation, image enlargement, share result and scroll depth. Preview browsing does not initialize weekly telemetry. Subscription opens and RSS links reuse the established dialog and attribution.
+
+### 004 publication assets and links
+
+- Published bilingual routes use the approved Issue004Preview with `preview={false}`; preview aliases remain noindex and do not initialize weekly analytics.
+- The catalog has 22 editorial units covering all 34 readings (32 in-period and two Sunday additions). The last addendum has an original URL but no public Reading Stream record at publication; `reading_url: null` avoids a dead saved-record link.
+- Export the live cover to `cover-{zh,en}.png` (1080 × 1528), then run `node scripts/prepare-weekly-004-covers.mjs`: 540 × 764 shelf covers and 864 × 1222 share previews. Download retains the PNG; social cards use the shared 1200 × 600 JPEG generator.
