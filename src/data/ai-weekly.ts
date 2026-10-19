@@ -42,8 +42,8 @@ export const aiWeeklyIssues = [
     "en": "/reading/weekly/004/shelf-cover-en.webp"
   },
   "shareCover": {
-    "zh": "/reading/weekly/004/cover-zh.png",
-    "en": "/reading/weekly/004/cover-en.png"
+    "zh": "/reading/weekly/004/assets/cover-zh.png",
+    "en": "/reading/weekly/004/assets/cover-en.png"
   },
   "socialImage": {
     "zh": "/reading/weekly/004/social-zh.jpg",
