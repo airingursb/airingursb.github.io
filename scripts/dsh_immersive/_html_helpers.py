@@ -1,0 +1,222 @@
+"""HTML builder helpers for Pi Agent immersive chapters."""
+from __future__ import annotations
+
+
+def join(*parts: str) -> str:
+    return "\n\n".join(parts)
+
+
+def p(zh: str, en: str) -> str:
+    return f"""    <div class="lang-zh-only"><p>{zh}</p></div>
+    <div class="lang-en-only"><p>{en}</p></div>"""
+
+
+def h3(zh: str, en: str, sec: str | None = None) -> str:
+    num = f'<span class="sec-num">{sec}</span> ' if sec else ""
+    return (
+        f'    <h3 class="sub">{num}'
+        f'<span class="lang-zh-only">{zh}</span><span class="lang-en-only">{en}</span></h3>'
+    )
+
+
+def h4(zh: str, en: str, sec: str | None = None) -> str:
+    num = f'<span class="sec-num">{sec}</span> ' if sec else ""
+    return (
+        f'    <h4 class="sub2 depth-sec">{num}'
+        f'<span class="lang-zh-only">{zh}</span><span class="lang-en-only">{en}</span></h4>'
+    )
+
+
+def aside_label(tag_zh: str, tag_en: str, title_zh: str, title_en: str) -> str:
+    return (
+        f'    <div class="depth-aside-head">'
+        f'<span class="da-tag"><span class="lang-zh-only">{tag_zh}</span>'
+        f'<span class="lang-en-only">{tag_en}</span></span> '
+        f'<span class="da-title lang-zh-only">{title_zh}</span>'
+        f'<span class="da-title lang-en-only">{title_en}</span></div>'
+    )
+
+
+def depth_zone_open(chap_num: str) -> str:
+    return (
+        f'    <div class="depth-zone" data-chapter="C{chap_num}">'
+        f'<div class="depth-zone-label">'
+        f'<span class="dz-tag">DEPTH</span> '
+        f'<span class="lang-zh-only">深度细读 · C{chap_num}.4+</span>'
+        f'<span class="lang-en-only">Deep dive · C{chap_num}.4+</span></div>'
+    )
+
+
+def depth_zone_close() -> str:
+    return "    </div>"
+
+
+def src(tag: str, path: str, lines: list[str]) -> str:
+    body = "\n".join(f'      <span class="src-line">{line}</span>' for line in lines)
+    return f"""    <div class="src-stack">
+      <div class="src-h">
+        <span>SOURCE &nbsp;·&nbsp; {path}</span>
+        <span class="src-tag">{tag}</span>
+      </div>
+{body}
+    </div>"""
+
+
+def sp(rows: list[tuple[str, str, str, str]]) -> str:
+    rs = []
+    for kz, ke, vz, ve in rows:
+        rs.append(
+            f"""      <div class="sp-row">
+        <div class="sp-key"><span class="lang-zh-only">{kz}</span><span class="lang-en-only">{ke}</span></div>
+        <div class="sp-val"><span class="lang-zh-only">{vz}</span><span class="lang-en-only">{ve}</span></div>
+      </div>"""
+        )
+    return "    <div class=\"stage-purpose\">\n" + "\n".join(rs) + "\n    </div>"
+
+
+def note(zh: str, en: str, copper: bool = False) -> str:
+    cls = "note copper" if copper else "note"
+    return f"""    <div class="{cls}">
+      <span class="lang-zh-only">{zh}</span>
+      <span class="lang-en-only">{en}</span>
+    </div>"""
+
+
+def formula(tz: str, te: str, lines: list[str], oz: str, oe: str) -> str:
+    conds = "\n".join(f'      <span class="cond">{line}</span>' for line in lines)
+    return f"""    <div class="formula">
+      <div class="ftitle"><span class="lang-zh-only">{tz}</span><span class="lang-en-only">{te}</span></div>
+{conds}
+      <div class="out"><span class="lang-zh-only">{oz}</span><span class="lang-en-only">{oe}</span></div>
+    </div>"""
+
+
+def ladder(items: list[tuple]) -> str:
+    """Build a priority ladder. Each item is (zh, en) or (num, zh, en) or (num, zh, en, desc_zh, desc_en)."""
+    steps = []
+    for i, item in enumerate(items, 1):
+        if len(item) == 2:
+            num, z, e, dz, de = f"{i:02d}", item[0], item[1], "", ""
+        elif len(item) == 3:
+            num, z, e, dz, de = item[0], item[1], item[2], "", ""
+        else:
+            num, z, e, dz, de = item[0], item[1], item[2], item[3], item[4]
+        desc = ""
+        if dz or de:
+            desc = (
+                f'        <div class="ld-desc"><span class="lang-zh-only">{dz}</span>'
+                f'<span class="lang-en-only">{de}</span></div>'
+            )
+        steps.append(
+            f"""      <div class="ld-row">
+        <div class="ld-num">{num}</div>
+        <div>
+          <div class="ld-name"><span class="lang-zh-only">{z}</span><span class="lang-en-only">{e}</span></div>
+{desc}
+        </div>
+      </div>"""
+        )
+    return "    <div class=\"ladder\">\n" + "\n".join(steps) + "\n    </div>"
+
+
+def keynums(items: list[tuple[str, str, str, str, str]]) -> str:
+    ks = []
+    for n, lz, le, dz, de in items:
+        ks.append(
+            f"""      <div class="keynum">
+        <div class="kn-val">{n}</div>
+        <div class="kn-label"><span class="lang-zh-only">{lz}</span><span class="lang-en-only">{le}</span></div>
+        <div class="kn-desc"><span class="lang-zh-only">{dz}</span><span class="lang-en-only">{de}</span></div>
+      </div>"""
+        )
+    return "    <div class=\"keynum-row\">\n" + "\n".join(ks) + "\n    </div>"
+
+
+def pull(zh: str, en: str) -> str:
+    return f"""    <blockquote class="pull copper">
+      <span class="lang-zh-only">{zh}</span>
+      <span class="lang-en-only">{en}</span>
+      <cite>Field Note · 10</cite>
+    </blockquote>"""
+
+
+def cmp(headers: list[str], rows: list[list[str]]) -> str:
+    ths = "".join(f"<th>{h}</th>" for h in headers)
+    trs = []
+    for row in rows:
+        tds = "".join(f"<td>{c}</td>" for c in row)
+        trs.append(f"      <tr>{tds}</tr>")
+    return f"""    <table class="cmp">
+      <thead><tr>{ths}</tr></thead>
+      <tbody>
+{chr(10).join(trs)}
+      </tbody>
+    </table>"""
+
+
+def fig(zh: str, en: str, inner: str = '<div class="fig-placeholder">diagram</div>') -> str:
+    return f"""    <figure>
+      <div class="figbox">{inner}</div>
+      <figcaption>
+        <span class="figid">FIG</span>
+        <span class="lang-zh-only">{zh}</span>
+        <span class="lang-en-only">{en}</span>
+      </figcaption>
+    </figure>"""
+
+
+def why_care(pills: list[tuple[str, str, str, str]]) -> str:
+    """Chromium-style 'why this stage matters' block. pill: (kind, zh, en, cls)."""
+    rows_zh = rows_en = ""
+    for kind, zh, en, cls in pills:
+        rows_zh += f'      <p><span class="swc-pill {cls}">{kind}</span><span>{zh}</span></p>\n'
+        rows_en += f'      <p><span class="swc-pill {cls}">{kind}</span><span>{en}</span></p>\n'
+    return f"""    <aside class="stage-why-care lang-zh-only">
+      <div class="swc-label">为什么这一段对你来说很重要</div>
+{rows_zh}    </aside>
+    <aside class="stage-why-care lang-en-only">
+      <div class="swc-label">Why this stage matters to you</div>
+{rows_en}    </aside>"""
+
+
+def stage_banner(cells: list[tuple[str, str, str, str]]) -> str:
+    """Four-column stage metadata banner."""
+    items = []
+    for kz, ke, vz, ve in cells:
+        items.append(
+            f"""      <div class="sb-cell">
+        <div class="sb-key"><span class="lang-zh-only">{kz}</span><span class="lang-en-only">{ke}</span></div>
+        <div class="sb-val"><span class="lang-zh-only">{vz}</span><span class="lang-en-only">{ve}</span></div>
+      </div>"""
+        )
+    return "    <div class=\"stage-banner\">\n" + "\n".join(items) + "\n    </div>"
+
+
+def faq_block(items: list[tuple[str, str, str, str]]) -> str:
+    parts = [aside_label("附录", "Appendix", "常见问题", "FAQ")]
+    for qz, qe, az, ae in items:
+        parts.append(
+            f"""    <details class="extended"><summary><span class="ext-tag">Q</span><span class="lang-zh-only">{qz}</span><span class="lang-en-only">{qe}</span></summary><div style="padding:12px 16px 16px"><div class="lang-zh-only"><p>{az}</p></div><div class="lang-en-only"><p>{ae}</p></div></div></details>"""
+        )
+    return "\n\n".join(parts)
+
+
+def trace_box(station: str, zh: str, en: str) -> str:
+    return f"""    <div class="trace-box">
+      <div class="tb-tag">TRACE · station {station}</div>
+      <div class="lang-zh-only"><p>{zh}</p></div>
+      <div class="lang-en-only"><p>{en}</p></div>
+    </div>"""
+
+
+def section_block(
+    title_zh: str,
+    title_en: str,
+    paragraphs: list[tuple[str, str]],
+    *,
+    sec: str | None = None,
+) -> str:
+    parts = [h4(title_zh, title_en, sec)]
+    for zh, en in paragraphs:
+        parts.append(p(zh, en))
+    return join(*parts)
