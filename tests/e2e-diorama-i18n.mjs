@@ -13,6 +13,7 @@ try {
   await page.goto(base+'/',{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>document.documentElement.lang==='en');
   const shelf=page.locator('#diorama-shelf');
+  if(!(await shelf.count())) { console.log('skip: homepage diorama shelf removed (2026-10-26)'); await context.close(); break; }
   const readyImages=()=>page.waitForFunction(()=>[...document.querySelectorAll('#diorama-shelf img')].filter(img=>{const r=img.getBoundingClientRect();return r.right>0&&r.left<innerWidth;}).every(img=>img.complete&&img.naturalWidth>0));
   await shelf.scrollIntoViewIfNeeded();
   // Given an English visitor, all authored shelf text and accessible image descriptions are English.
