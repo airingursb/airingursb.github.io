@@ -28,6 +28,12 @@ test('new edition topics and feature targets remain attributable alongside stabl
   for (const target of ['personal-agent-99', 'source-35', 'source-email@example.com']) {
     assert.equal(weeklyDestination(`https://ursb.me/reading/weekly/004/#${target}`).target, '');
   }
+  for (const target of ['less-5', 'evidence-2', 'work-3', 'life-3', 'bots', 'newsletter', 'source-17']) {
+    assert.equal(weeklyDestination(`https://ursb.me/reading/weekly/005/#${target}`).target, target);
+  }
+  for (const target of ['less-6', 'source-18', 'source-email@example.com']) {
+    assert.equal(weeklyDestination(`https://ursb.me/reading/weekly/005/#${target}`).target, '');
+  }
 });
 
 test('published reader attributes source, image, share, background and column-view events to the editorial unit', async () => {
@@ -82,6 +88,13 @@ test('published reader attributes source, image, share, background and column-vi
     assert.equal(events[1].data.action,'cover-download');
     assert.equal(events[3].data.kind,'sources');
     assert.equal(events[4].data.kind,'transcript');
+    events.length = 0;
+    location.href = 'https://ursb.me/en/reading/weekly/005/';
+    initWeeklyAnalytics();
+    handlers.toggle({target:new Detail('', ['newsletter-notes'])});
+    assert.equal(events[0].name,'weekly-details-open');
+    assert.equal(events[0].data.issue,'005');
+    assert.equal(events[0].data.kind,'newsletter');
   } finally {
     for(const [key,descriptor] of Object.entries(originals)) {if(descriptor) Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];}
   }

@@ -17,6 +17,14 @@ const issue004Targets = new Set([
   ...Array.from({ length: 34 }, (_, i) => `source-${i + 1}`),
 ]);
 
+const issue005Targets = new Set([
+  'less', 'evidence', 'tools', 'work', 'life', 'bots', 'newsletter',
+  ...Array.from({ length: 5 }, (_, i) => `less-${i + 1}`),
+  ...Array.from({ length: 2 }, (_, i) => `evidence-${i + 1}`),
+  ...['work', 'life'].flatMap(group => Array.from({ length: 3 }, (_, i) => `${group}-${i + 1}`)),
+  ...Array.from({ length: 17 }, (_, i) => `source-${i + 1}`),
+]);
+
 export function weeklyDestination(href: string): WeeklyDestination | null {
   const url = new URL(href);
   if (url.hostname !== 'ursb.me' && url.origin !== (typeof location === 'undefined' ? '' : location.origin)) return null;
@@ -26,7 +34,7 @@ export function weeklyDestination(href: string): WeeklyDestination | null {
   return {
     kind: match[2] ? 'issue' : match[3] ? 'rss' : 'archive',
     issue: match[2] || '', lang: match[1] ? 'en' : 'zh',
-    target: /^(column-\d+|agents|creation|science|life|issue-guide|top|runtime|quality|tools|signals|contents|sources|subscribe|film|context|durable|mods|routing|eval|stamps|art-history|creativity|sre|teams|advisor|sonnet|devday|dex|aigc|assistant-demand|distribution|terminology|product-[a-z-]+)$/.test(anchor) || issue003Targets.has(anchor) || (match[2] === '004' && issue004Targets.has(anchor)) ? anchor : '',
+    target: /^(column-\d+|agents|creation|science|life|issue-guide|top|runtime|quality|tools|signals|contents|sources|subscribe|film|context|durable|mods|routing|eval|stamps|art-history|creativity|sre|teams|advisor|sonnet|devday|dex|aigc|assistant-demand|distribution|terminology|product-[a-z-]+)$/.test(anchor) || issue003Targets.has(anchor) || (match[2] === '004' && issue004Targets.has(anchor)) || (match[2] === '005' && issue005Targets.has(anchor)) ? anchor : '',
   };
 }
 
@@ -71,9 +79,9 @@ export function initWeeklyAnalytics() {
   document.addEventListener('toggle', (event) => {
     const detail = event.target;
     if (!(detail instanceof HTMLDetailsElement) || !detail.open || !issue) return;
-    if (!detail.matches('.article-sources, .issue-index, .reading-register details, .all-readings, .comic004 details, #math-background')) return;
+    if (!detail.matches('.article-sources, .issue-index, .reading-register details, .all-readings, .newsletter-notes, .comic004 details, #math-background')) return;
     const unit = detail.closest<HTMLElement>('[data-weekly-column], .column-article');
-    trackEvent('weekly-details-open', { issue, lang: language(), kind: detail.id === 'math-background' ? 'background' : detail.matches('.comic004 details') ? 'transcript' : detail.matches('.article-sources, .reading-register details, .all-readings') ? 'sources' : 'contents', column: unit?.dataset.weeklyColumn || unit?.id || '' });
+    trackEvent('weekly-details-open', { issue, lang: language(), kind: detail.id === 'math-background' ? 'background' : detail.matches('.comic004 details') ? 'transcript' : detail.matches('.newsletter-notes') ? 'newsletter' : detail.matches('.article-sources, .reading-register details, .all-readings') ? 'sources' : 'contents', column: unit?.dataset.weeklyColumn || unit?.id || '' });
   }, true);
   if (!issue) return;
   const seen = new Set<string>();

@@ -59,13 +59,15 @@ for (const lang of ['zh', 'en']) {
     assert.ok(!preview.some(n => attr(n, 'data-weekly-surface') || attr(n, 'id') === 'issue-share'));
   });
 
-  test(`${lang} 004 leads discovery and RSS with bounded cover variants`, async () => {
+  test(`${lang} 004 remains discoverable while entry pages lead with the latest issue`, async () => {
     for (const path of [prefix + '/reading/weekly/index.html', prefix + '/reading/index.html', '/index.html']) {
       const html = await readFile(built(path), 'utf8');
-      assert.ok(html.includes(issue.href[lang]), path);
-      assert.ok(html.includes(issue.cover[lang]), path);
+      assert.ok(html.includes(aiWeeklyIssues[0].href[lang]), path);
+      assert.ok(html.includes(aiWeeklyIssues[0].cover[lang]), path);
     }
     const archive = await readFile(built(prefix + '/reading/weekly/index.html'), 'utf8');
+    assert.ok(archive.includes(issue.href[lang]));
+    assert.ok(archive.includes(issue.cover[lang]));
     assert.ok(archive.indexOf('issue-004') < archive.indexOf('issue-003'));
     const feed = await readFile(built(prefix + '/reading/weekly/feed.xml'), 'utf8');
     assert.ok(feed.includes('ai-weekly-004') && feed.includes('utm_medium=rss'));

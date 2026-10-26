@@ -1,0 +1,115 @@
+---
+import inventory from '../../../data/ai-weekly/005.products.json';
+import images from '../../../data/ai-weekly/005.images.json';
+import Issue003HeadingText from './Issue003HeadingText.astro';
+import columns from '../../../data/ai-weekly/005.columns.json';
+interface Props {type:string;lang:'zh'|'en';preview?:boolean}
+const {type,lang,preview=true}=Astro.props;
+const columnFor=(id:string)=>columns.find(column=>column.id===id)!;
+const zh=lang==='zh';
+const c=(a:string,b:string)=>zh?a:b;
+const t=(v:{zh:string;en:string})=>v[lang];
+const root='/reading/weekly/005/';
+const known=['handoff','placement','agents','evaluation','likes','physics','products','fund','kindle','journey'];
+if(!known.includes(type))throw new Error('Unknown issue 005 visual: '+type);
+const headings:Record<string,string[]>={
+ handoff:[c('01 / 约束在哪里丢了','01 / WHERE THE LIMIT DISAPPEARED'),c('20 → 全部：一次交接里的语义漂移','20 → all: a constraint lost in a handoff')],
+ placement:[c('02 / 规则的去处','02 / WHERE RULES BELONG'),c('不必每次都读完一整本手册','The whole manual need not travel every time')],
+ agents:[c('03 / 上下文与边界','03 / CONTEXT & BOUNDARIES'),c('让需要一起理解的信息，待在一起','Keep shared understanding together')],
+ evaluation:[c('04 / 改动后的检查','04 / CHECK THE CHANGE'),c('平均分以外，看看哪一题退步了','Beyond the average: which task regressed?')],
+ likes:[c('05 / 热度信号','05 / A POPULARITY SIGNAL'),c('点赞账号有多“新”？','How recent are the accounts behind the likes?')],
+ physics:[c('06 / 分母是 50 道题','06 / THE DENOMINATOR IS 50'),c('49 / 50，是怎样一种进展？','49 / 50: what kind of progress?')],
+ fund:[c('07 / 从承诺到收入','07 / FROM COMMITMENT TO INCOME'),c('股权、基金与个人收入之间，还有几步','Equity, a fund and spendable income are different steps')],
+ journey:[c('08 / 留下什么','08 / WHAT TO KEEP'),c('把重复交出去，把在乎的过程留下','Delegate repetition. Keep the experience you value')]
+};
+const imageInfo=(id:string)=>images[id as keyof typeof images];
+const headingPhrases:Record<string,string[]>={fund:['股权、基金与个人收入','之间，还有几步'],journey:['把重复交出去，','把在乎的过程留下']};
+---
+{type==='products'?<div class="products005">
+ <p class="tool-art-note">{c('产品图片保留原作；预览统一为 3:2。点击查看完整图像。','Original product imagery in 3:2 previews. Click to inspect the full image.')}</p>
+ <div class="tool-grid">{inventory.products.map((p,i)=><article class="tool-card" id={'product-'+p.id} data-weekly-column={preview?undefined:columnFor('product-'+p.id).anchor}>
+  <span class="column-anchor" id={columnFor('product-'+p.id).anchor} aria-hidden="true"></span>
+  <p class="tool-meta"><span>{t(p.category)}</span><span>{String(i+1).padStart(2,'0')}</span></p>
+  <div class="tool-head"><h3><a href={p.url} target="_blank" rel="noopener noreferrer">{p.name}<span>↗</span></a></h3>
+   <figure class="product-art"><a class="product-image" href={root+p.id+'-full.webp'} target="_blank" rel="noopener" aria-label={c('查看 '+p.name+' 完整图像','View the full '+p.name+' image')}><img src={root+p.id+'-480.webp'} srcset={root+p.id+'-480.webp 480w, '+root+p.id+'-960.webp 960w'} sizes="(min-width:1101px) 240px, (min-width:701px) 45vw, calc(100vw - 80px)" width="480" height="320" alt={c(p.name+' 的原始产品配图',p.name+' original product image')} loading="lazy" decoding="async"/></a>
+    <figcaption><a href={imageInfo(p.id).page} target="_blank" rel="noopener noreferrer">{p.id==='lovart'?c('图：APPSO 发布会照片','Photo: APPSO launch report'):p.id==='apple'?c('图：原帖截图','Image: saved post'):p.id==='unscroll'?c('图：DEX #368 产品配图','Image: DEX #368'):c('图：产品官网 / 项目','Image: official site / project')} ↗</a></figcaption>
+   </figure>
+  </div>
+  <p>{t(p.summary)}</p><p class="tool-use">{t(p.use)}</p><p class="tool-note">{t(p.note)}</p>
+  <a class="product-source" href={'#source-'+p.source}>{c('阅读来源','Saved reading')} [{String(p.source).padStart(2,'0')}] ↗</a>
+ </article>)}</div>
+ <section class="bot-index" id="bots" data-weekly-column={preview?undefined:columnFor('bots').anchor}>
+  <span class="column-anchor" id={columnFor('bots').anchor} aria-hidden="true"></span>
+  <div class="section-top"><h3>{c('十个 Bot，十个具体任务','Ten bots, ten concrete jobs')}</h3><a href="#source-17">[17] ↗</a></div>
+  <p>{c('kaito 的日文清单按用途整理如下。它们是社区推荐，能力与访问条件以各自页面为准；不是本刊测试结论。','kaito’s Japanese list, organized by job. These are community recommendations, not our test results; check each bot’s current access and behavior.')}</p>
+  <ol>{inventory.bots.map(b=><li><a href={b.url} target="_blank" rel="noopener noreferrer">{b.name} ↗</a><p>{t(b.summary)}</p></li>)}</ol>
+ </section>
+ <section id="newsletter" data-weekly-column={preview?undefined:columnFor('newsletter').anchor}>
+ <span class="column-anchor" id={columnFor('newsletter').anchor} aria-hidden="true"></span>
+ <details class="newsletter-notes"><summary>{c('两封通讯里，还有这些值得回看的线索','More threads from the two newsletters')}</summary>
+  <div class="newsletter-grid"><section><h4>AIGC Weekly #193</h4><p>{c('除上面的四款工具，还汇总了 Meta Muse、Gemini 4、DeepSeek V4.1、多个开放模型与桌面 Agent 的更新。选读线索：软件审查瓶颈、怎样提出更有野心的任务、Linear 对产品作者性的讨论，以及 Harness² 对运行系统的优化。','Beyond four tools above: Meta Muse, Gemini 4, DeepSeek V4.1, open models and desktop agents. Reading threads include review bottlenecks, more ambitious tasks, Linear’s view of product authorship and Harness² system optimization.')}</p><p>{c('模型动态按保存通讯保留线索，不把榜单、预测或个别体验当作本刊实测。','These are leads from the saved newsletter; rankings, predictions and individual experiences are not our measurements.')}</p><a href="#source-11">{c('回到这封阅读记录','Return to this saved newsletter')} [11] ↗</a></section>
+  <section><h4>DEX #368 · Unscroll</h4><p>{c('设计资源包括 affectUI、Gauge UI、作品集与字体工具；产品还有 Rainbrand、MagicOS、Lissin 等。两篇长读把界面状态如何显式表达、Codex 产品形态怎样演变放在一起，适合继续思考「软件变好做之后，什么仍然难做」。','Design leads include affectUI, Gauge UI, portfolios and font tools; product leads include Rainbrand, MagicOS and Lissin. Longer readings on explicit interface state and Codex’s changing form ask what remains difficult when software gets easier to build.')}</p><p>{c('编辑对 AI 作品、开源协作与职场的看法，是这封通讯的个人观察。','Its views on AI work, open-source collaboration and careers are the editor’s personal observations.')}</p><a href="#source-12">{c('回到这封阅读记录','Return to this saved newsletter')} [12] ↗</a></section></div>
+ </details></section>
+</div>:type==='kindle'?<figure class="kindle005">
+ <a class="figure-enlarge" href={root+'kindle-full.webp'} target="_blank" rel="noopener" aria-label={c('查看 Kindle 原图','View the original Kindle photograph')}><img src={root+'kindle-full.webp'} width={images.kindle.width} height={images.kindle.height} alt={c('APPSO 原文中显示风景照片的 Kindle 墨水屏。','A landscape photograph displayed on a Kindle e-ink screen in APPSO’s article.')} loading="lazy" decoding="async"/></a>
+ <figcaption><p class="kicker">{c('真实物件的反馈','FEEDBACK FROM A REAL OBJECT')}</p><h5>{zh?<Fragment><span class="heading-word">屏幕不会因为代码跑通，</span><span class="heading-word">就自动变好看。</span></Fragment>:'Working code is only the start of a good display.'}</h5><p>{c('画面、残影与刷新节奏，需要拿起设备才能判断。','Image quality, ghosting and refresh timing need a physical check.')}</p><a href="#source-5">{c('图：APPSO 原文，保留完整比例','Photo: APPSO; original aspect ratio')} [05] ↗</a></figcaption>
+</figure>:<figure class:list={['exhibit004','exhibit005','figure-'+type]}>
+ <figcaption><p class="kicker">{headings[type][0]}</p><h5>{zh&&headingPhrases[type]?headingPhrases[type].map(phrase=><span class="heading-word">{phrase}</span>):<Issue003HeadingText text={headings[type][1]} lang={lang}/>}</h5></figcaption>
+ {type==='handoff'&&<Fragment>
+  <ol class="handoff-steps">
+   <li><span>{c('需求','REQUIREMENT')}</span><strong>{c('最多 20 个','At most 20')}</strong><p>{c('用户设定了上限','A limit is part of the task')}</p></li>
+   <li class="lost"><span>{c('任务摘要','TASK SUMMARY')}</span><strong>{c('收回全部','Return all')}</strong><p>{c('转述时，上限丢了','The limit vanishes in translation')}</p></li>
+   <li class="lost"><span>{c('实现结果','IMPLEMENTATION')}</span><strong>{c('忠实地做错','Faithfully wrong')}</strong><p>{c('代码符合摘要，却违反需求','Matches the summary, violates the requirement')}</p></li>
+  </ol>
+  <div class="repair-line"><span>{c('修复交接','REPAIR THE HANDOFF')}</span><p>{c('设计核对原始边界 → 任务引用设计 → 实现再读设计','Check the original bounds → cite the design → reread it during implementation')}</p></div>
+  <p class="figure-note">{c('根据作者记录的批量收回案例整理；不是一次模型能力基准测试。','Based on the author’s batch-return example, not a model benchmark.')} <a href="#source-13">[13]</a></p>
+ </Fragment>}
+ {type==='placement'&&<Fragment>
+  <dl class="placement-table">
+   {[
+    [c('始终生效','ALWAYS'),c('最小约束','Core constraints'),c('目标、权限、不能越过的边界','Goal, authority and boundaries')],
+    [c('遇到任务再读','ON DEMAND'),c('Skill 与参考资料','Skills & references'),c('该阶段的步骤、领域知识、历史经验','Stage-specific procedures, knowledge and history')],
+    [c('执行时检查','ON ACTION'),c('工具与脚本','Tools & scripts'),c('版本、路径、前置条件、固定格式','Versions, paths, preconditions and schemas')],
+    [c('交付时判断','AT HANDOFF'),c('人和验收样例','People & acceptance cases'),c('真实体验、产品取舍、关键例外','Real experience, tradeoffs and consequential exceptions')]
+   ].map(row=><div><dt><small>{row[0]}</small><strong>{row[1]}</strong></dt><dd>{row[2]}</dd></div>)}
+  </dl>
+  <p class="figure-note">{c('本期的编辑归纳：减少反复携带的内容，同时让约束有可靠的执行位置。','Editorial synthesis: carry less repeated material while giving constraints a reliable home.')} <a href="#source-13">[13]</a> <a href="#source-16">[16]</a></p>
+ </Fragment>}
+ {type==='agents'&&<Fragment>
+  <div class="architecture-pair">
+   <section><h6>{c('共享同一段理解','Keep one shared context')}</h6><div class="agent-main">{c('主 Agent · 完整对话','Main agent · full conversation')}</div><div class="tool-branches"><span>{c('订单工具','Order tool')}</span><span>{c('物流工具','Shipping tool')}</span><span>Skill</span></div><p>{c('同一个目标、同一批数据，减少重复转述。','One goal and shared data: fewer summaries to exchange.')}</p></section>
+   <section><h6>{c('独立任务再分出去','Split independent work')}</h6><div class="agent-main">{c('主 Agent · 检查与合并','Main agent · verify & combine')}</div><div class="tool-branches separate"><span>{c('独立调查 A','Inquiry A')}</span><span>{c('独立调查 B','Inquiry B')}</span><span>{c('独立复核','Fresh review')}</span></div><p>{c('每项有明确输入与产物；合并时仍需核查。','Each has bounded inputs and outputs; synthesis still needs checking.')}</p></section>
+  </div>
+  <p class="figure-note">{c('结构示意，不表示右侧一定更快；单循环也能并行调用工具。','Conceptual structures, not a speed comparison. One loop can also call tools in parallel.')} <a href="#source-16">[16]</a> <a href="#source-6">[06]</a></p>
+ </Fragment>}
+ {type==='evaluation'&&<Fragment>
+  <div class="eval-outcomes">
+   <div><span>{c('失败 → 成功','FAIL → PASS')}</span><h6>{c('新结构帮到了什么？','What improved?')}</h6><p>{c('保存输入、结果与可重复的检查。','Keep the input, result and reproducible check.')}</p></div>
+   <div><span>{c('成功 → 失败','PASS → FAIL')}</span><h6>{c('原来的哪项能力丢了？','What was lost?')}</h6><p>{c('例如订单查到了，却漏了送达日期。','An order is found, but its delivery date is missing.')}</p></div>
+   <div><span>{c('结果不稳定','INCONSISTENT')}</span><h6>{c('同一题多跑几次','Repeat the same task')}</h6><p>{c('偶发漏项也算回归，不能只挑最好一次。','Intermittent omissions count; do not pick only the best run.')}</p></div>
+  </div>
+  <p class="figure-note">{c('示意检查方法，不是本刊跑出的成绩。同时记录完成率、等待、成本与返工。','A proposed checking method, not measured results. Also record completion, latency, cost and rework.')} <a href="#source-16">[16]</a></p>
+ </Fragment>}
+ {type==='likes'&&<Fragment>
+  <p class="chart-definition">{c('注册于各自模型发布前 60 天内，或发布之后的点赞账号占比','Share of liking accounts registered within 60 days before the respective model’s release, or after it')}</p>
+  <div class="like-bars">{[['JEV-27B-VL',94],['Qwen3.8-27B',27],['embeddinggemma-2',18],['drama-3',9]].map(([name,value])=><div class="like-row"><span>{name}</span><div aria-hidden="true"><i style={'width:'+value+'%'}/></div><strong>{value}%</strong></div>)}</div>
+  <div class="chart-bottom"><strong>{c('账号分布 ≠ 模型能力','Account patterns ≠ model ability')}</strong><p>{c('支持对热度的怀疑，不能据此确认操作者，也不能直接判定模型好坏。','Raises doubts about popularity; identifies neither the operator nor model quality.')}</p></div>
+  <p class="figure-note">{c('数据：尹 John / AGI Hunt 文中统计，非本刊复测；Jev 样本为 6,878 个点赞账号。','Data reported by Yin John / AGI Hunt, not independently replicated here; Jev sample: 6,878 liking accounts.')} <a href="#source-3">[03]</a></p>
+ </Fragment>}
+ {type==='physics'&&<Fragment>
+  <div class="physics-result">
+   <div><div class="fifty-grid" aria-hidden="true">{Array.from({length:50},(_,i)=><span class:list={{solved:i<49}}/>)}</div><p>{c('每格一道题 · 绿色为正确最终答案','One cell per problem · green means a correct final answer')}</p></div>
+   <div class="physics-stat"><strong>49<span>/50</span></strong><p>TheoPhysEval</p><span>{c('GPT-6 Astra / Codex · 98%','GPT-6 Astra / Codex · 98%')}</span></div>
+  </div>
+  <dl class="scope-pair"><div><dt>{c('测到的','MEASURED')}</dt><dd>{c('给定研究级问题，在可用工具下得到可核验的最终答案。','Verifiable final answers to supplied research-level problems, with tools available.')}</dd></div><div><dt>{c('没有据此证明的','NOT ESTABLISHED')}</dt><dd>{c('自主选出重要问题，或解决同等比例的全部科学难题。','Autonomous selection of important questions, or the same success rate on all scientific problems.')}</dd></div></dl>
+  <p class="figure-note">{c('按论文摘要的最终答案准确率绘制；不是对「所有物理问题」的抽样估计。','Drawn from the paper’s reported final-answer accuracy, not an estimate across all physics problems.')} <a href="https://arxiv.org/abs/2610.16733" target="_blank" rel="noopener noreferrer">TheoPhysEval ↗</a></p>
+ </Fragment>}
+ {type==='fund'&&<Fragment>
+  <ol class="fund-stages"><li><span>01</span><strong>{c('股份承诺','Equity commitment')}</strong><p>{c('5% · 需股东批准','5% · subject to shareholder approval')}</p></li><li><span>02</span><strong>{c('基金治理与安排','Fund governance')}</strong><p>{c('用途、受益对象、时间','Uses, beneficiaries and timing')}</p></li><li><span>03</span><strong>{c('实际到达个人','Value reaches people')}</strong><p>{c('仍需具体方案与执行','Requires a concrete program and execution')}</p></li></ol>
+  <p class="figure-note">{c('第一项为官方承诺；后两项是兑现需要回答的问题，不代表已经执行。','The first is the announced commitment. The latter steps are questions for delivery, not completed actions.')} <a href="https://www.anthropic.com/news/public-benefit-fund" target="_blank" rel="noopener noreferrer">{c('官方公告','Announcement')} ↗</a></p>
+ </Fragment>}
+ {type==='journey'&&<Fragment>
+  <div class="journey-pair"><section><span>{c('可以交出去','DELEGATE')}</span><h6>{c('重复搬运资料','Repeated collection')}</h6><p>{c('搜索、转换、第一轮排错、机械检查。','Search, conversion, initial debugging and mechanical checks.')}</p></section><section><span>{c('可以留给自己','KEEP')}</span><h6>{c('选择、体验与好奇','Choice, experience & curiosity')}</h6><p>{c('为什么做、真实感受、愿意再试一次的地方。','Why it matters, how it feels and what invites another try.')}</p></section></div>
+  <p class="figure-note">{c('本期的阅读联想，不是关于幸福或心理状态的研究结论。','An editorial reflection, not a research finding about happiness or mental health.')} <a href="#source-5">[05]</a> <a href="#source-15">[15]</a></p>
+ </Fragment>}
+</figure>}

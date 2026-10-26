@@ -1,5 +1,22 @@
 # Airing's Blog Design System
 
+## AI Weekly 005 · October 26
+
+Issue 005 uses the A4 cover, red frame, printed paper and type scale established
+by issue 004. The cover artwork keeps Airing's panda identity, blue beret and
+orange scarf. The Editor link displays only “Airing”, with no appended arrow.
+Desktop aligns the cover with the editorial desk; phones stack them. Dark mode
+changes the surrounding desk while preserving the light magazine paper.
+
+Both languages share the same content and visual components. The 17 saved
+readings are organized into five themes and 23 linked editorial units; short
+product entries retain original product images, cropped to 3:2 thumbnails with
+full-aspect originals available. Diagrams use live HTML and the magazine tokens.
+Public pages reuse the weekly share, subscription and previous-issue components.
+Display covers are WebP; original PNG covers are downloaded from the issue's
+`assets/` directory. The separate social preview is a 1200 × 600 JPEG. Preview
+aliases remain unindexed and do not initialize weekly analytics.
+
 ## Detail pages polish · October 18
 
 Covers the comics, photos, reading, workouts, AI Weekly, Echo, diorama and notes detail pages.

@@ -1,3 +1,5 @@
+import issue005Columns from './ai-weekly/005.columns.json' with { type: 'json' };
+import issue005Draft from './ai-weekly/005.json' with { type: 'json' };
 import issue004Columns from './ai-weekly/004.columns.json' with { type: 'json' };
 import issue003Columns from './ai-weekly/003.columns.json' with { type: 'json' };
 import issue002Columns from './ai-weekly/002.columns.json' with { type: 'json' };
@@ -28,6 +30,26 @@ export type AIWeeklyIssue = {
 };
 
 export const aiWeeklyIssues = [
+  {
+    number: '005',
+    startDate: '2026-10-18',
+    endDate: '2026-10-24',
+    publishedAt: '2026-10-26',
+    href: { zh: '/reading/weekly/005/', en: '/en/reading/weekly/005/' },
+    cover: { zh: '/reading/weekly/005/shelf-cover-zh.webp', en: '/reading/weekly/005/shelf-cover-en.webp' },
+    shareCover: { zh: '/reading/weekly/005/assets/cover-zh.png', en: '/reading/weekly/005/assets/cover-en.png' },
+    socialImage: { zh: '/reading/weekly/005/social-zh.jpg', en: '/reading/weekly/005/social-en.jpg' },
+    columns: issue005Columns,
+    title: { zh: ['给 Agent 做减法'], en: ['Less weight.', 'Better agents.'] },
+    description: {
+      zh: '从 800 行规则到子 Agent 的交接成本，重新安排约束、判断与检查；再看 Jev 的热度争议、物理题成绩与人的工作。',
+      en: 'From an 800-line rulebook to subagent handoffs: rethink constraints and checks, then examine Jev’s likes, physics results and human work.',
+    },
+    topics: issue005Draft.groups.map(group => ({
+      anchor: group.id, title: group.name, description: group.detail,
+      count: issue005Columns.filter(column => column.group === group.id).length,
+    })),
+  },
 {
   "number": "004",
   "startDate": "2026-10-11",
