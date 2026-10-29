@@ -21,7 +21,19 @@ export interface Comic {
   created_at: string;
 }
 
-const SUPABASE_URL = (import.meta as any).env?.BLOG_SUPABASE_URL || process.env.BLOG_SUPABASE_URL || '';
+/**
+ * The day an episode is about, YYYY-MM-DD. The source text opens with it
+ * ("2026/8/15，和同事去…"); published_at (late evening, Singapore time) is
+ * the fallback.
+ */
+export function comicDate(c: Comic): string {
+  const m = (c.source_text || '').match(/^\s*(\d{4})\/(\d{1,2})\/(\d{1,2})/);
+  if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+  const t = Date.parse(c.published_at);
+  return Number.isNaN(t) ? '' : new Date(t + 8 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+const SUPABASE_URL =(import.meta as any).env?.BLOG_SUPABASE_URL || process.env.BLOG_SUPABASE_URL || '';
 const SUPABASE_KEY = (import.meta as any).env?.BLOG_SUPABASE_SERVICE_KEY || process.env.BLOG_SUPABASE_SERVICE_KEY || '';
 
 export async function fetchComics(): Promise<Comic[]> {

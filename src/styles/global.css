@@ -873,6 +873,21 @@
     @media (max-width: 480px) {
       .feed-head-cmd { font-size: 11px; }
     }
+    /* Link from one card to a related entry in another (a comic ↔ its hike). */
+    .xlink {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      padding: 0 6px;
+      border: 1px solid rgba(var(--accent-rgb), 0.35);
+      border-radius: 3px;
+      font-size: 11px;
+      line-height: 18px;
+      color: var(--accent);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .xlink:hover { background: rgba(var(--accent-rgb), 0.1); }
 
     /* Highlights — newest quote open, the next five one line each. */
     .hl-feat {
@@ -2482,33 +2497,33 @@
     .gs-tag:hover { border-color: rgba(var(--c-overlay-rgb),0.15); background: rgba(var(--c-overlay-rgb),0.05); }
 
     /* Native horizontal scrollbar shared by homepage strips. */
-    :is(.photos-strip, .reading-home-strip, .comics-strip, .workouts-strip) {
+    :is(.reading-home-strip, .comics-strip) {
       --strip-scrollbar-size: 6px;
       --strip-scrollbar-thumb: rgba(var(--c-overlay-rgb), .28);
       --strip-scrollbar-thumb-active: rgba(var(--c-overlay-rgb), .44);
       scrollbar-width: thin;
       scrollbar-color: var(--strip-scrollbar-thumb) transparent;
     }
-    :is(.photos-strip, .reading-home-strip, .comics-strip, .workouts-strip):is(:hover, :focus-within) {
+    :is(.reading-home-strip, .comics-strip):is(:hover, :focus-within) {
       scrollbar-color: var(--strip-scrollbar-thumb-active) transparent;
     }
-    :is(.photos-strip, .reading-home-strip, .comics-strip, .workouts-strip)::-webkit-scrollbar {
+    :is(.reading-home-strip, .comics-strip)::-webkit-scrollbar {
       height: var(--strip-scrollbar-size);
       background: transparent;
     }
-    :is(.photos-strip, .reading-home-strip, .comics-strip, .workouts-strip)::-webkit-scrollbar-track,
-    :is(.photos-strip, .reading-home-strip, .comics-strip, .workouts-strip)::-webkit-scrollbar-corner {
+    :is(.reading-home-strip, .comics-strip)::-webkit-scrollbar-track,
+    :is(.reading-home-strip, .comics-strip)::-webkit-scrollbar-corner {
       background: transparent;
     }
-    :is(.photos-strip, .reading-home-strip, .comics-strip, .workouts-strip)::-webkit-scrollbar-thumb {
+    :is(.reading-home-strip, .comics-strip)::-webkit-scrollbar-thumb {
       background: var(--strip-scrollbar-thumb);
       border-radius: var(--strip-scrollbar-size);
     }
-    :is(.photos-strip, .reading-home-strip, .comics-strip, .workouts-strip):is(:hover, :focus-within)::-webkit-scrollbar-thumb {
+    :is(.reading-home-strip, .comics-strip):is(:hover, :focus-within)::-webkit-scrollbar-thumb {
       background: var(--strip-scrollbar-thumb-active);
     }
     @media (forced-colors: active) {
-      :is(.photos-strip, .reading-home-strip, .comics-strip, .workouts-strip) { scrollbar-color: auto; }
+      :is(.reading-home-strip, .comics-strip) { scrollbar-color: auto; }
     }
 
     /* ── Photos strip (homepage) ── */
@@ -2527,38 +2542,125 @@
       transition: color 0.2s;
     }
     .photos-strip-more:hover { color: var(--accent); }
-    .photos-strip {
-      display: flex;
-      gap: 8px;
-      overflow-x: auto;
-      overflow-y: hidden;
-      scroll-snap-type: x mandatory;
-      -webkit-overflow-scrolling: touch;
-      padding-bottom: 4px;
+    /* Photos — a darkroom view: one photo open with its EXIF readout and
+       RGB histogram, thumbnails beside it and the recent photos' dominant
+       colours as a strip underneath. */
+    .ph-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+      gap: var(--space-4);
     }
-    .photos-strip-item {
-      flex: 0 0 auto;
-      width: 128px;
-      height: 96px;
-      border-radius: 6px;
+    .ph-main {
+      display: block;
+      aspect-ratio: 4 / 3;
       overflow: hidden;
-      background: var(--dom, rgba(var(--c-overlay-rgb), 0.08));
-      scroll-snap-align: start;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-      position: relative;
+      border-radius: 4px;
+      background: var(--ph-color, rgba(var(--c-overlay-rgb), 0.08));
     }
-    .photos-strip-item:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
-    }
-    .photos-strip-item img {
+    .ph-main img {
+      display: block;
       width: 100%;
       height: 100%;
       object-fit: cover;
+      transition: opacity 0.25s;
+    }
+    .ph-main img.is-loading { opacity: 0.25; }
+    .ph-side {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      min-width: 0;
+    }
+    .ph-exif {
+      font-size: var(--text-xs);
+      line-height: 1.75;
+      color: var(--c-text);
+    }
+    .ph-exif-cmd {
+      overflow: hidden;
+      color: var(--c-text-muted);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .ph-exif-cmd .prompt { color: var(--accent); }
+    .ph-exif-title { font-size: 13px; }
+    .ph-exif-k {
+      display: inline-block;
+      width: 4.5em;
+      color: var(--c-text-muted);
+    }
+    .ph-exif-settings { letter-spacing: 0.2px; }
+    .ph-hist {
       display: block;
+      width: 100%;
+      height: 84px;
+      border-bottom: 1px solid rgba(var(--c-overlay-rgb), 0.1);
+    }
+    .ph-hist-r { fill: rgba(248, 113, 113, 0.45); }
+    .ph-hist-g { fill: rgba(74, 222, 128, 0.45); }
+    .ph-hist-b { fill: rgba(96, 165, 250, 0.45); }
+    .ph-thumbs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+      margin-top: auto;
+    }
+    .ph-thumb {
+      aspect-ratio: 4 / 3;
+      overflow: hidden;
+      border-radius: 2px;
+      outline: 1px solid transparent;
+      outline-offset: 1px;
+      transition: outline-color 0.15s;
+    }
+    .ph-thumb img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.7;
+      transition: opacity 0.15s;
+    }
+    .ph-thumb:hover img,
+    .ph-thumb.is-open img { opacity: 1; }
+    .ph-thumb.is-open { outline-color: var(--accent); }
+    .ph-palette {
+      display: flex;
+      gap: 2px;
+      height: 12px;
+      margin-top: var(--space-4);
+    }
+    .ph-swatch {
+      flex: 1;
+      border-radius: 2px;
+      box-shadow: inset 0 0 0 1px rgba(var(--c-overlay-rgb), 0.14);
+      transition: flex 0.2s;
+    }
+    .ph-swatch.is-open {
+      flex: 2.4;
+      box-shadow: inset 0 0 0 1px rgba(var(--c-overlay-rgb), 0.14), 0 3px 0 var(--accent);
+    }
+    .ph-palette-cap {
+      display: flex;
+      justify-content: space-between;
+      gap: var(--space-2);
+      margin-top: 6px;
+      font-size: 10px;
+      color: var(--c-text-dim);
+    }
+    .ph-thumb:focus-visible,
+    .ph-swatch:focus-visible,
+    .ph-main:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
     }
     @media (max-width: 480px) {
-      .photos-strip-item { width: 104px; height: 78px; }
+      .ph-body { grid-template-columns: 1fr; }
+      .ph-palette-what { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .ph-main img,
+      .ph-swatch { transition: none; }
     }
 
     /* ── Reading Stream strip (homepage) ── */
@@ -2763,6 +2865,124 @@
     @media (max-width: 480px) {
       .comics-strip-item { width: 160px; }
     }
+    /* Comics card — the newest episode unfolded into a strip you can read
+       in place, earlier episodes as a two-column index. */
+    .cm-ep {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: var(--space-1) var(--space-3);
+      margin-bottom: var(--space-3);
+    }
+    .cm-no { font-size: var(--text-xs); color: var(--accent); }
+    .cm-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--c-text);
+      text-decoration: none;
+    }
+    .cm-title:hover { color: var(--accent); }
+    .cm-date { font-size: 11px; color: var(--c-text-muted); }
+    .cm-hike { margin-left: auto; }
+    .cm-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+    .cm-panel {
+      position: relative;
+      overflow: hidden;
+      aspect-ratio: var(--cm-ratio, 1 / 1);
+      border-radius: 3px;
+      border: 1px solid rgba(var(--c-overlay-rgb), 0.12);
+      background: rgba(var(--c-overlay-rgb), 0.04);
+      transition: transform 0.25s ease, box-shadow 0.25s ease, opacity 0.25s;
+    }
+    /* Each panel shows one quarter of the 2×2 image. */
+    .cm-panel img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 200%;
+      height: 200%;
+      max-width: none;
+    }
+    .cm-panel-2 img,
+    .cm-panel-4 img { left: -100%; }
+    .cm-panel-3 img,
+    .cm-panel-4 img { top: -100%; }
+    .cm-panel-1 { transform-origin: left center; }
+    .cm-panel-4 { transform-origin: right center; }
+    .cm-panel-no {
+      position: absolute;
+      left: 4px;
+      bottom: 3px;
+      padding: 2px 4px;
+      border-radius: 2px;
+      font-size: 10px;
+      line-height: 1;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.45);
+    }
+    @media (hover: hover) {
+      .cm-strip:hover .cm-panel { opacity: 0.55; }
+      .cm-strip .cm-panel:hover {
+        z-index: 2;
+        opacity: 1;
+        transform: scale(1.7);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      }
+    }
+    .cm-strip:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+    .cm-prev-label {
+      margin: var(--space-4) 0 var(--space-1);
+      font-size: 11px;
+      color: var(--c-text-muted);
+    }
+    .cm-prev {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      column-gap: var(--space-5);
+    }
+    .cm-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      min-height: 34px;
+      border-bottom: 1px solid rgba(var(--c-overlay-rgb), 0.05);
+      font-size: 13px;
+      color: var(--c-text);
+      text-decoration: none;
+    }
+    .cm-row-thumb {
+      flex: none;
+      width: 36px;
+      height: 24px;
+      object-fit: cover;
+      border-radius: 2px;
+      opacity: 0.85;
+    }
+    .cm-row-no { flex: none; width: 3.4em; font-size: 11px; color: var(--c-text-muted); }
+    .cm-row-title {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .cm-row:hover .cm-row-title { color: var(--accent); }
+    .cm-row:hover .cm-row-thumb { opacity: 1; }
+    @media (max-width: 480px) {
+      .cm-strip { grid-template-columns: 1fr 1fr; }
+      .cm-hike { margin-left: 0; }
+      .cm-prev { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .cm-panel { transition: none; }
+    }
+
     .card-comics .comics-card-link:hover .comics-card-img {
       transform: translateY(-2px);
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);

@@ -1,41 +1,32 @@
 ---
 // src/components/workouts/WorkoutCardPreview.astro
 //
-// Full-width homepage card matching .card.card-photos:
-// section-title-row + horizontal scroll strip. Each tile renders a
-// non-interactive Mapbox map with a pace-colored polyline overlay
-// (lazy mounted via client:visible). Reads each workout's detail JSON
-// at build time to inline the route into the static HTML. CI builds
-// without source data render no card.
-import { existsSync, readFileSync } from 'node:fs';
-import { resolve as resolvePath } from 'node:path';
-import { getCollection } from 'astro:content';
-import { formatDistance, formatDuration, defaultWorkoutTitle } from './format.mjs';
-import RouteMini from './RouteMini.tsx';
+// Homepage Workouts card, kept apart from the photo and comic cards next to
+// it: a hiking log rather than another scrolling strip. One row per trail,
+// grouped by year, with the route drawn as a small line from the trackSvg
+// that scripts/sync-workouts.mjs already writes (no map tiles). A hike that
+// was drawn as a comic links to that episode.
+import { loadHomeWorkouts } from '../../lib/home-workouts';
 
-const idxPath = resolvePath('./src/data/workouts.json');
-const pubIdxPath = resolvePath('./src/data/workouts-public.json');
-const idxFile = existsSync(idxPath) ? idxPath : (existsSync(pubIdxPath) ? pubIdxPath : null);
-const items = (idxFile ? JSON.parse(readFileSync(idxFile, 'utf8')) : []) as Array<any>;
-
-const totalKm = items.reduce((s: number, w: any) => s + (w.stats?.distanceKm ?? 0), 0);
-const totalHours = items.reduce((s: number, w: any) => s + (w.durationSec ?? 0), 0) / 3600;
-
-const contentEntries = await getCollection('workouts');
-// Astro 5 lowercases content collection IDs; workout UUIDs are uppercase.
-const titleById = new Map(contentEntries.map(e => [e.id.toLowerCase(), e.data.title]));
-
-// Inline the route per tile so RouteMini gets the data at hydration time
-// without an extra fetch.
-const routesById = new Map<string, any[]>();
-for (const w of items) {
-  const local = resolvePath(`./src/data/workouts/${w.id}.json`);
-  const pub   = resolvePath(`./src/data/workouts-public/${w.id}.json`);
-  const file  = existsSync(local) ? local : (existsSync(pub) ? pub : null);
-  if (!file) continue;
-  const detail = JSON.parse(readFileSync(file, 'utf8'));
-  routesById.set(w.id, detail.route ?? []);
+interface Props {
+  /** YYYY-MM-DD → comic issue number drawn about that day. */
+  comicIssueByDate?: Record<string, number>;
 }
+const { comicIssueByDate = {} } = Astro.props;
+
+const all = await loadHomeWorkouts();
+const items = all.slice(0, 8);
+const totalKm = all.reduce((s, w) => s + (w.stats.distanceKm ?? 0), 0);
+const totalUp = all.reduce((s, w) => s + (w.stats.elevationUpM ?? 0), 0);
+const types = new Set(all.map(w => w.type));
+const typeFlag = types.size === 1 ? `--type ${all[0]?.type === 'hiking' ? 'hike' : all[0]?.type}` : `--recent ${items.length}`;
+
+const hm = (sec: number) => `${Math.floor(sec / 3600)}:${String(Math.round((sec % 3600) / 60)).padStart(2, '0')}`;
+// Start point of the route, for the dot that marks where the line begins.
+const startOf = (d: string) => {
+  const m = d.match(/^M\s*([\d.-]+)[\s,]+([\d.-]+)/);
+  return m ? { x: m[1], y: m[2] } : null;
+};
 ---
 {items.length > 0 && (
   <div class="card card-workouts" id="workouts-card">
@@ -45,31 +36,56 @@ for (const w of items) {
         View all →
       </a>
     </div>
-    <div class="workouts-strip" role="list">
-      {items.map((w: any) => {
-        const titleZh = titleById.get(w.id.toLowerCase())?.zh ?? defaultWorkoutTitle(w.start, w.type, 'zh');
-        const route = routesById.get(w.id) ?? [];
+    <div class="feed-head">
+      <span class="feed-head-cmd"><span class="prompt">$</span> workouts ls {typeFlag}</span>
+      <span class="feed-head-total">
+        <strong>{all.length}</strong>{' '}<span data-i18n="wk_trails">trails</span>
+        {' · '}<strong>{totalKm.toFixed(1)}</strong> km · <strong>{totalUp.toLocaleString('en-US')}</strong> m ↑
+      </span>
+    </div>
+    <div class="wk-log">
+      {items.map((w, i) => {
+        const year = w.date.slice(0, 4);
+        const showYear = i === 0 || items[i - 1].date.slice(0, 4) !== year;
+        const start = startOf(w.trackSvg);
+        const issue = comicIssueByDate[w.date];
+        const km = (w.stats.distanceKm ?? 0).toFixed(2);
         return (
-          <a
-            href={`/workouts/${w.id}`}
-            class="workouts-strip-item"
-            role="listitem"
-            data-href-zh={`/workouts/${w.id}`}
-            data-href-en={`/en/workouts/${w.id}`}
-            aria-label={titleZh}
-          >
-            <div class="ws-track-wrap">
-              <RouteMini route={route} bbox={w.bbox} height={90} client:visible />
+          <>
+            {showYear && <div class="wk-year">{year}</div>}
+            <div class="wk-row">
+              <svg class="wk-glyph" viewBox="0 0 100 60" aria-hidden="true">
+                {w.trackSvg && <path d={w.trackSvg} pathLength="1" />}
+                {start && <circle cx={start.x} cy={start.y} r="3.5" />}
+              </svg>
+              <a
+                class="wk-name"
+                href={`/workouts/${w.id}`}
+                data-href-zh={`/workouts/${w.id}`}
+                data-href-en={`/en/workouts/${w.id}`}
+              >
+                <span class="wk-name-zh">{w.name.zh}</span>
+                <span class="wk-name-en">{w.name.en}</span>
+              </a>
+              <span class="wk-num wk-date">{w.date.slice(5).replace('-', '/')}</span>
+              <span class="wk-num wk-km">{km} km</span>
+              <span class="wk-num wk-dur">{hm(w.durationSec)}</span>
+              <span class="wk-num wk-elev">↑{w.stats.elevationUpM ?? 0} m</span>
+              <span class="wk-num wk-heart">{w.stats.heart?.avg ? `♥ ${Math.round(w.stats.heart.avg)}` : ''}</span>
+              <span class="wk-sub">{w.date.slice(5).replace('-', '/')} · {km} km · {hm(w.durationSec)}</span>
+              <span class="wk-x">
+                {issue && (
+                  <a
+                    class="xlink"
+                    href={`/comics/${issue}`}
+                    data-href-zh={`/comics/${issue}`}
+                    data-href-en={`/en/comics/${issue}`}
+                    title={`No.${issue}`}
+                  >▦ No.{issue}</a>
+                )}
+              </span>
             </div>
-            <div class="ws-meta">
-              <div class="ws-name">{titleZh}</div>
-              <div class="ws-sub">
-                <span>{formatDistance(w.stats?.distanceKm ?? 0)}</span>
-                <span>·</span>
-                <span>{formatDuration(w.durationSec)}</span>
-              </div>
-            </div>
-          </a>
+          </>
         );
       })}
     </div>
@@ -87,65 +103,102 @@ for (const w of items) {
   }
   .card-workouts .workouts-strip-more:hover { color: var(--accent); }
 
-  .workouts-strip {
-    display: flex;
-    gap: 12px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 4px;
+  .wk-year {
+    margin-top: var(--space-3);
+    font-size: 11px;
+    color: var(--c-text-dim);
   }
-
-  .workouts-strip-item {
-    flex: 0 0 auto;
-    width: 200px;
-    border-radius: 8px;
-    background: rgba(var(--c-overlay-rgb), 0.06);
+  .wk-year:first-child { margin-top: 0; }
+  /* The name link stretches over the whole row; the comic link sits above it. */
+  .wk-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr) 3.4em 5.2em 3.4em 4.6em 3.6em 4.6em;
+    align-items: center;
+    column-gap: var(--space-3);
+    min-height: 48px;
+    border-bottom: 1px solid rgba(var(--c-overlay-rgb), 0.05);
+    font-size: 12px;
+    color: var(--c-text-muted);
+  }
+  .wk-row:last-child { border-bottom: none; }
+  .wk-glyph {
+    display: block;
+    width: 64px;
+    height: 38px;
+    border-radius: 3px;
+    background: rgba(var(--c-overlay-rgb), 0.03);
+  }
+  .wk-glyph path {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 1;
+    opacity: 0.75;
+  }
+  .wk-glyph circle { fill: var(--accent); }
+  .wk-row:hover .wk-glyph path {
+    opacity: 1;
+    animation: wk-draw 1.1s ease-out;
+  }
+  @keyframes wk-draw {
+    from { stroke-dashoffset: 1; }
+    to { stroke-dashoffset: 0; }
+  }
+  .wk-name {
+    overflow: hidden;
+    font-size: 13px;
     color: var(--c-text);
     text-decoration: none;
-    padding: 12px;
-    scroll-snap-align: start;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .workouts-strip-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
-    background: rgba(var(--c-overlay-rgb), 0.10);
-  }
-  .ws-track-wrap {
-    width: 100%;
-    height: 90px;
-    background: rgba(var(--c-overlay-rgb), 0.04);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-  .ws-track-wrap > div { width: 100%; height: 100%; }
-  .ws-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .ws-name {
-    font-size: 13px;
-    font-weight: 500;
-    overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .ws-sub {
-    font-size: 11px;
-    color: var(--c-text-muted);
-    display: flex;
-    gap: 6px;
+  .wk-name::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+  .wk-name:focus-visible { outline: none; }
+  .wk-row:has(.wk-name:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .wk-row:hover .wk-name { color: var(--accent); }
+  .wk-name-en,
+  :global(html[lang='en']) .wk-name-zh { display: none; }
+  :global(html[lang='en']) .wk-name-en { display: inline; }
+  .wk-num {
     font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .wk-km { color: var(--c-text); }
+  .wk-heart { color: #f472b6; }
+  .wk-sub { display: none; }
+  .wk-x {
+    position: relative;
+    z-index: 1;
+    justify-self: end;
   }
 
   @media (max-width: 480px) {
-    .workouts-strip-item { width: 168px; padding: 10px; }
-    .ws-track-wrap { height: 76px; }
+    .wk-row {
+      grid-template-columns: 56px minmax(0, 1fr) auto;
+      padding: 6px 0;
+    }
+    .wk-glyph { grid-row: span 2; width: 56px; }
+    .wk-name { grid-column: 2; }
+    .wk-x { grid-column: 3; grid-row: 1; }
+    .wk-date, .wk-km, .wk-dur, .wk-elev, .wk-heart { display: none; }
+    .wk-sub {
+      display: block;
+      grid-column: 2 / 4;
+      grid-row: 2;
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wk-row:hover .wk-glyph path { animation: none; }
   }
 </style>

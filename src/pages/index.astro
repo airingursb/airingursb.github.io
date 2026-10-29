@@ -11,7 +11,8 @@ import githubData from '../data/github.json';
 import '../styles/workouts.css';
 import WorkoutCardPreview from '../components/workouts/WorkoutCardPreview.astro';
 import { FIXED_DATES, FLOATING_DATES } from '../lib/easter-egg-themes';
-import { fetchComics } from '../lib/comics';
+import { fetchComics, comicDate } from '../lib/comics';
+import { loadHomeWorkouts } from '../lib/home-workouts';
 import { fetchReadingItems } from '../lib/reading';
 import { loadReadingCover, readingCoverLabel } from '../lib/reading-cover';
 import { FootprintsMap } from '../components/footprints/FootprintsMap';
@@ -50,6 +51,49 @@ const recentPhotos = (photosData as Array<any>)
 
 const allComics = await fetchComics();
 const latestComic = allComics[0];
+
+// Comics ↔ Workouts: an episode and a hike on the same day link to each other.
+const homeWorkouts = await loadHomeWorkouts();
+const comicIssueByDate: Record<string, number> = {};
+for (const c of allComics) {
+  const d = comicDate(c);
+  if (d && !(d in comicIssueByDate)) comicIssueByDate[d] = c.issue_number;
+}
+const latestComicDate = latestComic ? comicDate(latestComic) : '';
+const latestComicHike = latestComicDate ? homeWorkouts.find(w => w.date === latestComicDate) : undefined;
+// Each strip is one 2×2 image; a panel keeps the whole image's aspect ratio.
+const latestComicRatio = latestComic?.panels?.width && latestComic?.panels?.height
+  ? `${latestComic.panels.width} / ${latestComic.panels.height}`
+  : '1 / 1';
+
+// Photos card: the open photo's EXIF readout and RGB histogram, prepared
+// here for all twelve so hovering a thumbnail can swap them in.
+const HIST_H = 54;
+function histPath(bins: number[], max: number) {
+  let d = `M0 ${HIST_H}`;
+  bins.forEach((v, i) => { d += ` L${i} ${(HIST_H - (v / max) * (HIST_H - 4)).toFixed(1)}`; });
+  return `${d} L${bins.length - 1} ${HIST_H} Z`;
+}
+const photoView = recentPhotos.map((p: any) => {
+  const e = p.exif || {};
+  const h = p.histogram;
+  const max = h ? Math.max(1, ...h.red, ...h.green, ...h.blue) : 1;
+  // takenAt is UTC; the photos are from UTC+8 (Singapore, China).
+  const local = p.takenAt ? new Date(Date.parse(p.takenAt) + 8 * 3600 * 1000).toISOString() : '';
+  return {
+    slug: p.slug,
+    title: p.title || '',
+    shot: local ? `${local.slice(0, 10)} ${local.slice(11, 16)}` : '',
+    month: local.slice(0, 7),
+    camera: String(e.camera || '').replace(/^samsung\s+/i, ''),
+    settings: [e.aperture, e.shutter && `${e.shutter}s`, e.iso && `ISO ${e.iso}`, e.focalLength].filter(Boolean).join(' · '),
+    color: p.dominantColor || '#222',
+    avif: p.variants.medium.avif,
+    webp: p.variants.medium.webp,
+    hist: h ? { r: histPath(h.red, max), g: histPath(h.green, max), b: histPath(h.blue, max) } : null,
+  };
+});
+const openPhoto = photoView[0];
 const recentReading = await fetchReadingItems(8);
 const recentReadingCards = await Promise.all(recentReading.map(async (item) => {
   const coverEnSource = item.cover_url_en || item.cover_url;
@@ -1441,30 +1485,72 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
             <span class="section-title" data-i18n="sec_comics">四格</span>
             <a class="photos-strip-more" href="/comics" data-href-zh="/comics" data-href-en="/en/comics" data-i18n="cm_view_all">查看全部 →</a>
           </div>
-          <div class="comics-strip" role="list">
-            {allComics.slice(0, 8).map((c: any) => (
-              <a
-                class="comics-strip-item"
-                role="listitem"
-                href={`/comics/${c.issue_number}`}
-                data-href-zh={`/comics/${c.issue_number}`}
-                data-href-en={`/en/comics/${c.issue_number}`}
-              >
-                <div class="comics-strip-thumb">
-                  <img
-                    src={c.panels.url}
-                    alt={c.panels?.alt?.zh || c.title.zh}
-                    loading="lazy"
-                  />
-                </div>
-                <div class="comics-strip-cap">
-                  <span class="comics-strip-issue">No. {c.issue_number}</span>
-                  <span class="comics-strip-title comics-strip-title-zh">{c.title.zh}</span>
-                  <span class="comics-strip-title comics-strip-title-en">{c.title.en}</span>
-                </div>
-              </a>
-            ))}
+          <div class="feed-head">
+            <span class="feed-head-cmd"><span class="prompt">$</span> cat comics/{String(latestComic.issue_number).padStart(3, '0')}.md</span>
+            <span class="feed-head-total"><strong>{allComics.length}</strong> <span data-i18n="cm_episodes">episodes</span></span>
           </div>
+          <div class="cm-ep">
+            <span class="cm-no">No.{latestComic.issue_number}</span>
+            <a
+              class="cm-title"
+              href={`/comics/${latestComic.issue_number}`}
+              data-href-zh={`/comics/${latestComic.issue_number}`}
+              data-href-en={`/en/comics/${latestComic.issue_number}`}
+            >
+              <span class="comics-strip-title-zh">{latestComic.title.zh}</span>
+              <span class="comics-strip-title-en">{latestComic.title.en}</span>
+            </a>
+            {latestComicDate && <span class="cm-date">{latestComicDate.replaceAll('-', '/')}</span>}
+            {latestComicHike && (
+              <a
+                class="xlink cm-hike"
+                href={`/workouts/${latestComicHike.id}`}
+                data-href-zh={`/workouts/${latestComicHike.id}`}
+                data-href-en={`/en/workouts/${latestComicHike.id}`}
+              >
+                ⛰ <span class="comics-strip-title-zh">{latestComicHike.name.zh}</span><span class="comics-strip-title-en">{latestComicHike.name.en}</span>
+                · {(latestComicHike.stats.distanceKm ?? 0).toFixed(2)} km
+              </a>
+            )}
+          </div>
+          {/* The newest strip unfolded in reading order: one image, four crops. */}
+          <a
+            class="cm-strip"
+            href={`/comics/${latestComic.issue_number}`}
+            data-href-zh={`/comics/${latestComic.issue_number}`}
+            data-href-en={`/en/comics/${latestComic.issue_number}`}
+            aria-label={latestComic.panels?.alt?.zh || latestComic.title.zh}
+            style={`--cm-ratio: ${latestComicRatio}`}
+          >
+            {[1, 2, 3, 4].map((n) => (
+              <span class={`cm-panel cm-panel-${n}`}>
+                <img src={latestComic.panels.url} alt="" loading="lazy" decoding="async" />
+                <span class="cm-panel-no">{n}/4</span>
+              </span>
+            ))}
+          </a>
+          {allComics.length > 1 && (
+            <>
+              <div class="cm-prev-label" data-i18n="cm_previously">previously</div>
+              <div class="cm-prev">
+                {allComics.slice(1, 7).map((c: any) => (
+                  <a
+                    class="cm-row"
+                    href={`/comics/${c.issue_number}`}
+                    data-href-zh={`/comics/${c.issue_number}`}
+                    data-href-en={`/en/comics/${c.issue_number}`}
+                  >
+                    <img class="cm-row-thumb" src={c.panels.url} alt="" loading="lazy" decoding="async" />
+                    <span class="cm-row-no">No.{c.issue_number}</span>
+                    <span class="cm-row-title">
+                      <span class="comics-strip-title-zh">{c.title.zh}</span>
+                      <span class="comics-strip-title-en">{c.title.en}</span>
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -1474,34 +1560,123 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
           <span class="section-title" data-i18n="sec_photos">Photos</span>
           <a class="photos-strip-more" href="/photos" data-i18n="ph_view_all">View all →</a>
         </div>
-        <div class="photos-strip" role="list">
-          {recentPhotos.map((p: any) => (
-            <a
-              href={`/photos/${p.slug}`}
-              class="photos-strip-item"
-              role="listitem"
-              aria-label={p.title || p.slug}
-              style={`--dom: ${p.dominantColor}`}
-            >
-              <picture>
-                <source type="image/avif" srcset={p.variants.thumb.avif} />
-                <source type="image/webp" srcset={p.variants.thumb.webp} />
-                <img
-                  src={p.variants.thumb.webp}
-                  alt={p.title || p.slug}
-                  loading="lazy"
-                  decoding="async"
-                  width="160"
-                  height="120"
-                />
-              </picture>
-            </a>
-          ))}
-        </div>
+        {openPhoto && (
+          <>
+            <div class="ph-body">
+              <a class="ph-main" id="phMain" href={`/photos/${openPhoto.slug}`} style={`--ph-color: ${openPhoto.color}`}>
+                <picture>
+                  <source id="phMainAvif" type="image/avif" srcset={openPhoto.avif} />
+                  <img id="phMainImg" src={openPhoto.webp} alt={openPhoto.title || openPhoto.slug} loading="lazy" decoding="async" />
+                </picture>
+              </a>
+              <div class="ph-side">
+                <div class="ph-exif" id="phExif">
+                  <div class="ph-exif-cmd"><span class="prompt">$</span> exif {openPhoto.slug}</div>
+                  {openPhoto.title && <div class="ph-exif-title">{openPhoto.title}</div>}
+                  {openPhoto.shot && <div><span class="ph-exif-k">taken</span>{openPhoto.shot}</div>}
+                  {openPhoto.camera && <div><span class="ph-exif-k">camera</span>{openPhoto.camera}</div>}
+                  {openPhoto.settings && <div class="ph-exif-settings">{openPhoto.settings}</div>}
+                </div>
+                <svg class="ph-hist" id="phHist" viewBox="0 0 128 54" preserveAspectRatio="none" aria-hidden="true">
+                  {openPhoto.hist && (
+                    <>
+                      <path class="ph-hist-r" d={openPhoto.hist.r} />
+                      <path class="ph-hist-g" d={openPhoto.hist.g} />
+                      <path class="ph-hist-b" d={openPhoto.hist.b} />
+                    </>
+                  )}
+                </svg>
+                <div class="ph-thumbs">
+                  {recentPhotos.slice(0, 8).map((p: any, i: number) => (
+                    <a
+                      href={`/photos/${p.slug}`}
+                      class:list={['ph-thumb', { 'is-open': i === 0 }]}
+                      data-i={i}
+                      aria-label={p.title || p.slug}
+                      style={`background: ${p.dominantColor}`}
+                    >
+                      <picture>
+                        <source type="image/avif" srcset={p.variants.thumb.avif} />
+                        <img src={p.variants.thumb.webp} alt="" loading="lazy" decoding="async" width="160" height="120" />
+                      </picture>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {/* Dominant colour of each recent photo, newest on the left. */}
+            <div class="ph-palette">
+              {photoView.map((p, i) => (
+                <a
+                  href={`/photos/${p.slug}`}
+                  class:list={['ph-swatch', { 'is-open': i === 0 }]}
+                  data-i={i}
+                  aria-label={p.title || p.shot || p.slug}
+                  style={`background: ${p.color}`}
+                ></a>
+              ))}
+            </div>
+            <div class="ph-palette-cap">
+              <span>{photoView[0].month}</span>
+              <span class="ph-palette-what" data-i18n="ph_palette">dominant colour of the last 12 photos</span>
+              <span>{photoView[photoView.length - 1].month}</span>
+            </div>
+            <script is:inline define:vars={{ photoView }}>
+              (function () {
+                var card = document.getElementById('photos-card');
+                var main = document.getElementById('phMain');
+                var img = document.getElementById('phMainImg');
+                var avif = document.getElementById('phMainAvif');
+                var exif = document.getElementById('phExif');
+                var hist = document.getElementById('phHist');
+                var open = 0;
+                if (!card || !main) return;
+
+                function esc(s) {
+                  return String(s).replace(/[&<>"]/g, function (c) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+                  });
+                }
+                function show(i) {
+                  var p = photoView[i];
+                  if (!p || i === open) return;
+                  open = i;
+                  main.href = '/photos/' + p.slug;
+                  main.style.setProperty('--ph-color', p.color);
+                  img.classList.add('is-loading');
+                  img.onload = function () { img.classList.remove('is-loading'); };
+                  avif.srcset = p.avif;
+                  img.src = p.webp;
+                  img.alt = p.title || p.slug;
+                  exif.innerHTML =
+                    '<div class="ph-exif-cmd"><span class="prompt">$</span> exif ' + esc(p.slug) + '</div>' +
+                    (p.title ? '<div class="ph-exif-title">' + esc(p.title) + '</div>' : '') +
+                    (p.shot ? '<div><span class="ph-exif-k">taken</span>' + esc(p.shot) + '</div>' : '') +
+                    (p.camera ? '<div><span class="ph-exif-k">camera</span>' + esc(p.camera) + '</div>' : '') +
+                    (p.settings ? '<div class="ph-exif-settings">' + esc(p.settings) + '</div>' : '');
+                  hist.innerHTML = p.hist
+                    ? '<path class="ph-hist-r" d="' + p.hist.r + '"/><path class="ph-hist-g" d="' + p.hist.g + '"/><path class="ph-hist-b" d="' + p.hist.b + '"/>'
+                    : '';
+                  card.querySelectorAll('[data-i]').forEach(function (a) {
+                    a.classList.toggle('is-open', +a.getAttribute('data-i') === i);
+                  });
+                }
+                // Hover swaps on pointer devices; a tap just opens the photo.
+                if (window.matchMedia('(hover: hover)').matches) {
+                  card.querySelectorAll('.ph-thumb, .ph-swatch').forEach(function (a) {
+                    var i = +a.getAttribute('data-i');
+                    a.addEventListener('mouseenter', function () { show(i); });
+                    a.addEventListener('focus', function () { show(i); });
+                  });
+                }
+              })();
+            </script>
+          </>
+        )}
       </div>
 
       <!-- Workouts Preview -->
-      <WorkoutCardPreview />
+      <WorkoutCardPreview comicIssueByDate={comicIssueByDate} />
 
       <!-- Skill Tree -->
       <div class="card card-skills" id="skills">
