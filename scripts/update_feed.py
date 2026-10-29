@@ -448,10 +448,14 @@ def fetch_lastfm_recent_tracks(limit=5):
         if not is_now:
             date_info = t.get('date', {})
             ts = date_info.get('uts', '')
+        # Largest cover Last.fm has; the card shows it at 76px on a 2x screen.
+        image = next((i.get('#text', '') for i in reversed(t.get('image', [])) if i.get('#text')), '')
         tracks.append({
             'name': t.get('name', ''),
             'artist': t.get('artist', {}).get('#text', '') if isinstance(t.get('artist'), dict) else str(t.get('artist', '')),
             'album': t.get('album', {}).get('#text', '') if isinstance(t.get('album'), dict) else str(t.get('album', '')),
+            'image': image,
+            'url': t.get('url', ''),
             'nowplaying': is_now,
             'ts': ts,
         })
