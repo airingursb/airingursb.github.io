@@ -610,6 +610,7 @@ def fetch_raindrop_data():
             'tags': item.get('tags', []),
             'note': item.get('note', ''),
             'excerpt': item.get('excerpt', ''),
+            'cover': item.get('cover', ''),
             'created': created,
         })
 

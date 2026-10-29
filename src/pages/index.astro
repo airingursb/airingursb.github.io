@@ -1542,6 +1542,11 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
       <!-- Raindrop Bookmarks -->
       <div class="card card-raindrop" id="bookmarks">
         <div class="section-title" data-i18n="sec_raindrop">Bookmarks</div>
+        <div class="rd-head" hidden>
+          <span class="rd-cmd"><span class="prompt">$</span> raindrop ls share --sort -created --limit 6</span>
+          <span class="rd-total"><strong id="raindropTotal"></strong> <span data-i18n="rd_saved">saved</span></span>
+        </div>
+        <div id="raindropFeatured"></div>
         <div id="raindropList"></div>
         <div class="rd-source">
           <span data-i18n="rd_data_from">Data from</span>
@@ -1945,61 +1950,178 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
       <!-- HIGHLIGHTS_DATA_END -->
 
       <!-- RAINDROP_DATA_START -->
-            <script is:inline>window.__RAINDROP_DATA__={"bookmarks":[{"title":"Lapis One — A Dedicated Computer for Your Agents | Pamir","link":"https://www.pamir.ai/","domain":"pamir.ai","tags":[],"note":"","excerpt":"Lapis One is a dedicated Linux computer for AI agents, built to run 24/7, connect from anywhere, and control other computers with Agent KVM.","created":"2026.10.07"},{"title":"Invent a Dataset | Create Training Datasets from Intent | Adaption","link":"https://adaptionlabs.ai/invent-a-dataset","domain":"adaptionlabs.ai","tags":[],"note":"","excerpt":"Invent a Dataset creates training datasets from intent, not existing data. Generate task-specific datasets for enterprise SaaS, support operations, low-resource languages, and regulated industries.","created":"2026.10.01"},{"title":"Code Contracts","link":"https://code-contracts.cc/","domain":"code-contracts.cc","tags":[],"note":"","excerpt":"Specifications, invariants, and coding rules. Written for humans. Verifiable by agents. Kept with the code.","created":"2026.10.01"},{"title":"Rene - Multiplayer Personal Superintelligence","link":"https://rene.co/","domain":"rene.co","tags":[],"note":"","excerpt":"Your personal superintelligence, built for multiplayer. Browse the web, build sites, make slides and images, and work together in chat. Free to start.","created":"2026.10.01"},{"title":"NOAN — The Fact Layer For Agentic Business","link":"https://www.getnoan.com/","domain":"getnoan.com","tags":[],"note":"","excerpt":"Talk to Verity. Give her your website and she draws the graph behind it: your company as verified facts, behind one API, with your site and agents running on what's true. Everything is free except the facts.","created":"2026.10.01"},{"title":"Made with Jev — What people are building with Jev","link":"https://madewithjev.com/?ref=producthunt","domain":"madewithjev.com","tags":[],"note":"","excerpt":"A directory of projects built with Jev, the System One model from TypeSafe AI. Each entry links to its source and shows the cost and speed its author reported.","created":"2026.09.20"}],"total":270}</script>
+            <script is:inline>window.__RAINDROP_DATA__={"bookmarks":[{"title":"Lapis One — A Dedicated Computer for Your Agents | Pamir","link":"https://www.pamir.ai/","domain":"pamir.ai","tags":[],"note":"","excerpt":"Lapis One is a dedicated Linux computer for AI agents, built to run 24/7, connect from anywhere, and control other computers with Agent KVM.","cover":"https://www.pamir.ai/pamir-lapisOne-OGImage-1.jpg","created":"2026.10.07"},{"title":"Invent a Dataset | Create Training Datasets from Intent | Adaption","link":"https://adaptionlabs.ai/invent-a-dataset","domain":"adaptionlabs.ai","tags":[],"note":"","excerpt":"Invent a Dataset creates training datasets from intent, not existing data. Generate task-specific datasets for enterprise SaaS, support operations, low-resource languages, and regulated industries.","cover":"https://rdl.ink/render/https%3A%2F%2Fadaptionlabs.ai%2Finvent-a-dataset","created":"2026.10.01"},{"title":"Code Contracts","link":"https://code-contracts.cc/","domain":"code-contracts.cc","tags":[],"note":"","excerpt":"Specifications, invariants, and coding rules. Written for humans. Verifiable by agents. Kept with the code.","cover":"https://rdl.ink/render/https%3A%2F%2Fcode-contracts.cc%2F","created":"2026.10.01"},{"title":"Rene - Multiplayer Personal Superintelligence","link":"https://rene.co/","domain":"rene.co","tags":[],"note":"","excerpt":"Your personal superintelligence, built for multiplayer. Browse the web, build sites, make slides and images, and work together in chat. Free to start.","cover":"https://rene.co/assets/figma/rene-social-card-20260915-r2.png","created":"2026.10.01"},{"title":"NOAN — The Fact Layer For Agentic Business","link":"https://www.getnoan.com/","domain":"getnoan.com","tags":[],"note":"","excerpt":"Talk to Verity. Give her your website and she draws the graph behind it: your company as verified facts, behind one API, with your site and agents running on what's true. Everything is free except the facts.","cover":"https://getnoan.com/assets/og-default.png","created":"2026.10.01"},{"title":"Made with Jev — What people are building with Jev","link":"https://madewithjev.com/?ref=producthunt","domain":"madewithjev.com","tags":[],"note":"","excerpt":"A directory of projects built with Jev, the System One model from TypeSafe AI. Each entry links to its source and shows the cost and speed its author reported.","cover":"https://madewithjev.com/twitter-image.jpg?twitter-image.2ufpbvg9zavn9.jpg","created":"2026.09.20"}],"total":270}</script>
       <!-- RAINDROP_DATA_END -->
 
       <script is:inline>
       // ── Raindrop Bookmarks ──
+      // Newest bookmark opens up with its cover; the rest stay one line each.
+      // Hovering or focusing a row swaps it into the open slot.
       (function() {
         var data = window.__RAINDROP_DATA__;
         if (!data || !data.bookmarks || !data.bookmarks.length) return;
 
+        var card = document.getElementById('bookmarks');
+        var featured = document.getElementById('raindropFeatured');
         var list = document.getElementById('raindropList');
         var items = data.bookmarks.slice(0, 6);
+        var NEW_DAYS = 7;
 
-        items.forEach(function(b) {
-          var a = document.createElement('a');
-          a.className = 'rd-item';
+        var head = card.querySelector('.rd-head');
+        if (data.total) {
+          document.getElementById('raindropTotal').textContent = data.total;
+          head.hidden = false;
+        }
+
+        // Drop a trailing " | Site", then split "Name — tagline" so the
+        // tagline can sit dimmer than the name.
+        function splitTitle(title) {
+          var parts = (title || '').split(' | ');
+          if (parts.length > 1) parts.pop();
+          if (parts.length > 1) return { main: parts[0], sub: parts.slice(1).join(' · ') };
+          var m = parts[0].match(/^(.+?)\s+[—–-]\s+(.+)$/);
+          return m ? { main: m[1], sub: m[2] } : { main: parts[0], sub: '' };
+        }
+        // Covers come from the bookmarked sites, which can be heavy or refuse
+        // to be embedded, so they go through a resizing proxy first.
+        function coverSrc(url) {
+          return 'https://wsrv.nl/?url=' + encodeURIComponent(url) + '&w=640&h=336&fit=cover&output=webp';
+        }
+        function parseDate(created) {
+          var p = (created || '').split('.');
+          return p.length === 3 ? new Date(+p[0], p[1] - 1, +p[2]) : null;
+        }
+        function mmdd(created) {
+          var p = (created || '').split('.');
+          return p.length === 3 ? p[1] + '/' + p[2] : created || '';
+        }
+        function el(tag, cls, text) {
+          var e = document.createElement(tag);
+          if (cls) e.className = cls;
+          if (text != null) e.textContent = text;
+          return e;
+        }
+        function favicon(domain) {
+          var img = el('img', 'rd-fav');
+          img.src = 'https://rdl.ink/favicon/' + encodeURIComponent(domain);
+          img.alt = '';
+          img.width = 14;
+          img.height = 14;
+          img.loading = 'lazy';
+          img.referrerPolicy = 'no-referrer';
+          img.onerror = function() { img.style.visibility = 'hidden'; };
+          return img;
+        }
+        function titleSpans(target, b, sep) {
+          var t = splitTitle(b.title);
+          target.appendChild(document.createTextNode(t.main));
+          if (t.sub) target.appendChild(el('span', 'rd-sub', sep + t.sub));
+        }
+        function coverPlaceholder(b) {
+          var ph = el('div', 'rd-cover-ph');
+          ph.appendChild(favicon(b.domain));
+          ph.appendChild(el('span', '', b.domain));
+          return ph;
+        }
+
+        function renderFeatured(b) {
+          var a = el('a', 'rd-feat');
           a.href = b.link;
           a.target = '_blank';
           a.rel = 'noopener';
 
-          var titleDiv = document.createElement('div');
-          titleDiv.className = 'rd-item-title';
-          titleDiv.textContent = b.title;
-          a.appendChild(titleDiv);
-
-          var noteText = b.note || b.excerpt || '';
-          if (noteText) {
-            var noteDiv = document.createElement('div');
-            noteDiv.className = 'rd-item-note';
-            noteDiv.textContent = noteText;
-            a.appendChild(noteDiv);
-          }
-
-          var metaDiv = document.createElement('div');
-          metaDiv.className = 'rd-item-meta';
-
-          var domain = document.createElement('span');
-          domain.className = 'rd-item-domain';
-          domain.textContent = b.domain;
-          metaDiv.appendChild(domain);
-
-          var date = document.createElement('span');
-          date.className = 'rd-item-date';
-          var parts = b.created.split('.');
-          if (parts.length === 3) {
-            var bDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-            var daysAgo = Math.floor((Date.now() - bDate.getTime()) / 86400000);
-            date.textContent = b.created + ' \u00b7 ' + daysAgo + 'd ago';
+          var cover = el('div', 'rd-cover');
+          if (b.cover) {
+            var img = el('img');
+            img.alt = '';
+            img.loading = 'lazy';
+            img.decoding = 'async';
+            img.referrerPolicy = 'no-referrer';
+            img.onerror = function() {
+              if (img.src !== b.cover) img.src = b.cover;
+              else cover.replaceChildren(coverPlaceholder(b));
+            };
+            img.src = coverSrc(b.cover);
+            cover.appendChild(img);
           } else {
-            date.textContent = b.created;
+            cover.appendChild(coverPlaceholder(b));
           }
-          metaDiv.appendChild(date);
+          a.appendChild(cover);
 
-          a.appendChild(metaDiv);
+          var body = el('div', 'rd-feat-body');
+          var title = el('div', 'rd-feat-title');
+          titleSpans(title, b, ' — ');
+          body.appendChild(title);
+
+          // Only my own note gets the accent bar; a site's blurb stays muted.
+          if (b.note) body.appendChild(el('div', 'rd-note', b.note));
+          else if (b.excerpt) body.appendChild(el('div', 'rd-excerpt', b.excerpt));
+
+          var meta = el('div', 'rd-meta');
+          var d = parseDate(b.created);
+          if (d && (Date.now() - d.getTime()) / 86400000 < NEW_DAYS) {
+            var badge = el('span', 'wl-new', window.currentLang === 'en' ? 'NEW' : '新');
+            badge.setAttribute('data-i18n', 'rd_new');
+            meta.appendChild(badge);
+          }
+          meta.appendChild(el('span', '', b.domain));
+          meta.appendChild(el('span', '', '·'));
+          meta.appendChild(el('span', '', mmdd(b.created)));
+          body.appendChild(meta);
+          a.appendChild(body);
+
+          featured.replaceChildren(a);
+        }
+
+        var rows = [];
+        items.forEach(function(b, i) {
+          if (i === 0) return;
+          var a = el('a', 'rd-row');
+          a.href = b.link;
+          a.target = '_blank';
+          a.rel = 'noopener';
+          a.appendChild(favicon(b.domain));
+          var title = el('span', 'rd-row-title');
+          titleSpans(title, b, ' ');
+          a.appendChild(title);
+          var lead = el('span', 'wl-lead');
+          lead.setAttribute('aria-hidden', 'true');
+          a.appendChild(lead);
+          a.appendChild(el('span', 'rd-row-domain', b.domain));
+          a.appendChild(el('span', 'rd-row-date', mmdd(b.created)));
+          rows.push(a);
           list.appendChild(a);
         });
+
+        var active = 0;
+        function show(i) {
+          if (i === active) return;
+          active = i;
+          renderFeatured(items[i]);
+          rows.forEach(function(r, j) { r.classList.toggle('is-active', j + 1 === i); });
+        }
+        renderFeatured(items[0]);
+
+        // Swap on hover only where hover exists, so a tap on a phone just
+        // opens the link instead of moving it.
+        if (window.matchMedia('(hover: hover)').matches) {
+          rows.forEach(function(r, j) {
+            r.addEventListener('mouseenter', function() { show(j + 1); });
+            r.addEventListener('focus', function() { show(j + 1); });
+          });
+          var preloaded = false;
+          card.addEventListener('mouseenter', function() {
+            if (preloaded) return;
+            preloaded = true;
+            items.forEach(function(b) { if (b.cover) new Image().src = coverSrc(b.cover); });
+          });
+          card.addEventListener('mouseleave', function() {
+            if (!card.contains(document.activeElement)) show(0);
+          });
+          card.addEventListener('focusout', function(e) {
+            if (!card.contains(e.relatedTarget)) show(0);
+          });
+        }
       })();
       </script>
 
