@@ -1,0 +1,201 @@
+---
+// src/components/SetupCard.astro
+//
+// Homepage "Setup" card: the gear and software lists printed as neofetch
+// output. The avatar (the panda from the GitHub profile) is drawn in braille,
+// 2×4 dots per character, the way terminals show line art; each run of
+// characters carries a colour class (k ink, b beret, o scarf/cheeks).
+type Run = [string, string];
+const ART: Run[][] = [
+  [["k", "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀"]],
+  [["k", "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘"], ["b", "⢻"], ["k", "⣷"], ["b", "⣤⣤⣶⣿⣿⣝⡢⣤"], ["k", "⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀"]],
+  [["k", "⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠"], ["b", "⣦⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿"], ["k", "⡇⣀⣤⣤⣤⡀⠀⠐⠃⣀⠀⠀⠀"]],
+  [["k", "⠀⠀⠀⠀⠀⠀⠀⢀"], ["b", "⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⠿"], ["k", "⠿⠿⣿⣿⣿⣿⣿⣯⣧⠀⠀⠁⠤⠀⠀"]],
+  [["k", "⠀⠀⠀⢀⣤⣶⣶⣿"], ["b", "⣿⣿⣿⣿⣿"], ["k", "⡿⡿⠋⠉⠀⠀⠀⠀⠀⠀⠀⠈⠙⠻⣿⣿⣿⠂⠀⠀⠀⠀⠀"]],
+  [["k", "⠀⠀⣶⢿⣿⣿⣿⣿⣿⣿⠟⠁⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣏⠀⠀⠀⠀⠀⠀"]],
+  [["k", "⠀⢸⣿⣿⣿⣿⣿⣿⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢦⠀⠀⠀⠀⠀"]],
+  [["k", "⠀⠸⣿⣿⣿⣿⡿⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣤⣦⡀⠀⠈⡇⠀⠀⠀⠀"]],
+  [["k", "⠀⠀⠘⠿⣿⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠻⠿⢃"], ["o", "⣠⣄"], ["k", "⠀⡆⠀⠀⠀"]],
+  [["k", "⠀⠀⠀⠀⢸⡏⠀⠀⠀⠀⠀⠀⠀⢰⣿⣿⡆⠀⠀⢀⡀⣀⠿⠤⠊⠀⠀⠀"], ["o", "⠘⠿⠿⠃"], ["k", "⡿⠀⠀⠀"]],
+  [["k", "⠀⠀⠀⠀⠘⡇⠀⠀⠀⠀⠀⠀"], ["o", "⣀⣈"], ["k", "⡛⠋⠀⠀⠀⠀⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⠇⠀⠀⠀"]],
+  [["k", "⠀⠀⠀⠀⢀⠘⣆⠀⠀⠀⠀"], ["o", "⢾⣿⡿⠃"], ["k", "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣰⠋⠀⠀⠀⠀"]],
+  [["k", "⠀⠀⠀⠀⠀⠀⢻⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣀⣤⠞⠉⠁⠀⠀⠀⠀⠀"]],
+  [["k", "⠀⠀⠀⠀⠀⠀⠀⠈⠙⠷⣶⣤⣤⣄⣀⣀⣠⣄⡀"], ["o", "⣀"], ["k", "⣠⣤⣴⣶"], ["o", "⣿"], ["k", "⣿⣿⣷⣶"], ["o", "⣶"], ["k", "⣄⡀⠀⠀⠀⠀"]],
+  [["k", "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⠟⠻"], ["o", "⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿"], ["k", "⡿⠋⠙⣿"], ["o", "⣿⣿⢷⡕"], ["k", "⠀⠀⠀⠀"]],
+  [["k", "⠀⠀⠀⠀⠀⠀⠀⠀⠀⢰⡟⠁⠀⠀⠀⠀⠈⠛⠻"], ["o", "⠿⣟⠛⠫"], ["k", "⠟⠀⠀⠀⠘⣧⠈⠉⠁⠀⠀⠀⠀"]],
+  [["k", "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠏⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⡆⠀⠀⠀⠀⠀⠀"]],
+  [["k", "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠀⠀⠀⠀⠀⠀"]]
+];
+
+const HARDWARE: [string, string[]][] = [
+  ['Host', ['MacBook Pro M4']],
+  ['Server', ['Mac mini M4 Pro']],
+  ['Phone', ['Samsung Z Fold 7']],
+  ['Tablet', ['iPad Pro M4', 'Surface Pro 12']],
+  ['E-ink', ['Kindle Scribe 2025']],
+  ['Wearable', ['Apple Watch', 'Meta Ray-Ban', 'Even G2']],
+  ['Keyboard', ['HHKB Snow', 'ZSA Moonlander', 'ZSA Voyager']],
+  ['Camera', ['Fujifilm X100VI', 'Hasselblad 907X 100C']],
+  ['Console', ['XBox ROG X']],
+];
+const SOFTWARE: [string, string[]][] = [
+  ['Dev', ['Claude Code', 'Herdr', 'Wispr Flow']],
+  ['Network', ['Tailscale', 'LocalCan']],
+  ['Work', ['Notion', 'Todoist', 'Akiflow', 'Linear', 'Spark']],
+  ['AI', ['MoFlow', 'Hemory', 'Grok Bot', 'DEVONthink']],
+  ['Media', ['Readwise', 'Reader', 'Kindle', 'Raindrop', 'Spotify']],
+  ['Money', ['MoneyWise', 'TradingView', '1Password']],
+  ['Life', ['DayOne', 'Rize', 'PeakWatch', 'Eudic']],
+];
+const count = (rows: [string, string[]][]) => rows.reduce((n, [, v]) => n + v.length, 0);
+const BLOCKS = ['#0d1117', '#ef4444', 'var(--accent)', '#fbbf24', '#3b82f6', '#a78bfa', '#38bdf8', '#e6edf3'];
+
+// Output lines appear one after another; --i is each line's place in that order.
+let order = 1;
+const lines = (rows: [string, string[]][]) => rows.map(([k, v]) => ({ k, v, i: order++ }));
+const whoIndex = order++;
+const hw = lines(HARDWARE);
+const sw = lines(SOFTWARE);
+const blocksIndex = order++;
+---
+<div class="card card-setup" id="setup">
+  <div class="section-title" data-i18n="sec_setup">Setup</div>
+  <div class="feed-head">
+    <span class="feed-head-cmd"><span class="prompt">$</span> neofetch</span>
+    <span class="feed-head-total">
+      <strong>{count(HARDWARE)}</strong>{' '}<span data-i18n="setup_devices">devices</span>
+      {' · '}<strong>{count(SOFTWARE)}</strong>{' '}<span data-i18n="setup_apps">apps</span>
+    </span>
+  </div>
+  <div class="nf" id="setupNf">
+    <pre class="nf-art nf-in" style="--i:0" aria-hidden="true">{ART.map((row, r) => (
+      <>{row.map(([c, s]) => <span class={c}>{s}</span>)}{r < ART.length - 1 ? '\n' : ''}</>
+    ))}</pre>
+    <div class="nf-info">
+      <div class="nf-who nf-in" style={`--i:${whoIndex}`}>
+        <span class="u">airing</span>@<span class="u">ursb.me</span>
+        <span class="rule"></span>
+      </div>
+      {hw.map(({ k, v, i }) => (
+        <div class="nf-ln nf-in" style={`--i:${i}`}>
+          <span class="k">{k}</span>
+          <span class="v">{v.map((x, j) => <>{j > 0 && <i> · </i>}{x}</>)}</span>
+        </div>
+      ))}
+      <div class="nf-gap"></div>
+      {sw.map(({ k, v, i }) => (
+        <div class="nf-ln nf-in" style={`--i:${i}`}>
+          <span class="k">{k}</span>
+          <span class="v">{v.map((x, j) => <>{j > 0 && <i> · </i>}{x}</>)}</span>
+        </div>
+      ))}
+      <div class="nf-blocks nf-in" style={`--i:${blocksIndex}`} aria-hidden="true">
+        {BLOCKS.map(c => <i style={`background:${c}`}></i>)}
+      </div>
+    </div>
+  </div>
+  <div class="nf-cursor" aria-hidden="true"><span class="prompt">$</span><span class="cur"></span></div>
+</div>
+
+<script is:inline>
+  // Print the output when the card scrolls into view. Without JS, or with
+  // reduced motion, everything is simply there.
+  (function() {
+    var nf = document.getElementById('setupNf');
+    if (!nf || !('IntersectionObserver' in window)) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    nf.classList.add('armed');
+    var io = new IntersectionObserver(function(entries) {
+      if (!entries[0].isIntersecting) return;
+      nf.classList.add('run');
+      io.disconnect();
+    }, { threshold: 0.3 });
+    io.observe(nf);
+  })();
+</script>
+
+<style>
+  .nf {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 32px;
+    align-items: center;
+  }
+  /* Braille glyphs fall back to a font about 0.68em wide; a line height of
+     1.37 makes the dots as far apart down as across. */
+  .nf-art {
+    margin: 0;
+    font: 11px/1.37 var(--font-mono);
+    white-space: pre;
+    letter-spacing: 0;
+  }
+  .nf-art .k { color: var(--c-text); }
+  .nf-art .b { color: #3b82f6; }
+  .nf-art .o { color: #fb923c; }
+  :global([data-mode='light']) .nf-art .b { color: #1d4ed8; }
+  :global([data-mode='light']) .nf-art .o { color: #ea580c; }
+  .nf-info {
+    min-width: 0;
+    font-size: 12px;
+    line-height: 1.75;
+  }
+  .nf-who { font-size: 13px; }
+  .nf-who .u { color: var(--accent); font-weight: 600; }
+  .nf-who .rule {
+    display: block;
+    width: 14ch;
+    height: 1px;
+    margin: 2px 0 8px;
+    background: rgba(var(--c-overlay-rgb), 0.2);
+  }
+  .nf-gap { height: 10px; }
+  .nf-ln {
+    display: grid;
+    grid-template-columns: 6.4em minmax(0, 1fr);
+    column-gap: 4px;
+    margin: 0 -6px;
+    padding: 0 6px;
+    border-radius: 3px;
+  }
+  .nf-ln:hover { background: rgba(var(--c-overlay-rgb), 0.05); }
+  .nf-ln .k { color: var(--accent); font-weight: 600; }
+  .nf-ln .k::after { content: ':'; color: var(--c-text-dim); font-weight: 400; }
+  .nf-ln .v { color: var(--c-text); }
+  .nf-ln .v i { font-style: normal; color: var(--c-text-dim); }
+  .nf-blocks { display: flex; margin-top: 12px; }
+  .nf-blocks i { width: 22px; height: 12px; }
+  .nf-cursor {
+    margin-top: 14px;
+    font-size: 12px;
+  }
+  .nf-cursor .prompt { color: var(--accent); }
+  .nf-cursor .cur {
+    display: inline-block;
+    width: 7px;
+    height: 13px;
+    margin-left: 4px;
+    vertical-align: -2px;
+    background: var(--accent);
+    animation: nf-blink 1.1s steps(1) infinite;
+  }
+  @keyframes nf-blink { 50% { opacity: 0; } }
+  .nf.armed .nf-in { opacity: 0; }
+  .nf.run .nf-in {
+    animation: nf-line 0.32s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+    animation-delay: calc(var(--i) * 22ms);
+  }
+  @keyframes nf-line {
+    from { opacity: 0; transform: translateX(-6px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @media (max-width: 640px) {
+    .nf { grid-template-columns: 1fr; row-gap: 16px; }
+    .nf-art { justify-self: center; font-size: 9px; }
+    .nf-info { font-size: 11px; }
+    .nf-ln { grid-template-columns: 6em minmax(0, 1fr); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .nf-cursor .cur { animation: none; }
+  }
+</style>

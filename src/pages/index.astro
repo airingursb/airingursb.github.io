@@ -10,6 +10,7 @@ import photosData from '../data/photos.json';
 import githubData from '../data/github.json';
 import '../styles/workouts.css';
 import WorkoutCardPreview from '../components/workouts/WorkoutCardPreview.astro';
+import SetupCard from '../components/SetupCard.astro';
 import { FIXED_DATES, FLOATING_DATES } from '../lib/easter-egg-themes';
 import { fetchComics, comicDate } from '../lib/comics';
 import { loadHomeWorkouts } from '../lib/home-workouts';
@@ -1851,51 +1852,58 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
       <!-- LOCAL_DATA_END -->
 
       <div class="card card-vibe" id="vibe-coding">
-        <div class="vc-header">
-          <div class="section-title">Vibe Coding</div>
-          <div class="vc-total" id="vcTotal"></div>
+        <div class="section-title">Vibe Coding</div>
+        <div class="feed-head">
+          <span class="feed-head-cmd"><span class="prompt">$</span> ccusage daily --since <span id="vcSince"></span> | lp</span>
+          <span class="feed-head-total"><strong id="vcSpan">-</strong> <span data-i18n="vc_days">days</span></span>
         </div>
-        <div class="vc-heatmap" id="vcHeatmap"></div>
-        <div class="vc-stats">
-          <div class="vc-stat"><div class="vc-stat-val" id="vcTokens">-</div><div class="vc-stat-label" data-i18n="vc_tokens">Tokens</div></div>
-          <div class="vc-stat"><div class="vc-stat-val" id="vcCost">-</div><div class="vc-stat-label" data-i18n="vc_cost">Cost</div></div>
-          <div class="vc-stat"><div class="vc-stat-val" id="vcAvg">-</div><div class="vc-stat-label" data-i18n="vc_avg">Avg/Week</div></div>
-        </div>
-        <div class="vc-models" id="vcModels"></div>
-        <div class="vc-tool-row">
-          <svg class="vc-claude-icon" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="9" r="5.5" fill="#D97757"/>
-            <circle cx="9.2" cy="7.8" r="0.9" fill="#1a1a1a"/>
-            <circle cx="14.8" cy="7.8" r="0.9" fill="#1a1a1a"/>
-            <ellipse cx="12" cy="10.2" rx="1.8" ry="1" fill="#c4623f"/>
-            <path d="M7.5 13 Q6 16 4.5 18" stroke="#D97757" stroke-width="2" stroke-linecap="round" fill="none"/>
-            <path d="M9 13.5 Q8.5 17 7.5 19.5" stroke="#D97757" stroke-width="2" stroke-linecap="round" fill="none"/>
-            <path d="M12 14 Q12 18 12 20.5" stroke="#D97757" stroke-width="2" stroke-linecap="round" fill="none"/>
-            <path d="M15 13.5 Q15.5 17 16.5 19.5" stroke="#D97757" stroke-width="2" stroke-linecap="round" fill="none"/>
-            <path d="M16.5 13 Q18 16 19.5 18" stroke="#D97757" stroke-width="2" stroke-linecap="round" fill="none"/>
-          </svg>
-          <span class="vc-tool-name">Claude Code <span class="vc-tool-sub">· <span data-i18n="vc_primary_tool">Primary Tool</span></span></span>
-          <span class="vc-plan-badge">Max Plan</span>
+        <div class="vc-body">
+          <div class="vc-printer" id="vcPrinter"><div class="vc-clip"><div class="receipt" id="vcReceipt"></div></div></div>
+          <div class="vc-side">
+            <div class="vc-side-head"><span class="prompt">$</span> ccusage models --by-day</div>
+            <div class="vc-lanes" id="vcLanes"></div>
+            <div class="vc-tool-row">
+            <svg class="vc-claude-icon" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="9" r="5.5" fill="#D97757"/>
+              <circle cx="9.2" cy="7.8" r="0.9" fill="#1a1a1a"/>
+              <circle cx="14.8" cy="7.8" r="0.9" fill="#1a1a1a"/>
+              <ellipse cx="12" cy="10.2" rx="1.8" ry="1" fill="#c4623f"/>
+              <path d="M7.5 13 Q6 16 4.5 18" stroke="#D97757" stroke-width="2" stroke-linecap="round" fill="none"/>
+              <path d="M9 13.5 Q8.5 17 7.5 19.5" stroke="#D97757" stroke-width="2" stroke-linecap="round" fill="none"/>
+              <path d="M12 14 Q12 18 12 20.5" stroke="#D97757" stroke-width="2" stroke-linecap="round" fill="none"/>
+              <path d="M15 13.5 Q15.5 17 16.5 19.5" stroke="#D97757" stroke-width="2" stroke-linecap="round" fill="none"/>
+              <path d="M16.5 13 Q18 16 19.5 18" stroke="#D97757" stroke-width="2" stroke-linecap="round" fill="none"/>
+            </svg>
+              <span class="vc-tool-name">Claude Code <span class="vc-tool-sub">· <span data-i18n="vc_primary_tool">Primary Tool</span></span></span>
+              <span class="vc-plan-badge">Max Plan</span>
+            </div>
+            <p class="vc-note" id="vcNote"></p>
+          </div>
         </div>
       </div>
 
       <div class="card card-mood" id="mood">
         <div class="section-title" data-i18n="sec_mood">Mood</div>
-        <div class="mood-dots" id="moodDots"></div>
-        <div class="mood-legend">
-          <span><span class="mood-legend-dot" style="background:#fbbf24;"></span><span data-i18n="mood_rad">rad</span></span>
-          <span><span class="mood-legend-dot" style="background:var(--accent);"></span><span data-i18n="mood_good">good</span></span>
-          <span><span class="mood-legend-dot" style="background:#38bdf8;"></span><span data-i18n="mood_meh">meh</span></span>
-          <span><span class="mood-legend-dot" style="background:#f472b6;"></span><span data-i18n="mood_bad">bad</span></span>
-          <span><span class="mood-legend-dot" style="background:#ef4444;"></span><span data-i18n="mood_awful">awful</span></span>
+        <div class="feed-head">
+          <span class="feed-head-cmd"><span class="prompt">$</span> curl wttr.in/~airing</span>
+          <span class="feed-head-total"><strong id="wxEntries">-</strong> <span data-i18n="mood_entries_unit">entries</span></span>
         </div>
-        <div class="mood-tooltip" id="moodTooltip"></div>
-        <hr class="life-divider">
-        <div class="life-stat-row"><span class="life-stat-key" data-i18n="mood_entries">Entries</span><span class="life-stat-val" id="moodEntries" style="color:var(--accent);">-</span></div>
-        <div class="life-stat-row"><span class="life-stat-key" data-i18n="mood_since">Since</span><span class="life-stat-val" id="moodSince" style="color:var(--c-text-muted);font-weight:400;">-</span></div>
-        <hr class="life-divider">
-        <div style="font-size:10px;color:var(--c-text-dim);margin-bottom:6px;" data-i18n="mood_trend">Mood trend (30d)</div>
-        <div class="mood-chart-wrap" id="moodChart"></div>
+        <div class="wx-date"><span data-i18n="mood_report">Mood report</span>: <span id="wxDate"></span></div>
+        <div class="wx-now">
+          <pre class="wx-art" id="wxArt" aria-hidden="true"></pre>
+          <div class="wx-read" id="wxRead"></div>
+        </div>
+        <div class="wx-fc" id="wxFc"></div>
+        <div class="wx-stripes-label"><span data-i18n="mood_stripes">climate stripes</span> · <b id="wxN"></b> <span data-i18n="vc_days">days</span></div>
+        <div class="wx-stripes" id="wxStripes"></div>
+        <div class="wx-cap"><span id="wxFrom"></span><span id="wxTo"></span></div>
+        <div class="wx-legend">
+          <span style="--k:#fbbf24"><span data-i18n="mood_rad">rad</span></span>
+          <span style="--k:var(--accent)"><span data-i18n="mood_good">good</span></span>
+          <span style="--k:rgba(var(--c-overlay-rgb),0.16)"><span data-i18n="mood_meh">meh</span></span>
+          <span style="--k:#f472b6"><span data-i18n="mood_bad">bad</span></span>
+          <span style="--k:#ef4444"><span data-i18n="mood_awful">awful</span></span>
+        </div>
       </div>
 
       <div class="card card-activity" id="activity">
@@ -1971,83 +1979,8 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
             <script is:inline>window.__MUSIC_DATA__={"totalScrobbles":8917,"registeredYear":"2023","artistColors":{"YOASOBI":"#4ade80","周杰倫":"#38bdf8","Aimer":"#f472b6","梁靜茹":"#fbbf24","芝麻Mochi":"#a78bfa","ヨルシカ":"#fb923c","Lisa":"#2dd4bf"},"othersColor":"#21262d","periods":[{"key":"7day","label":"7 days","total":21,"artists":[{"name":"YOASOBI","plays":8,"pct":0.381},{"name":"Lisa","plays":1,"pct":0.048},{"name":"Others","plays":12,"pct":0.571}],"tracks":[{"name":"Yesterday","artist":"Official鬍子男dism","plays":2},{"name":"優しい彗星","artist":"YOASOBI","plays":2},{"name":"祝福","artist":"YOASOBI","plays":2},{"name":"等到十三月","artist":"陈小满","plays":2},{"name":"高嶺の花子さん","artist":"back number","plays":1},{"name":"猫 〜THE FIRST TAKE ver.〜","artist":"DISH//","plays":1},{"name":"ソフィリア","artist":"Lisa","plays":1},{"name":"Overfly","artist":"Luna Haruna","plays":1},{"name":"若者のすべて","artist":"suis from Yorushika","plays":1},{"name":"漂流","artist":"THE SxPLAY(菅原紗由理)","plays":1}]},{"key":"1month","label":"30 days","total":116,"artists":[{"name":"YOASOBI","plays":58,"pct":0.5},{"name":"Lisa","plays":12,"pct":0.103},{"name":"Others","plays":46,"pct":0.397}],"tracks":[{"name":"祝福","artist":"YOASOBI","plays":18},{"name":"ソフィリア","artist":"Lisa","plays":12},{"name":"猫 〜THE FIRST TAKE ver.〜","artist":"DISH//","plays":7},{"name":"BABY","artist":"YOASOBI","plays":7},{"name":"等到十三月","artist":"陈小满","plays":7},{"name":"Yesterday","artist":"Official鬍子男dism","plays":6},{"name":"キラメキ","artist":"wacci","plays":6},{"name":"HEART BEAT - English Version","artist":"YOASOBI","plays":6},{"name":"アイドル","artist":"YOASOBI","plays":5},{"name":"優しい彗星","artist":"YOASOBI","plays":5}]},{"key":"12month","label":"365 days","total":1539,"artists":[{"name":"YOASOBI","plays":482,"pct":0.313},{"name":"周杰倫","plays":201,"pct":0.131},{"name":"Aimer","plays":200,"pct":0.13},{"name":"ヨルシカ","plays":117,"pct":0.076},{"name":"梁靜茹","plays":117,"pct":0.076},{"name":"Lisa","plays":85,"pct":0.055},{"name":"Others","plays":337,"pct":0.219}],"tracks":[{"name":"等到十三月","artist":"陈小满","plays":83},{"name":"Yesterday","artist":"Official鬍子男dism","plays":62},{"name":"キラメキ","artist":"wacci","plays":61},{"name":"HEART BEAT - English Version","artist":"YOASOBI","plays":60},{"name":"ハッピーエンド","artist":"back number","plays":52},{"name":"好きな人がいること-Piano Slow Edit.-","artist":"JY","plays":39},{"name":"Yesterday","artist":"Official HIGE DANdism","plays":39},{"name":"残響散歌","artist":"Aimer","plays":38},{"name":"優しい彗星","artist":"YOASOBI","plays":36},{"name":"群青","artist":"YOASOBI","plays":36}]},{"key":"overall","label":"all time","total":2724,"artists":[{"name":"YOASOBI","plays":686,"pct":0.252},{"name":"周杰倫","plays":362,"pct":0.133},{"name":"Aimer","plays":356,"pct":0.131},{"name":"梁靜茹","plays":304,"pct":0.112},{"name":"芝麻Mochi","plays":234,"pct":0.086},{"name":"ヨルシカ","plays":188,"pct":0.069},{"name":"Lisa","plays":187,"pct":0.069},{"name":"Others","plays":407,"pct":0.149}],"tracks":[{"name":"等到十三月","artist":"陈小满","plays":98},{"name":"群青","artist":"YOASOBI","plays":72},{"name":"Yesterday","artist":"Official鬍子男dism","plays":70},{"name":"燈","artist":"Soushi Sakiyama","plays":67},{"name":"キラメキ","artist":"wacci","plays":62},{"name":"残響散歌","artist":"Aimer","plays":60},{"name":"HEART BEAT - English Version","artist":"YOASOBI","plays":60},{"name":"優しい彗星","artist":"YOASOBI","plays":59},{"name":"楓","artist":"周杰倫","plays":59},{"name":"青のすみか","artist":"Tatsuya Kitani","plays":55}]}]}</script>
       <!-- MUSIC_DATA_END -->
 
-      <!-- My Gear -->
-      <div class="card card-gear" id="gear">
-        <div class="section-title" data-i18n="sec_gear">My Gear</div>
-        <div class="gs-cat-label">COMPUTING</div>
-        <div class="gs-row">
-          <div class="gs-tag"><span>💻</span><span>MacBook Pro M4</span></div>
-          <div class="gs-tag"><span>🖥️</span><span>Mac mini M4 Pro</span></div>
-          <div class="gs-tag"><span>💻</span><span>Surface Pro 12</span></div>
-          <div class="gs-tag"><span>📱</span><span>iPad Pro M4</span></div>
-        </div>
-        <div class="gs-cat-label">MOBILE & WEARABLE</div>
-        <div class="gs-row">
-          <div class="gs-tag"><span>📱</span><span>Samsung Z Fold 7</span></div>
-          <div class="gs-tag"><span>⌚</span><span>Apple Watch</span></div>
-          <div class="gs-tag"><span>👓</span><span>Meta Ray-Ban</span></div>
-        </div>
-        <div class="gs-cat-label">GAMING & AUDIO</div>
-        <div class="gs-row">
-          <div class="gs-tag"><span>🎮</span><span>XBox ROG X</span></div>
-          <div class="gs-tag"><span>🎧</span><span>Even G2</span></div>
-          <div class="gs-tag"><span>⌨️</span><span>HHKB Snow</span></div>
-          <div class="gs-tag"><span>⌨️</span><span>ZSA Moonlander</span></div>
-          <div class="gs-tag"><span>⌨️</span><span>ZSA Voyager</span></div>
-          <div class="gs-tag"><span>📖</span><span>Kindle Scribe 2025</span></div>
-        </div>
-        <div class="gs-cat-label">PHOTOGRAPHY</div>
-        <div class="gs-row">
-          <div class="gs-tag"><span>📷</span><span>Fujifilm X100VI</span></div>
-          <div class="gs-tag"><span>📷</span><span>Hasselblad 907X 100C</span></div>
-        </div>
-      </div>
-
-      <!-- Software Stack -->
-      <div class="card card-software" id="software">
-        <div class="section-title" data-i18n="sec_software">Software Stack</div>
-        <div class="gs-cat-label">PRODUCTIVITY</div>
-        <div class="gs-row">
-          <div class="gs-tag"><span>📝</span><span>Notion</span></div>
-          <div class="gs-tag"><span>📋</span><span>Todoist</span></div>
-          <div class="gs-tag"><span>📅</span><span>Akiflow</span></div>
-          <div class="gs-tag"><span>📊</span><span>Linear</span></div>
-          <div class="gs-tag"><span>✉️</span><span>Spark</span></div>
-          <div class="gs-tag"><span>⏱️</span><span>Rize</span></div>
-        </div>
-        <div class="gs-cat-label">DEVELOPMENT</div>
-        <div class="gs-row">
-          <div class="gs-tag"><span>🤖</span><span>Claude Code</span></div>
-          <div class="gs-tag"><span>🖥️</span><span>Herdr</span></div>
-          <div class="gs-tag"><span>🌐</span><span>LocalCan</span></div>
-          <div class="gs-tag"><span>🔗</span><span>Tailscale</span></div>
-          <div class="gs-tag"><span>⌨️</span><span>Wispr Flow</span></div>
-        </div>
-        <div class="gs-cat-label">AI & KNOWLEDGE</div>
-        <div class="gs-row">
-          <div class="gs-tag"><span>🌊</span><span>MoFlow</span></div>
-          <div class="gs-tag"><span>🎤</span><span>Hemory</span></div>
-          <div class="gs-tag"><span>🤖</span><span>Grok Bot</span></div>
-          <div class="gs-tag"><span>🗂️</span><span>DEVONthink</span></div>
-        </div>
-        <div class="gs-cat-label">READING & MEDIA</div>
-        <div class="gs-row">
-          <div class="gs-tag"><span>📚</span><span>Readwise</span></div>
-          <div class="gs-tag"><span>📖</span><span>Readwise Reader</span></div>
-          <div class="gs-tag"><span>📕</span><span>微信读书</span></div>
-          <div class="gs-tag"><span>🔖</span><span>Raindrop</span></div>
-          <div class="gs-tag"><span>🎵</span><span>Spotify</span></div>
-        </div>
-        <div class="gs-cat-label">FINANCE & OTHER</div>
-        <div class="gs-row">
-          <div class="gs-tag"><span>💰</span><span>MoneyWise</span></div>
-          <div class="gs-tag"><span>📈</span><span>TradingView</span></div>
-          <div class="gs-tag"><span>🔐</span><span>1Password</span></div>
-          <div class="gs-tag"><span>📔</span><span>DayOne</span></div>
-          <div class="gs-tag"><span>🏋️</span><span>PeakWatch</span></div>
-          <div class="gs-tag"><span>📖</span><span>Eudic</span></div>
-        </div>
-      </div>
+      <!-- Setup (gear + software, as neofetch) -->
+      <SetupCard />
 
       <!-- World Map -->
       <div class="card card-map" id="footprints">
@@ -4571,206 +4504,189 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
       }
 
-      // ── Vibe Coding ──
-      var vc = data.vibeCoding;
-      if (vc) {
-        var daily = vc.daily || {};
-        var dates = Object.keys(daily).sort();
-        var maxCost = 0;
-        for (var k in daily) { if (daily[k].cost > maxCost) maxCost = daily[k].cost; }
-
-        // Header
-        var numWeeks = Math.ceil(dates.length > 0 ? ((new Date(dates[dates.length-1]) - new Date(dates[0])) / 86400000 / 7) : 0);
-        el('vcTotal').innerHTML = 'Past ' + Math.max(numWeeks, 1) + ' weeks &middot; <strong>$' + vc.totalCost.toFixed(2) + '</strong>';
-
-        // Stats
-        el('vcTokens').textContent = fmtTokens(vc.totalTokens);
-        el('vcCost').textContent = '$' + Math.round(vc.totalCost);
-        el('vcAvg').textContent = '$' + Math.round(vc.avgWeekCost);
-
-        // Models
-        var modelsEl = el('vcModels');
-        (vc.models || []).forEach(function(m) {
-          var tag = document.createElement('span');
-          tag.className = 'vc-model-tag';
-          tag.innerHTML = '<span class="vc-model-dot" style="background:' + m.color + ';"></span>' + m.name;
-          modelsEl.appendChild(tag);
+      var MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+      function money(n) { return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+      function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+      // One floating tooltip for the barcode, the model lanes and the mood stripes.
+      var tipEl = null;
+      function bindTips(root) {
+        root.querySelectorAll('[data-tip]').forEach(function(node) {
+          node.addEventListener('mousemove', function(e) {
+            if (!tipEl) { tipEl = document.createElement('div'); tipEl.className = 'hm-tip'; document.body.appendChild(tipEl); }
+            tipEl.textContent = node.getAttribute('data-tip');
+            tipEl.style.left = (e.clientX + 12) + 'px';
+            tipEl.style.top = (e.clientY - 30) + 'px';
+            tipEl.classList.add('on');
+          });
+          node.addEventListener('mouseleave', function() { if (tipEl) tipEl.classList.remove('on'); });
         });
-
-        // Heatmap - calculate weeks to fit container (10px cell + 2px gap = 12px per col)
-        var heatmap = el('vcHeatmap');
-        var today = new Date();
-        var heatmapWidth = heatmap.offsetWidth || 480;
-        var totalWeeks = Math.floor((heatmapWidth + 2) / 12);
-        totalWeeks = Math.max(8, Math.min(totalWeeks, 52));
-        var endDay = new Date(today);
-        endDay.setDate(endDay.getDate() + (6 - endDay.getDay()));
-        var startDay = new Date(endDay);
-        startDay.setDate(startDay.getDate() - (totalWeeks * 7 - 1));
-
-        var cursor = new Date(startDay);
-        for (var w = 0; w < totalWeeks; w++) {
-          var weekEl = document.createElement('div');
-          weekEl.className = 'vc-heatmap-week';
-          for (var d = 0; d < 7; d++) {
-            var cell = document.createElement('div');
-            cell.className = 'vc-heatmap-cell';
-            var key = cursor.toISOString().slice(0, 10);
-            var entry = daily[key];
-            if (entry) {
-              var ratio = entry.cost / maxCost;
-              if (ratio > 0.6) cell.classList.add('l4');
-              else if (ratio > 0.35) cell.classList.add('l3');
-              else if (ratio > 0.15) cell.classList.add('l2');
-              else cell.classList.add('l1');
-              var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-              var dd = new Date(key);
-              var label = months[dd.getMonth()] + ' ' + dd.getDate();
-              var tip = document.createElement('div');
-              tip.className = 'vc-tooltip';
-              tip.innerHTML = '<span class="vc-tooltip-date">' + label + '</span><br><span class="vc-tooltip-cost">$' + entry.cost.toFixed(2) + '</span> · ' + fmtTokens(entry.tokens) + ' tokens';
-              cell.appendChild(tip);
-            }
-            if (cursor > today) cell.style.opacity = '0.3';
-            weekEl.appendChild(cell);
-            cursor.setDate(cursor.getDate() + 1);
-          }
-          heatmap.appendChild(weekEl);
-        }
+      }
+      // Run a card's entrance once it scrolls into view (skipped with reduced motion).
+      function onView(node, fn) {
+        if (!node || !('IntersectionObserver' in window)) return;
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        var io = new IntersectionObserver(function(es) { if (es[0].isIntersecting) { fn(); io.disconnect(); } }, { threshold: 0.3 });
+        io.observe(node);
       }
 
-      // ── Mood ──
-      var mood = data.mood;
-      if (mood) {
-        var dotsEl = el('moodDots');
-        var tooltipEl = el('moodTooltip');
-        var moodLabels = { rad: 'mood_rad', good: 'mood_good', meh: 'mood_meh', bad: 'mood_bad', awful: 'mood_awful' };
-        var moodValues = { rad: 5, good: 4, meh: 3, bad: 2, awful: 1 };
-        var moodColors = { rad: '#fbbf24', good: 'var(--accent)', meh: '#38bdf8', bad: '#f472b6', awful: '#ef4444' };
-        var moods = mood.recentMoods || [];
-        var today = new Date();
-
-        moods.forEach(function(m, i) {
-          var dot = document.createElement('div');
-          dot.className = 'mood-dot ' + m;
-          // Infer date: most recent first, one entry per day
-          var d = new Date(today);
-          d.setDate(d.getDate() - i);
-          var dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          dot.addEventListener('mouseenter', function() {
-            tooltipEl.innerHTML = '<span class="mood-tt-mood" style="color:' + (moodColors[m] || 'var(--c-text-muted)') + '">' + t(moodLabels[m] || m) + '</span> · ' + dateStr;
-            tooltipEl.classList.add('visible');
-          });
-          dot.addEventListener('mouseleave', function() {
-            tooltipEl.classList.remove('visible');
-          });
-          dotsEl.appendChild(dot);
-        });
-
-        el('moodEntries').textContent = fmtNum(mood.totalEntries);
-        el('moodSince').textContent = mood.since;
-
-        // Mood trend chart (last 30 days as SVG line)
-        var chartWrap = el('moodChart');
-        if (chartWrap && moods.length > 1) {
-          var chartDays = Math.min(moods.length, 30);
-          var pts = [];
-          for (var ci = chartDays - 1; ci >= 0; ci--) {
-            pts.push(moodValues[moods[ci]] || 3);
-          }
-          var w = chartWrap.offsetWidth || 300;
-          var h = 60;
-          var padY = 6;
-          var stepX = w / (pts.length - 1);
-          var minV = 1, maxV = 5;
-          function yPos(v) { return padY + (maxV - v) / (maxV - minV) * (h - padY * 2); }
-
-          var pathD = pts.map(function(v, i) {
-            return (i === 0 ? 'M' : 'L') + (i * stepX).toFixed(1) + ',' + yPos(v).toFixed(1);
-          }).join(' ');
-
-          // Area fill
-          var areaD = pathD + ' L' + ((pts.length - 1) * stepX).toFixed(1) + ',' + h + ' L0,' + h + ' Z';
-
-          var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-          svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
-          svg.setAttribute('preserveAspectRatio', 'none');
-          svg.style.width = '100%';
-          svg.style.height = h + 'px';
-
-          // Gradient
-          var defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-          var grad = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
-          grad.id = 'moodGrad';
-          grad.setAttribute('x1', '0'); grad.setAttribute('y1', '0');
-          grad.setAttribute('x2', '0'); grad.setAttribute('y2', '1');
-          var stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
-          stop1.setAttribute('offset', '0%'); stop1.setAttribute('stop-color', 'var(--accent)'); stop1.setAttribute('stop-opacity', '0.2');
-          var stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
-          stop2.setAttribute('offset', '100%'); stop2.setAttribute('stop-color', 'var(--accent)'); stop2.setAttribute('stop-opacity', '0');
-          grad.appendChild(stop1); grad.appendChild(stop2);
-          defs.appendChild(grad);
-          svg.appendChild(defs);
-
-          // Area
-          var area = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-          area.setAttribute('d', areaD);
-          area.setAttribute('fill', 'url(#moodGrad)');
-          svg.appendChild(area);
-
-          // Line
-          var line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-          line.setAttribute('d', pathD);
-          line.setAttribute('fill', 'none');
-          line.setAttribute('stroke', 'var(--accent)');
-          line.setAttribute('stroke-width', '1.5');
-          line.setAttribute('stroke-linecap', 'round');
-          line.setAttribute('stroke-linejoin', 'round');
-          svg.appendChild(line);
-
-          // Interactive dots on the line
-          var chartTooltip = document.createElement('div');
-          chartTooltip.className = 'mood-tooltip';
-          chartTooltip.style.position = 'absolute';
-          chartTooltip.style.top = '-16px';
-          chartTooltip.style.left = '0';
-          chartTooltip.style.pointerEvents = 'none';
-          chartWrap.appendChild(chartTooltip);
-
-          pts.forEach(function(v, i) {
-            var cx = i * stepX;
-            var cy = yPos(v);
-            var moodKey = moods[chartDays - 1 - i];
-            var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            circle.setAttribute('cx', cx.toFixed(1));
-            circle.setAttribute('cy', cy.toFixed(1));
-            circle.setAttribute('r', '3');
-            circle.setAttribute('fill', moodColors[moodKey] || 'var(--accent)');
-            circle.setAttribute('stroke', 'var(--c-bg)');
-            circle.setAttribute('stroke-width', '1');
-            circle.style.cursor = 'pointer';
-            circle.style.opacity = '0';
-            circle.style.transition = 'opacity 0.15s';
-
-            var dd = new Date(today);
-            dd.setDate(dd.getDate() - (chartDays - 1 - i));
-            var dlabel = dd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-            circle.addEventListener('mouseenter', function() {
-              circle.style.opacity = '1';
-              chartTooltip.innerHTML = '<span style="color:' + (moodColors[moodKey] || 'var(--c-text-muted)') + '">' + t(moodLabels[moodKey] || moodKey) + '</span> · ' + dlabel;
-              chartTooltip.classList.add('visible');
-              chartTooltip.style.left = Math.min(cx, w - 80) + 'px';
-            });
-            circle.addEventListener('mouseleave', function() {
-              circle.style.opacity = '0';
-              chartTooltip.classList.remove('visible');
-            });
-            svg.appendChild(circle);
-          });
-
-          chartWrap.appendChild(svg);
+      // ── Vibe Coding: ccusage printed as a receipt ──
+      var vc = data.vibeCoding;
+      if (vc && vc.daily && Object.keys(vc.daily).length) {
+        var daily = vc.daily;
+        var days = Object.keys(daily).sort();
+        var first = new Date(days[0] + 'T00:00:00'), last = new Date(days[days.length - 1] + 'T00:00:00');
+        var span = Math.round((last - first) / 864e5) + 1;
+        // Every calendar day, used or not: unused days are gaps in the barcode and the lanes.
+        var cal = [];
+        for (var ci = 0; ci < span; ci++) {
+          var cd = new Date(first); cd.setDate(cd.getDate() + ci);
+          cal.push({ k: ymd(cd), d: cd, v: daily[ymd(cd)] });
         }
+        var months = {};
+        days.forEach(function(k) {
+          var m = k.slice(0, 7);
+          months[m] = months[m] || { cost: 0, days: 0 };
+          months[m].cost += daily[k].cost; months[m].days++;
+        });
+        var mk = Object.keys(months).sort();
+        var maxMonth = Math.max.apply(null, mk.map(function(m) { return months[m].cost; }));
+        var busiest = days.reduce(function(a, b) { return daily[b].cost > daily[a].cost ? b : a; });
+
+        el('vcSince').textContent = days[0];
+        el('vcSpan').textContent = span;
+
+        var r = '<div class="rc-c rc-shop">VIBE CODING CO.</div>' +
+          '<div class="rc-c rc-dim">ursb.me · Singapore</div>' +
+          '<div class="rc-c rc-dim">' + days[0].replace(/-/g, '.') + ' → ' + days[days.length - 1].replace(/-/g, '.') + '</div><hr>' +
+          '<div class="rc-ln rc-dim"><span>ITEM</span><span class="rc-sp"></span><span>QTY&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;AMOUNT</span></div>';
+        mk.forEach(function(m) {
+          var o = months[m];
+          r += '<div class="rc-ln"><span>' + MON[+m.slice(5) - 1].toUpperCase() + ' ' + m.slice(0, 4) + '</span><span class="rc-dots"></span>' +
+            '<span>' + o.days + 'd ' + money(o.cost).padStart(11, '\u00a0') + '</span></div>' +
+            '<div class="rc-bar" style="width:' + (o.cost / maxMonth * 100).toFixed(1) + '%"></div>';
+        });
+        r += '<hr>' +
+          '<div class="rc-ln"><span>TOKENS</span><span class="rc-dots"></span><span>' + fmtTokens(vc.totalTokens) + '</span></div>' +
+          '<div class="rc-ln"><span>ACTIVE DAYS</span><span class="rc-dots"></span><span>' + days.length + ' / ' + span + '</span></div>' +
+          '<div class="rc-ln"><span>AVG / WEEK</span><span class="rc-dots"></span><span>' + money(vc.avgWeekCost) + '</span></div>' +
+          '<div class="rc-ln"><span>BUSIEST ' + busiest.slice(5).replace('-', '/') + '</span><span class="rc-dots"></span><span>' + money(daily[busiest].cost) + '</span></div>' +
+          '<hr class="rc-dbl">' +
+          '<div class="rc-ln rc-total"><span>TOTAL</span><span class="rc-sp"></span><span>' + money(vc.totalCost) + '</span></div>' +
+          '<div class="rc-ln rc-dim"><span>PAID WITH</span><span class="rc-sp"></span><span>MAX PLAN</span></div>' +
+          '<div class="rc-stamp">PAID</div>';
+        // Barcode: one bar per day, thicker the more it cost; unused days are gaps.
+        var maxDay = daily[busiest].cost, bc = '';
+        cal.forEach(function(c) {
+          if (!c.v) { bc += '<i class="gap"></i>'; return; }
+          bc += '<i style="flex:' + (0.6 + 3.4 * Math.sqrt(c.v.cost / maxDay)).toFixed(2) + '" data-tip="' + c.k + ' · ' + money(c.v.cost) + '"></i>';
+        });
+        r += '<div class="rc-barcode">' + bc + '</div>' +
+          '<div class="rc-bc-cap"><span>' + days[0].slice(5).replace('-', '') + '</span><span>1 bar = 1 day</span><span>' + days[days.length - 1].slice(5).replace('-', '') + '</span></div>' +
+          '<div class="rc-c rc-dim rc-thanks">THANK YOU · KEEP SHIPPING</div>';
+        el('vcReceipt').innerHTML = r;
+
+        // Model lanes, ordered by first use, so the switches between models show.
+        var colorByName = {};
+        (vc.models || []).forEach(function(m) { colorByName[m.name] = m.color; });
+        var FAMILY = { fable: '#c084fc', opus: '#8b5cf6', sonnet: '#f59e0b', haiku: '#10b981', gpt: '#22c55e' };
+        function modelName(id) {
+          var parts = id.replace(/^claude-/, '').split('-'), out = [];
+          parts.forEach(function(p) {
+            var prev = out[out.length - 1];
+            if (/^\d+$/.test(p) && prev && /^\d+$/.test(prev)) out[out.length - 1] = prev + '.' + p;
+            else out.push(p === 'gpt' ? 'GPT' : p.charAt(0).toUpperCase() + p.slice(1));
+          });
+          return out.join(' ');
+        }
+        var lanes = {};
+        cal.forEach(function(c, i) {
+          if (!c.v) return;
+          (c.v.models || []).forEach(function(id) {
+            if (!/^[a-z][a-z0-9.-]*-\d/.test(id)) return;   // skips "(未识别)", "probe", "claude 4 sonnet"
+            var n = modelName(id);
+            lanes[n] = lanes[n] || { first: i, on: {}, fam: id.replace(/^claude-/, '').split('-')[0] };
+            lanes[n].on[i] = 1;
+          });
+        });
+        var names = Object.keys(lanes).filter(function(n) { return Object.keys(lanes[n].on).length >= 2; })
+          .sort(function(a, b) { return lanes[a].first - lanes[b].first; });
+        var lh = '';
+        names.forEach(function(n) {
+          var L = lanes[n], cells = '';
+          for (var i = 0; i < span; i++) cells += L.on[i] ? '<i class="on" data-tip="' + n + ' · ' + cal[i].k + '"></i>' : '<i></i>';
+          lh += '<div class="vc-lane" style="--m:' + (colorByName[n] || FAMILY[L.fam] || '#64748b') + '"><span class="vc-lane-nm">' + esc(n) + '</span>' +
+            '<span class="vc-lane-tr">' + cells + '</span><span class="vc-lane-d">' + Object.keys(L.on).length + 'd</span></div>';
+        });
+        var ticks = '';
+        cal.forEach(function(c, i) { if (i === 0 || c.d.getDate() === 1) ticks += '<span style="left:' + (i / span * 100).toFixed(2) + '%">' + MON[c.d.getMonth()] + '</span>'; });
+        lh += '<div class="vc-axis"><span></span><span class="vc-axis-ticks">' + ticks + '</span><span></span></div>';
+        el('vcLanes').innerHTML = lh;
+        if (names.length) {
+          var most = names.slice().sort(function(a, b) { return Object.keys(lanes[b].on).length - Object.keys(lanes[a].on).length; })[0];
+          el('vcNote').innerHTML = names.length + ' models · most used <b>' + esc(most) + '</b> (' + Object.keys(lanes[most].on).length + 'd) · newest <b>' + esc(names[names.length - 1]) + '</b>';
+        }
+        bindTips(el('vibe-coding'));
+        var printer = el('vcPrinter');
+        onView(printer, function() { printer.classList.add('printing'); });
+      }
+
+      // ── Mood: today's mood as a wttr.in report ──
+      var mood = data.mood;
+      if (mood && mood.recentMoods && mood.recentMoods.length) {
+        var moods = mood.recentMoods;   // newest first, one entry per day
+        var VAL = { rad: 5, good: 4, meh: 3, bad: 2, awful: 1 };
+        var WX = {
+          rad:   ['<span class="y">    \\   /    </span>', '<span class="y">     .-.     </span>', '<span class="y">  ― (   ) ―  </span>', '<span class="y">     `-’     </span>', '<span class="y">    /   \\    </span>'],
+          good:  ['<span class="y">   \\  /</span>      ', '<span class="y"> _ /""</span><span class="c">.-.    </span>', '<span class="y">   \\_</span><span class="c">(   ).  </span>', '<span class="y">   /</span><span class="c">(___(__) </span>', '             '],
+          meh:   ['             ', '<span class="c">     .--.    </span>', '<span class="c">  .-(    ).  </span>', '<span class="c"> (___.__)__) </span>', '             '],
+          bad:   ['<span class="c">     .-.     </span>', '<span class="c">    (   ).   </span>', '<span class="c">   (___(__)  </span>', '<span class="r">    ‘ ‘ ‘ ‘  </span>', '<span class="r">   ‘ ‘ ‘ ‘   </span>'],
+          awful: ['<span class="c">     .-.     </span>', '<span class="c">    (   ).   </span>', '<span class="c">   (___(__)  </span>', '<span class="r">  ‚‘</span><span class="z">⚡</span><span class="r">‘‚</span><span class="z">⚡</span><span class="r">‚‘ </span>', '<span class="r">  ‚’‚’</span><span class="z">⚡</span><span class="r">’‚’  </span>']
+        };
+        var COND = { rad: 'wx_sunny', good: 'wx_partly', meh: 'wx_overcast', bad: 'wx_rain', awful: 'wx_storm' };
+        var COND_EN = { rad: 'Sunny', good: 'Partly cloudy', meh: 'Overcast', bad: 'Light rain', awful: 'Thunderstorm' };
+        var COLOR = { rad: '#fbbf24', good: 'var(--accent)', meh: 'rgba(var(--c-overlay-rgb),0.16)', bad: '#f472b6', awful: '#ef4444' };
+        var TEXT = { rad: '#fbbf24', good: 'var(--accent)', meh: '#38bdf8', bad: '#f472b6', awful: '#ef4444' };
+        var ICON = {
+          rad:   '<circle cx="11" cy="9" r="4" fill="#fbbf24"/><g stroke="#fbbf24" stroke-width="1.4" stroke-linecap="round"><path d="M11 1.5v2M11 14.5v2M3.5 9h2M16.5 9h2M5.7 3.7l1.4 1.4M14.9 12.9l1.4 1.4M5.7 14.3l1.4-1.4M14.9 5.1l1.4-1.4"/></g>',
+          good:  '<circle cx="8" cy="7" r="3.6" fill="#fbbf24"/><path d="M7 15.5h10a3 3 0 0 0 0-6 4.3 4.3 0 0 0-8.2.9A2.6 2.6 0 0 0 7 15.5z" fill="var(--c-text-muted)"/>',
+          meh:   '<path d="M5 15h12a3.4 3.4 0 0 0 0-6.8 5 5 0 0 0-9.6 1A2.9 2.9 0 0 0 5 15z" fill="var(--c-text-muted)"/>',
+          bad:   '<path d="M5 11.5h12a3.2 3.2 0 0 0 0-6.4 4.8 4.8 0 0 0-9.2.9A2.8 2.8 0 0 0 5 11.5z" fill="var(--c-text-muted)"/><g stroke="#38bdf8" stroke-width="1.4" stroke-linecap="round"><path d="M7.5 13.5l-1 2.5M11.5 13.5l-1 2.5M15.5 13.5l-1 2.5"/></g>',
+          awful: '<path d="M5 11h12a3.2 3.2 0 0 0 0-6.4 4.8 4.8 0 0 0-9.2.9A2.8 2.8 0 0 0 5 11z" fill="var(--c-text-muted)"/><path d="M11.5 11l-2.5 3.6h2.4L10 18l3.6-4.6h-2.4l1.4-2.4z" fill="#fbbf24"/><path d="M6.5 13l-1 2.4M16 13l-1 2.4" stroke="#38bdf8" stroke-width="1.4" stroke-linecap="round"/>'
+        };
+        // Dates count back from the day the data was synced, not from today.
+        var anchor = new Date(((data.updatedAt || '').slice(0, 10) || ymd(new Date())) + 'T12:00:00');
+        function dayOf(i) { var d = new Date(anchor); d.setDate(d.getDate() - i); return d; }
+        function md(d) { return MON[d.getMonth()] + ' ' + d.getDate(); }
+        function avg(list) { return list.reduce(function(s, m) { return s + (VAL[m] || 3); }, 0) / Math.max(list.length, 1); }
+        var now = moods[0];
+        var avg7 = avg(moods.slice(0, 7)), delta = avg7 - avg(moods.slice(7, 14));
+
+        el('wxEntries').textContent = fmtNum(mood.totalEntries || moods.length);
+        el('wxDate').textContent = ymd(anchor);
+        el('wxArt').innerHTML = (WX[now] || WX.meh).join('\n');
+        el('wxRead').innerHTML =
+          '<div class="wx-cond"><span data-i18n="' + COND[now] + '">' + COND_EN[now] + '</span><em style="color:' + TEXT[now] + '" data-i18n="mood_' + now + '">' + now + '</em></div>' +
+          '<div><b>' + VAL[now] + '°</b> <span class="wx-dim">· <span data-i18n="mood_avg7">7-day avg</span></span> ' + avg7.toFixed(1) + '° ' + (delta >= 0 ? '↑' : '↓') + Math.abs(delta).toFixed(1) + '</div>' +
+          ((mood.recentActivities || []).length ? '<div class="wx-ell">↗ ' + esc(mood.recentActivities.slice(0, 3).join(' · ')) + '</div>' : '') +
+          (mood.since ? '<div class="wx-dim"><span data-i18n="mood_since_lc">since</span> ' + esc(mood.since) + '</div>' : '');
+
+        var fc = '';
+        for (var fi = Math.min(6, moods.length - 1); fi >= 0; fi--) {
+          var fd = dayOf(fi), fm = moods[fi];
+          fc += '<div class="wx-day' + (fi === 0 ? ' today' : '') + '" data-tip="' + md(fd) + ' · ' + fm + '">' +
+            '<span class="wx-dn" data-i18n="' + (fi === 0 ? 'wd_today' : 'wd_' + fd.getDay()) + '">' + (fi === 0 ? 'today' : ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][fd.getDay()]) + '</span>' +
+            '<svg viewBox="0 0 22 18" aria-hidden="true">' + (ICON[fm] || ICON.meh) + '</svg><span class="wx-deg">' + (VAL[fm] || 3) + '°</span></div>';
+        }
+        el('wxFc').innerHTML = fc;
+
+        var st = '';
+        for (var si = moods.length - 1; si >= 0; si--) st += '<i style="background:' + (COLOR[moods[si]] || COLOR.meh) + '" data-tip="' + md(dayOf(si)) + ' · ' + moods[si] + '"></i>';
+        el('wxStripes').innerHTML = st;
+        el('wxN').textContent = moods.length;
+        el('wxFrom').textContent = md(dayOf(moods.length - 1));
+        el('wxTo').textContent = md(anchor);
+        bindTips(el('mood'));
       }
 
       // ── Activity ──
