@@ -1,0 +1,176 @@
+---
+// src/components/GitHubCard.astro
+//
+// Homepage "GitHub" card as a staff badge laid on its side: the green band
+// with the lanyard slot on top, the ID photo on the left, name, @login and
+// the WWDC line (pulled from the bio) in the middle, the three counts on the
+// right, and a barcode along the bottom. Narrow screens stand it upright.
+//
+// Data is src/data/github.json (refreshed by the feed script). The barcode
+// encodes the login's bits; the number beside it is the GitHub user id from
+// the avatar URL.
+import githubData from '../data/github.json';
+
+const gh = githubData;
+const id = (gh.avatar.match(/\/u\/(\d+)/) || [])[1] ?? '';
+const years = new Date().getFullYear() - Number(gh.sinceYear);
+const bioLines = gh.bio.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+const wwdc = (gh.bio.match(/(\d{4}) WWDC Scholarship Winner/) || [])[1];
+const motto = bioLines.find(l => !/WWDC/.test(l)) ?? '';
+const fmt = (n: number) => n.toLocaleString('en-US');
+
+// Barcode: each character's 8 bits; a 1 is a thick bar, a 0 a thin one,
+// and every other bit is drawn so the gaps vary too.
+const bits = [...gh.login].map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join('');
+const bars: { x: number; w: number }[] = [];
+let bx = 0;
+for (let i = 0; i < bits.length; i++) {
+  const w = bits[i] === '1' ? 2 : 1;
+  if (i % 2 === 0) bars.push({ x: bx, w });
+  bx += w + (bits[i] === '1' ? 1 : 0.6);
+}
+---
+<div class="card card-github" id="github">
+  <div class="section-title">GitHub</div>
+  <a class="bd" href={`https://github.com/${gh.login}`} target="_blank" rel="noopener">
+    <div class="bd-band" aria-hidden="true"><span>GITHUB</span><span class="slot"></span><span>MEMBER</span></div>
+    <div class="bd-main">
+      <img class="bd-photo" src="/images/airing-avatar-48.webp" alt="" width="84" height="100" loading="lazy" decoding="async">
+      <div class="bd-who">
+        <div class="bd-name">Airing</div>
+        <div class="bd-login">@{gh.login}</div>
+        <div class="bd-role">
+          {wwdc && <><b>WWDC {wwdc} Scholar</b><br></>}
+          <span data-i18n="gh_member_since">member since</span> <b>{gh.sinceYear}</b> · {years} <span data-i18n="gh_yrs">yrs</span>
+          {motto && <><br><span class="bd-motto">“{motto}”</span></>}
+        </div>
+      </div>
+      <div class="bd-stats">
+        <div>{fmt(gh.followers)}<span data-i18n="gh_followers">Followers</span></div>
+        <div>{fmt(gh.repos)}<span data-i18n="gh_repos">Repos</span></div>
+        <div>{fmt(gh.following)}<span data-i18n="gh_following">Following</span></div>
+      </div>
+    </div>
+    <div class="bd-foot">
+      <svg class="bd-bc" viewBox={`0 0 ${Math.round(bx)} 22`} preserveAspectRatio="none" fill="currentColor" aria-hidden="true">
+        {bars.map(b => <rect x={b.x} y="0" width={b.w} height="22" />)}
+      </svg>
+      {id && <span class="bd-id">ID {id}</span>}
+    </div>
+  </a>
+</div>
+
+<style>
+  .bd {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    border: 1px solid rgba(var(--c-overlay-rgb), 0.12);
+    border-radius: 10px;
+    background: linear-gradient(160deg, rgba(var(--c-overlay-rgb), 0.07), rgba(var(--c-overlay-rgb), 0.02));
+    color: var(--c-text);
+    text-decoration: none;
+    transition: border-color 0.2s;
+  }
+  .bd:hover { border-color: rgba(var(--accent-rgb), 0.45); }
+  .bd:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .bd-band {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 14px;
+    background: var(--accent);
+    color: var(--c-bg);
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 2px;
+  }
+  .bd-band .slot {
+    width: 40px;
+    height: 7px;
+    border-radius: 4px;
+    background: var(--c-bg);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+  }
+  .bd-main {
+    display: grid;
+    grid-template-columns: 84px minmax(0, 1fr) minmax(0, 300px);
+    gap: 18px;
+    align-items: center;
+    padding: 16px 16px 14px;
+  }
+  .bd-photo {
+    display: block;
+    width: 84px;
+    height: 100px;
+    object-fit: cover;
+    border: 1px solid rgba(var(--c-overlay-rgb), 0.14);
+    border-radius: 4px;
+    background: rgba(var(--c-overlay-rgb), 0.06);
+    filter: saturate(0.85);
+  }
+  .bd-who { min-width: 0; }
+  .bd-name { font-size: 18px; font-weight: 700; line-height: 1.2; }
+  .bd-login { font-size: 12px; color: var(--accent); }
+  .bd-role { margin-top: 8px; font-size: 11px; line-height: 1.6; color: var(--c-text-muted); }
+  .bd-role b { color: var(--c-text); font-weight: 600; }
+  .bd-motto { color: var(--c-text-dim); }
+  .bd-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-self: stretch;
+    align-items: center;
+    border-left: 1px dashed rgba(var(--c-overlay-rgb), 0.14);
+  }
+  .bd-stats div {
+    padding: 4px 0;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+  }
+  .bd-stats div + div { border-left: 1px dashed rgba(var(--c-overlay-rgb), 0.14); }
+  .bd-stats span {
+    display: block;
+    margin-top: 2px;
+    font-size: 9px;
+    font-weight: 400;
+    letter-spacing: 1.5px;
+    color: var(--c-text-dim);
+    text-transform: uppercase;
+  }
+  .bd-foot {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px 10px;
+    border-top: 1px solid rgba(var(--c-overlay-rgb), 0.08);
+  }
+  .bd-bc { flex: 1; min-width: 0; height: 22px; color: var(--c-text); opacity: 0.8; }
+  .bd-id { font-size: 10px; letter-spacing: 1px; white-space: nowrap; color: var(--c-text-muted); }
+
+  /* Upright on phones: photo + name side by side, the counts underneath. */
+  @media (max-width: 600px) {
+    .bd-main {
+      grid-template-columns: 70px minmax(0, 1fr);
+      gap: 12px;
+      padding: 12px 12px 0;
+    }
+    .bd-photo { width: 70px; height: 84px; }
+    .bd-name { font-size: 16px; }
+    .bd-role { margin-top: 6px; font-size: 10.5px; line-height: 1.5; }
+    .bd-stats {
+      grid-column: 1 / -1;
+      margin: 0 -12px;
+      border-left: 0;
+      border-top: 1px dashed rgba(var(--c-overlay-rgb), 0.14);
+    }
+    .bd-stats div { padding: 7px 0 6px; font-size: 14px; }
+    .bd-stats span { font-size: 8.5px; }
+    .bd-foot { padding: 7px 12px 9px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bd { transition: none; }
+  }
+</style>

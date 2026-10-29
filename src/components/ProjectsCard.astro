@@ -1,0 +1,181 @@
+---
+// src/components/ProjectsCard.astro
+//
+// Homepage "Projects" card: MoFlow and MoneyWise side by side like two App
+// Store search results — icon, name, category line, a pill straight to the
+// store, then the pitch, three features and the tags. Stacks on phones.
+// The copy lives in public/i18n (mf_* / mw_*); the English here is the
+// no-JS fallback.
+interface App {
+  name: string;
+  icon: string;
+  site: string;
+  siteLabel: string;
+  store: string;
+  desc: [string, string];
+  feats: [string, string][];
+  /** [label, i18n key or ''] — the first three also make the category line. */
+  tags: [string, string][];
+}
+const APPS: App[] = [
+  {
+    name: 'MoFlow',
+    icon: 'https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/9c/86/d0/9c86d066-2b41-3e7f-5c93-c8fd8d9ba98c/AppIcon-1x_U007emarketing-0-11-0-85-220-0.png/512x512bb.jpg',
+    site: 'https://moflowapp.com',
+    siteLabel: 'moflowapp.com',
+    store: 'https://apps.apple.com/cn/app/moflow-ai-%E7%96%97%E6%84%88%E5%8A%A9%E6%89%8B/id6737146258',
+    desc: ['mf_desc', 'AI therapeutic writing. Let emotions flow freely, harness the power of writing to heal.'],
+    feats: [['mf_feat_1', 'CBT deep analysis'], ['mf_feat_2', 'AI-guided emotional insights'], ['mf_feat_3', 'End-to-end encryption']],
+    tags: [['iOS', ''], ['AI', ''], ['CBT', ''], ['Mental Health', 'mf_tag_mental'], ['Writing', 'mf_tag_writing']],
+  },
+  {
+    name: 'MoneyWise',
+    icon: 'https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/54/d2/05/54d2052e-0213-b332-738b-901f750af1af/AppIcon-0-0-1x_U007ephone-0-1-85-220.png/512x512bb.jpg',
+    site: 'https://moneywise.airingdeng.com/',
+    siteLabel: 'moneywise.airingdeng.com',
+    store: 'https://apps.apple.com/app/id6762085775',
+    desc: ['mw_desc', 'Offline-first personal finance — track every dollar across currencies, manage budgets and investments in one place.'],
+    feats: [['mw_feat_1', '30+ currencies auto FX conversion'], ['mw_feat_2', 'Tracking · Budgets · Investments'], ['mw_feat_3', 'Offline-first, data stays on device']],
+    tags: [['iOS', ''], ['Finance', 'mw_tag_finance'], ['Investment', 'mw_tag_invest'], ['Privacy', 'mw_tag_privacy'], ['Offline-first', 'mw_tag_offline']],
+  },
+];
+---
+<div class="card card-projects" id="projects">
+  <div class="section-title" data-i18n="sec_projects">Projects</div>
+  <div class="feed-head">
+    <span class="feed-head-cmd"><span class="prompt">$</span> appstore search --developer airing</span>
+    <span class="feed-head-total"><strong>{APPS.length}</strong> <span data-i18n="proj_apps">apps</span></span>
+  </div>
+  <div class="as">
+    {APPS.map(a => (
+      <div class="as-app" id={a.name.toLowerCase()}>
+        <div class="as-top">
+          <img class="app-ic" src={a.icon} alt={a.name} width="64" height="64" loading="lazy" decoding="async">
+          <div class="as-head">
+            <div class="as-name"><a href={a.site} target="_blank" rel="noopener">{a.name}</a></div>
+            <div class="as-cat">
+              {a.tags.slice(0, 3).map(([t, key], i) => <>{i > 0 && ' · '}{key ? <span data-i18n={key}>{t}</span> : t}</>)}
+            </div>
+            <a class="pill" href={a.store} target="_blank" rel="noopener">
+              <svg viewBox="0 0 384 512" fill="currentColor" aria-hidden="true"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg>
+              App Store ↗
+            </a>
+          </div>
+        </div>
+        <div class="as-desc" data-i18n={a.desc[0]}>{a.desc[1]}</div>
+        <div class="as-feat">
+          {a.feats.map(([key, t]) => <span data-i18n={key}>{t}</span>)}
+        </div>
+        <div class="as-foot">
+          {a.tags.map(([t, key]) => key ? <span class="chip" data-i18n={key}>{t}</span> : <span class="chip">{t}</span>)}
+          <a class="as-web" href={a.site} target="_blank" rel="noopener">→ {a.siteLabel}</a>
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
+
+<style>
+  .as { display: grid; grid-template-columns: 1fr 1fr; }
+  .as-app {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+    padding: 0 22px;
+  }
+  .as-app:first-child { padding-left: 0; }
+  .as-app + .as-app {
+    padding-right: 0;
+    border-left: 1px solid rgba(var(--c-overlay-rgb), 0.08);
+  }
+  .as-top {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 14px;
+    align-items: center;
+  }
+  .as-head { min-width: 0; }
+  .app-ic {
+    display: block;
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 15px;
+    box-shadow: 0 0 0 1px rgba(var(--c-overlay-rgb), 0.1);
+  }
+  .as-name { font-size: 16px; font-weight: 700; }
+  .as-name a { color: var(--c-text); text-decoration: none; transition: color 0.2s; }
+  .as-name a:hover { color: var(--accent); }
+  .as-cat {
+    margin: 1px 0 6px;
+    overflow: hidden;
+    font-size: 11px;
+    color: var(--c-text-dim);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 12px;
+    border-radius: 999px;
+    background: rgba(var(--accent-rgb), 0.14);
+    color: var(--accent);
+    font-size: 11.5px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background 0.2s;
+  }
+  .pill:hover { background: rgba(var(--accent-rgb), 0.24); }
+  .pill svg { width: 11px; height: 11px; }
+  .as-desc { font-size: 12.5px; line-height: 1.7; color: var(--c-text-muted); }
+  .as-feat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--c-text);
+  }
+  .as-feat span::before { content: '✓ '; color: var(--accent); }
+  .as-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid rgba(var(--c-overlay-rgb), 0.06);
+  }
+  .chip {
+    display: inline-block;
+    padding: 0 6px;
+    border: 1px solid rgba(var(--c-overlay-rgb), 0.14);
+    border-radius: 3px;
+    background: rgba(var(--c-overlay-rgb), 0.03);
+    font-size: 10.5px;
+    color: var(--c-text-muted);
+  }
+  .as-web {
+    margin-left: auto;
+    font-size: 11.5px;
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .as-web:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+  @media (max-width: 640px) {
+    .as { grid-template-columns: 1fr; }
+    .as-app { padding: 0; }
+    .as-app + .as-app {
+      margin-top: 20px;
+      padding: 20px 0 0;
+      border-left: 0;
+      border-top: 1px solid rgba(var(--c-overlay-rgb), 0.08);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .as-name a, .pill { transition: none; }
+  }
+</style>

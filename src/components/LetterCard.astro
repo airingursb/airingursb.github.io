@@ -1,0 +1,442 @@
+---
+// src/components/LetterCard.astro
+//
+// Homepage "Letter Consultation" card as an airmail envelope: green-and-grey
+// striped edge, a FREE stamp with a round postmark (130+ letters) in the
+// corner, the counts written on the wavy cancellation lines, the address and
+// topics (Re:) on the left, and a row of small stamps, one per month, whose
+// shade is how many letters came in. Under the envelope, the paid session is
+// a dashed registered-mail slip with a grey PAUSED stamp; its button opens a
+// dialog that points back to the free letters.
+//
+// The ✉ / FREE / AIRMAIL on the stamp, the text round the postmark and the
+// PAUSED stamp are decoration. Monthly levels (0–4) are the letter heatmap
+// that used to be on this card, Mar 2023 → Mar 2026.
+const EMAIL = 'airingdeng@gmail.com';
+const MAILTO = `mailto:${EMAIL}?subject=Letter%20Consultation`;
+const START: [number, number] = [2023, 3];
+const LEVELS = [3, 4, 2, 0, 1, 2, 0, 0, 0, 0, 0, 1, 2, 3, 2, 2, 0, 0, 4, 2, 3, 1, 3, 4, 1, 4, 2, 3, 2, 0, 1, 3, 1, 0, 1, 4, 1];
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const LV = ['no letters', 'quiet', 'some', 'busy', 'busiest'];
+
+const byYear = new Map<number, { m: number; lv: number }[]>();
+LEVELS.forEach((lv, i) => {
+  const n = START[1] - 1 + i, y = START[0] + Math.floor(n / 12), m = n % 12;
+  byYear.set(y, [...(byYear.get(y) ?? []), { m, lv }]);
+});
+const TOPICS: [string, string][] = [
+  ['lt_career', 'Career Planning'], ['lt_growth', 'Personal Growth'], ['lt_tech', 'Tech'], ['lt_writing', 'Writing'], ['lt_productivity', 'Productivity'],
+];
+const PAID_OK: [string, string][] = [['lpt_career', 'Career Planning'], ['lpt_growth', 'Personal Growth'], ['lpt_hunting', 'Job Hunting'], ['lpt_writing', 'Writing']];
+const PAID_NO: [string, string][] = [['lpt_biz', 'Business Consulting'], ['lpt_data', 'Data Consulting']];
+---
+<div class="card card-letter" id="letter">
+  <div class="section-title" data-i18n="sec_letter">Letter Consultation</div>
+  <div class="feed-head">
+    <span class="feed-head-cmd"><span class="prompt">$</span> mail -s "Letter Consultation" {EMAIL}</span>
+  </div>
+
+  <div class="env">
+    <div class="env-grid">
+      <div class="env-left">
+        <div class="env-from"><span class="env-k" data-i18n="letter_env_from">From</span>&nbsp; <span data-i18n="letter_env_you">you, anywhere</span></div>
+        <p class="env-msg" data-i18n="letter_intro">Questions about career, tech, or personal growth? Write me a letter. I offer free email consultation on topics like career planning, software engineering, job hunting, writing, and productivity tools.</p>
+        <div class="env-to">
+          <span class="env-k" data-i18n="letter_env_to">To</span>
+          <span class="who"><a href={MAILTO}>Airing</a></span>
+          <span></span>
+          <a class="addr" href={MAILTO}>{EMAIL}</a>
+          <span class="env-k" data-i18n="letter_env_re">Re</span>
+          <div class="chips">{TOPICS.map(([k, t]) => <span class="chip" data-i18n={k}>{t}</span>)}</div>
+        </div>
+      </div>
+      <div class="env-right">
+        <div class="env-post" aria-hidden="true">
+          <div class="bigstamp"><div class="in"><span class="ic">✉</span><span class="den">FREE</span><span class="cty">AIRMAIL</span></div></div>
+          <svg class="pmk" viewBox="0 0 120 120">
+            <defs><path id="letterPmkRing" d="M60,60 m-45,0 a45,45 0 1,1 90,0 a45,45 0 1,1 -90,0" /></defs>
+            <circle class="o" cx="60" cy="60" r="56" />
+            <circle class="o2" cx="60" cy="60" r="37" />
+            <text class="ring"><textPath href="#letterPmkRing" textLength="276" lengthAdjust="spacing">LETTER CONSULTATION · 2023 — 2026 · </textPath></text>
+            <text class="big" x="60" y="64">130+</text>
+            <text class="sm" x="60" y="80">LETTERS</text>
+          </svg>
+        </div>
+        <div class="waves">
+          <div class="wv"><i></i><span><b>22</b> <span data-i18n="letter_wv_people">people</span></span></div>
+          <div class="wv"><i></i><span><b>120,026</b>字 <span data-i18n="letter_wv_total">total</span></span></div>
+          <div class="wv"><i></i><span><b>~920</b>字 <span data-i18n="letter_wv_avg">/ letter</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="act-h" data-i18n="letter_heatmap_label">Letter activity · 2023 — 2026</div>
+    <div class="stamps" id="letterStamps">
+      {[...byYear.entries()].map(([y, list]) => (
+        <div class="yr">
+          <span class="yr-l">{y}</span>
+          <span class="yr-row">{list.map(o => <i class={`st l${o.lv}`} data-tip={`${MON[o.m]} ${y} · ${LV[o.lv]} (${o.lv}/4)`}></i>)}</span>
+        </div>
+      ))}
+    </div>
+
+    <div class="env-acts">
+      <div class="l-cta">
+        <a class="l-btn" href={MAILTO} data-umami-event="letter-write-open" data-umami-event-surface="home" data-umami-event-placement="consultation">
+          <span aria-hidden="true">✉</span><span data-i18n="letter_btn_free">Write to Me — It's Free</span>
+        </a>
+        <div class="l-meta">
+          <span><span class="stars" aria-hidden="true">★★★★★</span> <b>4.9</b> <span data-i18n="letter_satisfaction">Satisfaction</span></span>
+          <span><b>~7d</b> <span data-i18n="letter_avg_reply">Avg Reply</span></span>
+        </div>
+      </div>
+      <div class="l-note" data-i18n="letter_free_note">Free · Privacy protected · Selected and anonymized more than 180 days after the exchange ends</div>
+    </div>
+  </div>
+
+  <div class="paid">
+    <svg width="0" height="0" class="paid-defs" aria-hidden="true">
+      <filter id="letterRough"><feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="2" seed="3" result="n" /><feDisplacementMap in="SourceGraphic" in2="n" scale="1.6" /></filter>
+    </svg>
+    <span class="rubber" aria-hidden="true">PAUSED</span>
+    <div class="paid-h">
+      <span data-i18n="letter_paid_title">1:1 Paid Session</span>
+      <span class="paid-badge" data-i18n="letter_paused_badge">Paused</span>
+    </div>
+    <p class="paid-notice" id="consultationPauseNotice" data-i18n="letter_paused_notice">My capacity is limited, so paid consultations are on hold. Free email conversations are still welcome.</p>
+    <div class="paid-desc" data-i18n="letter_paid_desc">50-min video call for <strong style="color:var(--c-text);">in-depth personal growth</strong> consultation. Full refund guaranteed if unsatisfied. All sessions are recorded (audio &amp; video).</div>
+    <div class="paid-price"><b>$600</b><span>USD / 50 min</span></div>
+    <div class="chips">
+      {PAID_OK.map(([k, t]) => <span class="chip" data-i18n={k}>{t}</span>)}
+      {PAID_NO.map(([k, t]) => <span class="chip no" data-i18n={k}>{t}</span>)}
+    </div>
+    <button type="button" class="paid-btn" id="consultationPauseButton" aria-haspopup="dialog" aria-controls="consultationPauseDialog" aria-describedby="consultationPauseNotice">
+      <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4.5 0a.5.5 0 0 1 .5.5V1h6V.5a.5.5 0 0 1 1 0V1h1.5A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11A1.5 1.5 0 0 1 2.5 1H4V.5a.5.5 0 0 1 .5-.5zM2.5 2a.5.5 0 0 0-.5.5V4h12V2.5a.5.5 0 0 0-.5-.5h-11zM2 5v8.5a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 .5-.5V5H2z" /></svg>
+      <span data-i18n="letter_btn_paused">Bookings paused · Details</span>
+    </button>
+    <div class="l-note" data-i18n="letter_paid_note">Mandarin or English · Refundable · Personal growth only · No business/data consulting · All sessions recorded</div>
+  </div>
+
+  <dialog id="consultationPauseDialog" aria-labelledby="consultationPauseTitle" aria-describedby="consultationPauseDescription">
+    <h2 id="consultationPauseTitle" data-i18n="letter_paused_title">Paid consultations are paused</h2>
+    <p id="consultationPauseDescription" data-i18n="letter_paused_notice">My capacity is limited, so paid consultations are on hold. Free email conversations are still welcome.</p>
+    <form method="dialog" class="pause-dialog-actions">
+      <a class="l-btn" href={MAILTO} data-i18n="letter_paused_email" data-umami-event="letter-write-open" data-umami-event-surface="home" data-umami-event-placement="paused-consultation">Email me for free</a>
+      <button type="submit" class="pause-dialog-close" autofocus data-i18n="letter_paused_close">Got it</button>
+    </form>
+  </dialog>
+</div>
+
+<script>
+  import { bindTips } from '../scripts/card-tips';
+
+  bindTips(document.getElementById('letterStamps'));
+  const pauseButton = document.getElementById('consultationPauseButton');
+  const pauseDialog = document.getElementById('consultationPauseDialog');
+  if (pauseButton instanceof HTMLButtonElement && pauseDialog instanceof HTMLDialogElement) {
+    pauseButton.addEventListener('click', () => pauseDialog.showModal());
+  }
+</script>
+
+<style>
+  /* ── Envelope ── */
+  .env {
+    position: relative;
+    padding: 20px 22px 16px;
+    border: 7px solid transparent;
+    border-image: repeating-linear-gradient(-45deg,
+      rgba(var(--accent-rgb), 0.75) 0 9px, transparent 9px 14px,
+      rgba(var(--c-overlay-rgb), 0.28) 14px 23px, transparent 23px 28px) 7;
+    background: rgba(var(--c-overlay-rgb), 0.025);
+  }
+  .env-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 236px;
+    gap: 14px 28px;
+  }
+  .env-left, .env-right { min-width: 0; }
+  .env-k {
+    font-size: 9.5px;
+    letter-spacing: 1.5px;
+    color: var(--c-text-dim);
+    text-transform: uppercase;
+  }
+  .env-from { margin-bottom: 10px; font-size: 11px; color: var(--c-text-muted); }
+  .env-msg { margin: 0 0 16px; font-size: 12.5px; line-height: 1.75; color: var(--c-text-muted); }
+  .env-to {
+    display: grid;
+    grid-template-columns: 4ch minmax(0, 1fr);
+    gap: 6px 10px;
+    align-items: baseline;
+    padding: 10px 0 2px 14px;
+    border-left: 2px solid rgba(var(--accent-rgb), 0.6);
+  }
+  .env-to .who { font-size: 15px; font-weight: 700; }
+  .env-to a { text-decoration: none; }
+  .env-to .who a { color: var(--c-text); }
+  .env-to .who a:hover { color: var(--accent); }
+  .env-to .addr { overflow-wrap: anywhere; font-size: 12px; color: var(--accent); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    display: inline-block;
+    padding: 1px 8px;
+    border: 1px solid rgba(var(--c-overlay-rgb), 0.14);
+    border-radius: 3px;
+    background: rgba(var(--c-overlay-rgb), 0.03);
+    font-size: 11px;
+    color: var(--c-text-muted);
+  }
+
+  /* Stamp + postmark, top right */
+  .env-post { position: relative; height: 128px; }
+  .bigstamp {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 66px;
+    height: 80px;
+    padding: 4px;
+    background: #f3efe2;
+    transform: rotate(3deg);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, radial-gradient(circle, #0000 1.7px, #000 2px) -3.5px -3.5px / 7px 7px round;
+            mask: linear-gradient(#000 0 0) content-box, radial-gradient(circle, #0000 1.7px, #000 2px) -3.5px -3.5px / 7px 7px round;
+  }
+  .bigstamp .in {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    height: 100%;
+    padding: 6px 0 5px;
+    background: var(--accent);
+    color: var(--c-bg);
+  }
+  .bigstamp .ic { margin-top: 6px; font-size: 22px; line-height: 1; }
+  .bigstamp .den { font-size: 11px; font-weight: 800; letter-spacing: 1px; }
+  .bigstamp .cty { font-size: 6.5px; letter-spacing: 1px; opacity: 0.8; }
+  .pmk {
+    position: absolute;
+    top: 6px;
+    right: 54px;
+    display: block;
+    width: 116px;
+    height: 116px;
+    overflow: visible;
+    color: rgba(var(--c-overlay-rgb), 0.55);
+  }
+  .pmk .o { fill: none; stroke: currentColor; stroke-width: 1.6; opacity: 0.85; }
+  .pmk .o2 { fill: none; stroke: currentColor; stroke-width: 0.8; }
+  .pmk text { font-family: var(--font-mono); fill: currentColor; }
+  .pmk .ring { font-size: 8.4px; font-weight: 600; letter-spacing: 0.5px; opacity: 0.85; }
+  .pmk .big { font-size: 22px; font-weight: 800; text-anchor: middle; fill: var(--accent); }
+  .pmk .sm { font-size: 7.5px; letter-spacing: 1.5px; text-anchor: middle; opacity: 0.85; }
+
+  /* Wavy cancellation lines with the counts written on them */
+  .waves { display: flex; flex-direction: column; gap: 7px; }
+  .wv {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--c-text-muted);
+  }
+  .wv i {
+    height: 7px;
+    background: rgba(var(--c-overlay-rgb), 0.32);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='7'%3E%3Cpath d='M0 3.5 Q5 0 10 3.5 T20 3.5' fill='none' stroke='black' stroke-width='1.3'/%3E%3C/svg%3E") repeat-x left center / 20px 7px;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='7'%3E%3Cpath d='M0 3.5 Q5 0 10 3.5 T20 3.5' fill='none' stroke='black' stroke-width='1.3'/%3E%3C/svg%3E") repeat-x left center / 20px 7px;
+  }
+  .wv b { font-size: 12.5px; font-weight: 700; color: var(--accent); }
+
+  /* One perforated stamp per month */
+  .act-h {
+    margin: 16px 0 8px;
+    font-size: 9.5px;
+    letter-spacing: 1.5px;
+    color: var(--c-text-dim);
+    text-transform: uppercase;
+  }
+  .stamps { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+  .yr { display: flex; flex-direction: column; gap: 3px; }
+  .yr-l { font-size: 9.5px; letter-spacing: 1px; color: var(--c-text-dim); }
+  .yr-row { display: flex; gap: 3px; }
+  .st {
+    width: 14px;
+    height: 17px;
+    padding: 2px;
+    background: var(--sc);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, radial-gradient(circle, #0000 0.85px, #000 1.1px) -1.5px -1.5px / 3px 3px round;
+            mask: linear-gradient(#000 0 0) content-box, radial-gradient(circle, #0000 0.85px, #000 1.1px) -1.5px -1.5px / 3px 3px round;
+  }
+  .st.l0 { --sc: rgba(var(--c-overlay-rgb), 0.07); }
+  .st.l1 { --sc: rgba(var(--accent-rgb), 0.3); }
+  .st.l2 { --sc: rgba(var(--accent-rgb), 0.5); }
+  .st.l3 { --sc: rgba(var(--accent-rgb), 0.75); }
+  .st.l4 { --sc: var(--accent); }
+
+  .env-acts {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px dashed rgba(var(--c-overlay-rgb), 0.12);
+  }
+  .l-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+  .l-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 18px;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    background: var(--accent);
+    color: var(--c-bg);
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: transform 0.15s, box-shadow 0.2s;
+  }
+  .l-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(var(--accent-rgb), 0.25); }
+  .l-btn:focus-visible,
+  .paid-btn:focus-visible,
+  .pause-dialog-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  .l-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 18px;
+    font-size: 12px;
+    color: var(--c-text-muted);
+  }
+  .l-meta b { font-weight: 700; color: var(--accent); }
+  .l-meta .stars { letter-spacing: 1px; color: var(--accent); }
+  .l-note { margin-top: 10px; font-size: 11px; line-height: 1.6; color: var(--c-text-dim); }
+
+  /* ── Paid session: a registered-mail slip, paused ── */
+  .paid {
+    position: relative;
+    margin-top: 20px;
+    padding: 16px 18px;
+    overflow: hidden;
+    border: 1px dashed rgba(var(--c-overlay-rgb), 0.18);
+    border-radius: 6px;
+    color: var(--c-text-muted);
+  }
+  .paid-defs { position: absolute; }
+  .paid-h {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .paid-badge {
+    padding: 2px 8px;
+    border: 1px solid rgba(var(--c-overlay-rgb), 0.2);
+    border-radius: 5px;
+    background: rgba(var(--c-overlay-rgb), 0.05);
+    font-size: 11.5px;
+    color: var(--c-text);
+  }
+  .paid-notice {
+    margin: 0 0 10px;
+    padding-left: 10px;
+    border-left: 2px solid var(--c-text-muted);
+    font-size: 12px;
+    line-height: 1.65;
+    color: var(--c-text);
+    text-wrap: pretty;
+  }
+  .paid-desc { margin-bottom: 8px; font-size: 11.5px; line-height: 1.65; }
+  .paid-price { display: flex; align-items: baseline; gap: 6px; margin-bottom: 8px; }
+  .paid-price b { font-size: 18px; }
+  .paid-price span { font-size: 11px; }
+  .paid .chips { margin-bottom: 12px; }
+  .paid .chip { padding: 0 6px; font-size: 10.5px; }
+  .paid .chip.no {
+    border-color: rgba(248, 113, 113, 0.35);
+    color: #f87171;
+    text-decoration: line-through;
+  }
+  :global([data-mode='light']) .paid .chip.no { color: #dc2626; }
+  .paid-btn,
+  .pause-dialog-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid rgba(var(--c-overlay-rgb), 0.14);
+    border-radius: 6px;
+    background: rgba(var(--c-overlay-rgb), 0.04);
+    color: var(--c-text-muted);
+    font: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .paid-btn:hover,
+  .pause-dialog-close:hover { color: var(--c-text); }
+  .paid-btn svg { width: 13px; height: 13px; }
+  .rubber {
+    position: absolute;
+    right: 30px;
+    bottom: 64px;
+    padding: 3px 12px;
+    border: 3px double currentColor;
+    border-radius: 4px;
+    color: rgba(var(--c-overlay-rgb), 0.22);
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    transform: rotate(-12deg);
+    filter: url(#letterRough);
+    pointer-events: none;
+  }
+
+  dialog {
+    box-sizing: border-box;
+    width: min(400px, calc(100% - 32px));
+    max-height: calc(100dvh - 32px);
+    margin: auto;
+    padding: 24px;
+    border: 1px solid var(--c-border-light);
+    border-radius: 6px;
+    background: var(--c-bg);
+    color: var(--c-text);
+    font-family: var(--font-mono);
+  }
+  dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
+  dialog h2 { margin: 0 0 12px; font-size: 16px; line-height: 1.5; }
+  dialog p { margin: 0 0 24px; font-size: 14px; line-height: 1.65; text-wrap: pretty; }
+  .pause-dialog-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pause-dialog-actions .l-btn { min-height: 44px; }
+
+  /* The command gets its own line on phones instead of being cut short. */
+  @media (max-width: 480px) {
+    .feed-head { flex-wrap: wrap; row-gap: 2px; }
+    .feed-head-cmd { flex-basis: 100%; }
+  }
+  @media (max-width: 640px) {
+    .env { padding: 16px 14px 14px; }
+    .env-grid { grid-template-columns: 1fr; }
+    .env-post { height: 112px; }
+    .pmk { left: 0; right: auto; width: 104px; height: 104px; }
+    .paid { padding: 14px; }
+    .rubber {
+      top: 12px;
+      right: 10px;
+      bottom: auto;
+      padding: 2px 8px;
+      font-size: 12px;
+      letter-spacing: 2px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .l-btn { transition: none; }
+    .l-btn:hover { transform: none; }
+  }
+</style>

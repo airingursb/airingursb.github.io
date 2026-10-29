@@ -1,0 +1,237 @@
+---
+// src/components/FootprintsCard.astro
+//
+// Homepage "Footprints" card: a dot-matrix world map centred on the Pacific,
+// with an arc from Singapore to every city, and a traceroute beside it that
+// lists the countries as hops by distance from home. Hovering a hop lights up
+// its arcs. Everything is drawn here at build time; no map tiles, no WebGL.
+//
+// The land dots (src/data/land-dots.json) are a 2.2° grid sampled from
+// Natural Earth: one string per row, '1' = land, starting at lon0 / lat0.
+import landDots from '../data/land-dots.json';
+import type { City } from '../data/footprints';
+
+interface Props {
+  cities: City[];
+}
+const { cities } = Astro.props;
+
+const STEP = 6;   // px between dots in the SVG's own units
+const rows: string[] = landDots.rows;
+const W = rows[0].length * STEP;
+const H = rows.length * STEP;
+// Longitudes west of the map's left edge wrap round to the far right (the Americas).
+function proj(lat: number, lng: number): [number, number] {
+  if (lng < landDots.lon0 - 10) lng += 360;
+  return [(lng - landDots.lon0) / landDots.step * STEP, (landDots.lat0 - lat) / landDots.step * STEP];
+}
+function kmBetween(a: City, b: City) {
+  const R = 6371, t = Math.PI / 180, dLat = (b.lat - a.lat) * t, dLng = (b.lng - a.lng) * t;
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * t) * Math.cos(b.lat * t) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+const kShort = (n: number) => n < 1000 ? Math.round(n) + ' km' : (n / 1000).toFixed(1) + 'k km';
+const f1 = (n: number) => n.toFixed(1);
+
+const home = cities.find(c => c.current) ?? cities[0];
+const pts = cities.map(c => ({ ...c, km: kmBetween(home, c), xy: proj(c.lat, c.lng) }));
+const homePt = pts.find(c => c.name === home.name)!;
+const [hx, hy] = homePt.xy;
+const away = pts.filter(c => c !== homePt).sort((a, b) => a.km - b.km);
+
+const land: [number, number][] = [];
+rows.forEach((row, r) => {
+  for (let c = 0; c < row.length; c++) if (row[c] === '1') land.push([c * STEP + STEP / 2, r * STEP + STEP / 2]);
+});
+
+// Each arc bows upward, more for longer flights; --d staggers the draw-in.
+const arcs = away.map((c, i) => {
+  const [x, y] = c.xy, dx = x - hx, dy = y - hy, dist = Math.hypot(dx, dy);
+  const lift = Math.min(dist * 0.32, 90);
+  const mx = (hx + x) / 2 + (dy / (dist || 1)) * lift * 0.25, my = (hy + y) / 2 - lift;
+  return { cc: c.country, d: `M${f1(hx)} ${f1(hy)} Q${f1(mx)} ${f1(my)} ${f1(x)} ${f1(y)}`, delay: i * 35 };
+});
+
+// A few labels so the map reads at a glance: [name, dx, dy, anchor].
+const LABELS: [string, number, number, string][] = [
+  [home.name, -8, 14, 'end'], ['北京', 6, 3, 'start'], ['大理', -6, 3, 'end'], ['San Jose', -6, -6, 'end'], ['Christchurch', 8, 3, 'start'],
+];
+const labels = LABELS.flatMap(([name, dx, dy, anchor]) => {
+  const c = pts.find(p => p.name === name);
+  return c ? [{ name, x: c.xy[0] + dx, y: c.xy[1] + dy, anchor, home: c === homePt }] : [];
+});
+
+// Traceroute hops: one per country, nearest first.
+const byCountry = new Map<string, typeof pts>();
+for (const c of pts) byCountry.set(c.country, [...(byCountry.get(c.country) ?? []), c]);
+const hops = [...byCountry.entries()].map(([cc, list]) => {
+  list.sort((a, b) => a.km - b.km);
+  const min = list[0].km, max = list[list.length - 1].km;
+  const names = list.map(c => c.name);
+  return {
+    cc,
+    label: names.length > 2 ? `${names.length} cities` : names.join(' · '),
+    dist: cc === home.country ? 'home'
+      : list.length > 1 && max - min > 300 ? `${kShort(min).replace(' km', '')}–${kShort(max)}` : kShort(min),
+    sub: names.length > 2 ? names.slice(0, 6).join(' ') + (names.length > 6 ? ' …' : '') : '',
+    min,
+  };
+}).sort((a, b) => a.min - b.min);
+
+const nCountries = byCountry.size;
+const nContinents = new Set(cities.map(c => c.continent)).size;
+---
+<div class="card card-map" id="footprints">
+  <div class="section-title" data-i18n="sec_footprints">Footprints</div>
+  <div class="feed-head">
+    <span class="feed-head-cmd"><span class="prompt">$</span> traceroute --from {home.name.toLowerCase()}</span>
+    <span class="feed-head-total">
+      <strong>{cities.length}</strong>{' '}<span data-i18n="fp_cities">cities</span>
+      {' · '}<strong>{nCountries}</strong>{' '}<span data-i18n="fp_countries">countries</span>
+      {' · '}<strong>{nContinents}</strong>{' '}<span data-i18n="fp_continents">continents</span>
+    </span>
+  </div>
+  <div class="fp-body">
+    <svg class="fp-map" id="fpMap" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Map of ${cities.length} cities, with routes from ${home.name}`}>
+      {land.map(([x, y]) => <circle class="land" cx={x} cy={y} r="1.45" />)}
+      {arcs.map(a => <path class="arc" data-cc={a.cc} d={a.d} pathLength="1" style={`--d:${a.delay}ms`} />)}
+      {away.map(c => <circle class="city" data-cc={c.country} cx={f1(c.xy[0])} cy={f1(c.xy[1])} r="2.1" />)}
+      {away.map(c => <circle class="city-hit" cx={f1(c.xy[0])} cy={f1(c.xy[1])} r="6" data-tip={`${c.name} · ${Math.round(c.km).toLocaleString('en-US')} km`} />)}
+      <circle class="pulse" cx={hx} cy={hy} r="4" />
+      <circle class="home" cx={hx} cy={hy} r="3.2" />
+      <circle class="city-hit" cx={hx} cy={hy} r="7" data-tip={`${home.name} · home`} />
+      {labels.map(l => <text class:list={['lab', { 'home-lab': l.home }]} x={l.x} y={l.y} text-anchor={l.anchor}>{l.name}</text>)}
+    </svg>
+    <div class="tr">
+      <div class="tr-cmd"><span class="prompt">$</span> traceroute -q {cities.length}</div>
+      {hops.map((h, i) => (
+        <>
+          <div class="tr-row" data-cc={h.cc}>
+            <span class="n">{i + 1}</span>
+            <span class="cc">{h.cc}</span>
+            <span class="nm">{h.label}</span>
+            <span class:list={['km', { home: h.dist === 'home' }]}>{h.dist}</span>
+          </div>
+          {h.sub && <div class="tr-sub">{h.sub}</div>}
+        </>
+      ))}
+    </div>
+  </div>
+</div>
+
+<script>
+  import { bindTips, onView } from '../scripts/card-tips';
+
+  const svg = document.getElementById('fpMap');
+  if (svg) {
+    bindTips(svg);
+    // Hovering a hop dims every other arc and city.
+    document.querySelectorAll<HTMLElement>('#footprints .tr-row').forEach((row) => {
+      row.addEventListener('mouseenter', () => {
+        svg.classList.add('focus');
+        svg.querySelectorAll(`[data-cc="${row.dataset.cc}"]`).forEach((n) => n.classList.add('on'));
+        row.classList.add('on');
+      });
+      row.addEventListener('mouseleave', () => {
+        svg.classList.remove('focus');
+        svg.querySelectorAll('.on').forEach((n) => n.classList.remove('on'));
+        row.classList.remove('on');
+      });
+    });
+    // The arcs fly out from home when the map scrolls into view. With reduced
+    // motion they are simply drawn.
+    onView(svg, () => svg.classList.add('draw'));
+  }
+</script>
+
+<style>
+  .fp-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 236px;
+    gap: 24px;
+    align-items: center;
+  }
+  .fp-map {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  .fp-map .land { fill: rgba(var(--c-overlay-rgb), 0.24); }
+  .fp-map .arc {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 0.9;
+    stroke-linecap: round;
+    opacity: 0.4;
+    transition: opacity 0.2s, stroke-width 0.2s;
+  }
+  .fp-map .city,
+  .fp-map .home { fill: var(--accent); }
+  .fp-map .city { transition: opacity 0.2s; }
+  .fp-map .city-hit { fill: transparent; }
+  .fp-map .pulse {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 1.2;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: fp-pulse 2.4s ease-out infinite;
+  }
+  @keyframes fp-pulse {
+    from { transform: scale(0.6); opacity: 0.9; }
+    to { transform: scale(3.2); opacity: 0; }
+  }
+  .fp-map .lab { font-size: 9px; fill: var(--c-text-muted); }
+  .fp-map .lab.home-lab { fill: var(--accent); }
+  .fp-map.focus .arc { opacity: 0.08; }
+  .fp-map.focus .arc.on { opacity: 0.95; stroke-width: 1.4; }
+  .fp-map.focus .city { opacity: 0.25; }
+  .fp-map.focus .city.on { opacity: 1; }
+  .fp-map.draw .arc {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: fp-draw 1.1s cubic-bezier(0.3, 0.7, 0.2, 1) forwards;
+    animation-delay: var(--d);
+  }
+  @keyframes fp-draw { to { stroke-dashoffset: 0; } }
+
+  .tr { font-size: 11.5px; line-height: 1.6; }
+  .tr-cmd { margin-bottom: 6px; color: var(--c-text-muted); }
+  .tr-cmd .prompt { color: var(--accent); }
+  .tr-row {
+    display: grid;
+    grid-template-columns: 1.4em 2.2em minmax(0, 1fr) auto;
+    gap: 6px;
+    margin: 0 -6px;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+  .tr-row:hover,
+  .tr-row.on { background: rgba(var(--c-overlay-rgb), 0.05); }
+  .tr-row .n { color: var(--c-text-dim); text-align: right; }
+  .tr-row .cc { color: var(--accent); }
+  .tr-row .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-text); }
+  .tr-row .km { color: var(--c-text-muted); text-align: right; font-variant-numeric: tabular-nums; }
+  .tr-row .km.home { color: var(--accent); }
+  .tr-sub {
+    margin-bottom: 2px;
+    padding-left: calc(3.6em + 12px);
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: var(--c-text-dim);
+  }
+
+  /* The command gets its own line on phones instead of being cut short. */
+  @media (max-width: 480px) {
+    .feed-head { flex-wrap: wrap; row-gap: 2px; }
+    .feed-head-cmd { flex-basis: 100%; }
+  }
+  @media (max-width: 640px) {
+    .fp-body { grid-template-columns: 1fr; gap: 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fp-map .pulse { animation: none; opacity: 0; }
+    .fp-map.draw .arc { animation: none; stroke-dashoffset: 0; }
+  }
+</style>

@@ -1,16 +1,16 @@
 // src/data/footprints.ts
 // Cities the author has lived in or visited. Rendered by the homepage
-// "Footprints" card via the Mapbox-backed FootprintsMap component.
+// "Footprints" card (src/components/FootprintsCard.astro) as a dot map
+// with a traceroute of countries by distance from home.
 //
 // Coordinates are WGS84 (EPSG:4326). Names are kept in the locale the
-// author would write them in — the FootprintsMap component uses the
-// browser locale (or Mapbox's localized basemap labels) for context.
+// author would write them in.
 
 export interface City {
   name: string;
   lat: number;
   lng: number;
-  /** ISO-3166-1 alpha-2, used for stats + popup country tag. */
+  /** ISO-3166-1 alpha-2, used for stats and the traceroute hops. */
   country: 'SG' | 'CN' | 'US' | 'NZ' | 'ID' | 'MY';
   /** Continent grouping for stats. */
   continent: 'Asia' | 'Oceania' | 'North America';

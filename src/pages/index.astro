@@ -3,20 +3,22 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { getImage } from 'astro:assets';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import PaidConsultation from '../components/PaidConsultation.astro';
 import WeeklyHomeEntry from '../components/reading/ai-weekly/WeeklyHomeEntry.astro';
 import EchoHomeEntry from '../features/echo/components/HomeEntry.astro';
 import photosData from '../data/photos.json';
-import githubData from '../data/github.json';
 import '../styles/workouts.css';
 import WorkoutCardPreview from '../components/workouts/WorkoutCardPreview.astro';
 import SetupCard from '../components/SetupCard.astro';
+import GitHubCard from '../components/GitHubCard.astro';
+import ProjectsCard from '../components/ProjectsCard.astro';
+import SessionsCard from '../components/SessionsCard.astro';
+import FootprintsCard from '../components/FootprintsCard.astro';
+import LetterCard from '../components/LetterCard.astro';
 import { FIXED_DATES, FLOATING_DATES } from '../lib/easter-egg-themes';
 import { fetchComics, comicDate } from '../lib/comics';
 import { loadHomeWorkouts } from '../lib/home-workouts';
 import { fetchReadingItems } from '../lib/reading';
 import { loadReadingCover, readingCoverLabel } from '../lib/reading-cover';
-import { FootprintsMap } from '../components/footprints/FootprintsMap';
 import { cities as footprintCities } from '../data/footprints';
 import IslandWidget from '../components/IslandWidget.astro';
 import LiveCursors from '../components/LiveCursors.tsx';
@@ -206,16 +208,13 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
     body.fx-rgb .links a,
     body.fx-rgb .sep,
     body.fx-rgb .section-title,
-    body.fx-rgb .gh-name,
-    body.fx-rgb .gh-bio,
-    body.fx-rgb .gh-stat-val,
-    body.fx-rgb .gh-stat-label,
-    body.fx-rgb .mf-tagline,
-    body.fx-rgb .mf-desc,
-    body.fx-rgb .mf-feature,
-    body.fx-rgb .mf-tag,
-    body.fx-rgb .mf-link,
-    body.fx-rgb .mf-link-appstore,
+    body.fx-rgb .bd-name,
+    body.fx-rgb .bd-login,
+    body.fx-rgb .bd-stats,
+    body.fx-rgb .as-name,
+    body.fx-rgb .as-desc,
+    body.fx-rgb .as-feat,
+    body.fx-rgb .as-web,
     body.fx-rgb .post-title,
     body.fx-rgb .post-date,
     body.fx-rgb .weather-line,
@@ -866,11 +865,11 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
       '.role',
       '.links a',
       '.section-title',
-      '.gh-bio',
-      '.mf-desc',
-      '.mf-feature',
-      '.mf-tag',
-      '.mf-tagline',
+      '.bd-name',
+      '.as-desc',
+      '.as-feat span',
+      '.as-foot .chip',
+      '.as-name a',
       '.post-title',
       '.post-date'
     ].join(',');
@@ -1128,84 +1127,9 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         </div>
       </div>
 
-      <!-- GitHub + MoFlow -->
-      <div class="card card-github" id="github">
-        <div class="section-title">GitHub</div>
-        <div class="gh-header">
-          <img class="gh-avatar" id="ghAvatar" src="/images/airing-avatar-48.webp" alt="">
-          <span class="gh-name"><a id="ghLink" href="https://github.com/airingursb" target="_blank">airingursb</a></span>
-        </div>
-        <div class="gh-bio" id="ghBio">WWDC19 Scholar · ByteDance</div>
-        <div class="gh-stats">
-          <div class="gh-stat">
-            <div class="gh-stat-val" id="ghFollowers">-</div>
-            <div class="gh-stat-label" data-i18n="gh_followers">Followers</div>
-          </div>
-          <div class="gh-stat">
-            <div class="gh-stat-val" id="ghRepos">-</div>
-            <div class="gh-stat-label" data-i18n="gh_repos">Repos</div>
-          </div>
-          <div class="gh-stat">
-            <div class="gh-stat-val" id="ghFollowing">-</div>
-            <div class="gh-stat-label" data-i18n="gh_following">Following</div>
-          </div>
-          <div class="gh-stat">
-            <div class="gh-stat-val" id="ghSince">-</div>
-            <div class="gh-stat-label" data-i18n="gh_since">Since</div>
-          </div>
-        </div>
-        <script define:vars={{ githubData }}>window.__GITHUB_DATA__ = githubData;</script>
-      </div>
-
-      <div class="card card-moflow" id="moflow">
-        <div class="section-title" data-i18n="sec_project">Project</div>
-        <div class="mf-header">
-          <img class="mf-logo" src="https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/9c/86/d0/9c86d066-2b41-3e7f-5c93-c8fd8d9ba98c/AppIcon-1x_U007emarketing-0-11-0-85-220-0.png/512x512bb.jpg" alt="MoFlow">
-          <span class="mf-tagline"><a href="https://moflowapp.com" target="_blank">MoFlow</a></span>
-        </div>
-        <div class="mf-desc" data-i18n="mf_desc">AI 疗愈写作。让情绪自由流动，用书写释放内心力量。</div>
-        <div class="mf-features">
-          <span class="mf-feature" data-i18n="mf_feat_1">认知行为疗法深度分析</span>
-          <span class="mf-feature" data-i18n="mf_feat_2">AI 引导情绪洞察</span>
-          <span class="mf-feature" data-i18n="mf_feat_3">端到端加密保护隐私</span>
-        </div>
-        <div class="mf-tags">
-          <span class="mf-tag">iOS</span>
-          <span class="mf-tag">AI</span>
-          <span class="mf-tag">CBT</span>
-          <span class="mf-tag" data-i18n="mf_tag_mental">心理</span>
-          <span class="mf-tag" data-i18n="mf_tag_writing">写作</span>
-        </div>
-        <div class="mf-links">
-          <a class="mf-link" href="https://moflowapp.com" target="_blank">→ moflowapp.com</a>
-          <a class="mf-link-appstore" href="https://apps.apple.com/cn/app/moflow-ai-%E7%96%97%E6%84%88%E5%8A%A9%E6%89%8B/id6737146258" target="_blank"><svg style="width:12px;height:12px;vertical-align:-1px;margin-right:3px;" viewBox="0 0 384 512" fill="currentColor"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg>App Store ↗</a>
-        </div>
-      </div>
-
-      <div class="card card-moneywise" id="moneywise">
-        <div class="section-title" data-i18n="sec_project">Project</div>
-        <div class="mf-header">
-          <img class="mf-logo" src="https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/54/d2/05/54d2052e-0213-b332-738b-901f750af1af/AppIcon-0-0-1x_U007ephone-0-1-85-220.png/512x512bb.jpg" alt="MoneyWise">
-          <span class="mf-tagline"><a href="https://moneywise.airingdeng.com/" target="_blank">MoneyWise</a></span>
-        </div>
-        <div class="mf-desc" data-i18n="mw_desc">离线优先的个人财务助手，多币种记账、预算与投资追踪一站式管理。</div>
-        <div class="mf-features">
-          <span class="mf-feature" data-i18n="mw_feat_1">30+ 币种自动汇率换算</span>
-          <span class="mf-feature" data-i18n="mw_feat_2">记账 · 预算 · 投资一体化</span>
-          <span class="mf-feature" data-i18n="mw_feat_3">离线优先，数据留存本地</span>
-        </div>
-        <div class="mf-tags">
-          <span class="mf-tag">iOS</span>
-          <span class="mf-tag" data-i18n="mw_tag_finance">记账</span>
-          <span class="mf-tag" data-i18n="mw_tag_invest">投资</span>
-          <span class="mf-tag" data-i18n="mw_tag_privacy">隐私</span>
-          <span class="mf-tag" data-i18n="mw_tag_offline">离线优先</span>
-        </div>
-        <div class="mf-links">
-          <a class="mf-link" href="https://moneywise.airingdeng.com/" target="_blank">→ moneywise.airingdeng.com</a>
-          <a class="mf-link-appstore" href="https://apps.apple.com/app/id6762085775" target="_blank"><svg style="width:12px;height:12px;vertical-align:-1px;margin-right:3px;" viewBox="0 0 384 512" fill="currentColor"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg>App Store ↗</a>
-        </div>
-      </div>
+      <!-- GitHub badge + Projects (MoFlow, MoneyWise) -->
+      <GitHubCard />
+      <ProjectsCard />
 
       <!-- Writing: latest posts + notes, one card with tabs -->
       <div class="card card-writing" id="writing">
@@ -1730,121 +1654,8 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         </div>
       </div>
 
-      <!-- Work Sessions -->
-      <div class="card card-sessions" id="sessions">
-        <div class="section-title" data-i18n="sec_sessions">Work Sessions</div>
-
-        <div class="sessions-stats">
-          <div class="sessions-stat-card"><div class="sessions-stat-num" style="color:var(--c-text);">337<span style="font-size:12px;color:var(--c-text-muted)">h</span></div><div class="sessions-stat-label" data-i18n="sess_total">Total</div></div>
-          <div class="sessions-stat-card"><div class="sessions-stat-num" style="color:var(--accent);">166<span style="font-size:12px;color:var(--c-text-muted)">h</span></div><div class="sessions-stat-label" data-i18n="sess_focus">Focus</div></div>
-          <div class="sessions-stat-card"><div class="sessions-stat-num" style="color:#a78bfa;">91<span style="font-size:12px;color:var(--c-text-muted)">h</span></div><div class="sessions-stat-label" data-i18n="sess_meeting">Meeting</div></div>
-          <div class="sessions-stat-card"><div class="sessions-stat-num" style="color:var(--c-text-muted);">81<span style="font-size:12px;color:var(--c-text-muted)">h</span></div><div class="sessions-stat-label" data-i18n="sess_break">Break</div></div>
-        </div>
-
-        <div class="sessions-legend">
-          <div class="sessions-legend-item"><span class="sessions-legend-dot" style="background:var(--accent)"></span><span data-i18n="sess_focus">Focus</span></div>
-          <div class="sessions-legend-item"><span class="sessions-legend-dot" style="background:#a78bfa"></span><span data-i18n="sess_meeting">Meeting</span></div>
-          <div class="sessions-legend-item"><span class="sessions-legend-dot" style="background:var(--c-text-dim)"></span><span data-i18n="sess_break">Break</span></div>
-        </div>
-
-        <div class="sessions-chart-wrapper">
-          <div class="sessions-y-axis">
-            <span class="sessions-y-label">120h</span>
-            <span class="sessions-y-label">90h</span>
-            <span class="sessions-y-label">60h</span>
-            <span class="sessions-y-label">30h</span>
-            <span class="sessions-y-label">0</span>
-          </div>
-          <div class="sessions-chart">
-            <div class="sessions-col">
-              <div class="sessions-tooltip">
-                <div class="sessions-tt-title">November 2025</div>
-                <div class="sessions-tt-row"><span class="sessions-tt-row-label"><span class="sessions-tt-dot" style="background:var(--accent)"></span>Focus</span><span>19.1h</span></div>
-                <div class="sessions-tt-row"><span class="sessions-tt-row-label"><span class="sessions-tt-dot" style="background:#a78bfa"></span>Meeting</span><span>12.1h</span></div>
-                <div class="sessions-tt-row"><span class="sessions-tt-row-label"><span class="sessions-tt-dot" style="background:var(--c-text-dim)"></span>Break</span><span>12.7h</span></div>
-                <hr class="sessions-tt-divider">
-                <div class="sessions-tt-acts-label" data-i18n="sess_top_acts">Top Activities</div>
-                <div class="sessions-tt-act">Meetings 12h · Code 8h · Docs 3h</div>
-              </div>
-              <div class="sessions-col-total">44h</div>
-              <div class="sessions-col-stack"><div class="sessions-col-seg" style="height:14px;background:var(--c-text-dim);"></div><div class="sessions-col-seg" style="height:13px;background:#a78bfa;"></div><div class="sessions-col-seg" style="height:21px;background:var(--accent);"></div></div>
-              <span class="sessions-col-label">Nov</span>
-            </div>
-            <div class="sessions-col">
-              <div class="sessions-tooltip">
-                <div class="sessions-tt-title">December 2025</div>
-                <div class="sessions-tt-row"><span class="sessions-tt-row-label"><span class="sessions-tt-dot" style="background:var(--accent)"></span>Focus</span><span>68.0h</span></div>
-                <div class="sessions-tt-row"><span class="sessions-tt-row-label"><span class="sessions-tt-dot" style="background:#a78bfa"></span>Meeting</span><span>25.4h</span></div>
-                <div class="sessions-tt-row"><span class="sessions-tt-row-label"><span class="sessions-tt-dot" style="background:var(--c-text-dim)"></span>Break</span><span>26.4h</span></div>
-                <hr class="sessions-tt-divider">
-                <div class="sessions-tt-acts-label" data-i18n="sess_top_acts">Top Activities</div>
-                <div class="sessions-tt-act">Code 36h · Meetings 22h · Docs 9h</div>
-              </div>
-              <div class="sessions-col-total">120h</div>
-              <div class="sessions-col-stack"><div class="sessions-col-seg" style="height:29px;background:var(--c-text-dim);"></div><div class="sessions-col-seg" style="height:28px;background:#a78bfa;"></div><div class="sessions-col-seg" style="height:74px;background:var(--accent);"></div></div>
-              <span class="sessions-col-label">Dec</span>
-            </div>
-            <div class="sessions-col">
-              <div class="sessions-tooltip">
-                <div class="sessions-tt-title">January 2026</div>
-                <div class="sessions-tt-row"><span class="sessions-tt-row-label"><span class="sessions-tt-dot" style="background:var(--accent)"></span>Focus</span><span>31.0h</span></div>
-                <div class="sessions-tt-row"><span class="sessions-tt-row-label"><span class="sessions-tt-dot" style="background:#a78bfa"></span>Meeting</span><span>12.8h</span></div>
-                <div class="sessions-tt-row"><span class="sessions-tt-row-label"><span class="sessions-tt-dot" style="background:var(--c-text-dim)"></span>Break</span><span>15.8h</span></div>
-                <hr class="sessions-tt-divider">
-                <div class="sessions-tt-acts-label" data-i18n="sess_top_acts">Top Activities</div>
-                <div class="sessions-tt-act">Code 19h · Meetings 13h · Design 2h</div>
-              </div>
-              <div class="sessions-col-total">60h</div>
-              <div class="sessions-col-stack"><div class="sessions-col-seg" style="height:17px;background:var(--c-text-dim);"></div><div class="sessions-col-seg" style="height:14px;background:#a78bfa;"></div><div class="sessions-col-seg" style="height:34px;background:var(--accent);"></div></div>
-              <span class="sessions-col-label">Jan</span>
-            </div>
-            <div class="sessions-col">
-              <div class="sessions-tooltip">
-                <div class="sessions-tt-title">February 2026</div>
-                <div class="sessions-tt-row"><span class="sessions-tt-row-label"><span class="sessions-tt-dot" style="background:var(--accent)"></span>Focus</span><span>24.8h</span></div>
-                <div class="sessions-tt-row"><span class="sessions-tt-row-label"><span class="sessions-tt-dot" style="background:#a78bfa"></span>Meeting</span><span>17.7h</span></div>
-                <div class="sessions-tt-row"><span class="sessions-tt-row-label"><span class="sessions-tt-dot" style="background:var(--c-text-dim)"></span>Break</span><span>15.0h</span></div>
-                <hr class="sessions-tt-divider">
-                <div class="sessions-tt-acts-label" data-i18n="sess_top_acts">Top Activities</div>
-                <div class="sessions-tt-act">Meetings 18h · Code 9h · Docs 8h</div>
-              </div>
-              <div class="sessions-col-total">58h</div>
-              <div class="sessions-col-stack"><div class="sessions-col-seg" style="height:16px;background:var(--c-text-dim);"></div><div class="sessions-col-seg" style="height:19px;background:#a78bfa;"></div><div class="sessions-col-seg" style="height:27px;background:var(--accent);"></div></div>
-              <span class="sessions-col-label">Feb</span>
-            </div>
-            <div class="sessions-col">
-              <div class="sessions-tooltip">
-                <div class="sessions-tt-title">March 2026</div>
-                <div class="sessions-tt-row"><span class="sessions-tt-row-label"><span class="sessions-tt-dot" style="background:var(--accent)"></span>Focus</span><span>22.6h</span></div>
-                <div class="sessions-tt-row"><span class="sessions-tt-row-label"><span class="sessions-tt-dot" style="background:#a78bfa"></span>Meeting</span><span>22.6h</span></div>
-                <div class="sessions-tt-row"><span class="sessions-tt-row-label"><span class="sessions-tt-dot" style="background:var(--c-text-dim)"></span>Break</span><span>11.1h</span></div>
-                <hr class="sessions-tt-divider">
-                <div class="sessions-tt-acts-label" data-i18n="sess_top_acts">Top Activities</div>
-                <div class="sessions-tt-act">Meetings 23h · Code 12h · Docs 5h</div>
-              </div>
-              <div class="sessions-col-total">56h</div>
-              <div class="sessions-col-stack"><div class="sessions-col-seg" style="height:12px;background:var(--c-text-dim);"></div><div class="sessions-col-seg" style="height:25px;background:#a78bfa;"></div><div class="sessions-col-seg" style="height:25px;background:var(--accent);"></div></div>
-              <span class="sessions-col-label">Mar</span>
-            </div>
-          </div>
-        </div>
-
-        <table class="sessions-table">
-          <thead><tr><th data-i18n="sess_th_month">Month</th><th data-i18n="sess_th_top">Top Activity</th><th data-i18n="sess_th_2">#2</th><th data-i18n="sess_th_3">#3</th></tr></thead>
-          <tbody>
-            <tr><td>Nov</td><td>Meetings 12h</td><td>Code 8h</td><td>Docs 3h</td></tr>
-            <tr><td>Dec</td><td>Code 36h</td><td>Meetings 22h</td><td>Docs 9h</td></tr>
-            <tr><td>Jan</td><td>Code 19h</td><td>Meetings 13h</td><td>Design 2h</td></tr>
-            <tr><td>Feb</td><td>Meetings 18h</td><td>Code 9h</td><td>Docs 8h</td></tr>
-            <tr><td>Mar</td><td>Meetings 23h</td><td>Code 12h</td><td>Docs 5h</td></tr>
-          </tbody>
-        </table>
-
-        <div class="sessions-source">
-          <span data-i18n="sess_data_from">Data from</span>
-          <a href="https://rize.io" target="_blank">Rize</a>
-        </div>
-      </div>
+      <!-- Work Sessions (Rize, as `time` output) -->
+      <SessionsCard />
 
       <!-- Vibe Coding + Life -->
       <!-- LOCAL_DATA_START -->
@@ -1908,40 +1719,14 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
 
       <div class="card card-activity" id="activity">
         <div class="section-title" data-i18n="sec_activity">Activity</div>
-        <div class="ring-row">
-          <div>
-            <svg class="ring-svg" viewBox="0 0 56 56" id="activityRings">
-              <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(239,68,68,0.15)" stroke-width="4"/>
-              <circle cx="28" cy="28" r="24" fill="none" stroke="#ef4444" stroke-width="4" id="ringMove" stroke-dasharray="0 151" stroke-linecap="round" transform="rotate(-90 28 28)"/>
-              <circle cx="28" cy="28" r="18" fill="none" stroke="rgba(var(--accent-rgb),0.15)" stroke-width="4"/>
-              <circle cx="28" cy="28" r="18" fill="none" stroke="var(--accent)" stroke-width="4" id="ringExercise" stroke-dasharray="0 113" stroke-linecap="round" transform="rotate(-90 28 28)"/>
-              <circle cx="28" cy="28" r="12" fill="none" stroke="rgba(56,189,248,0.15)" stroke-width="4"/>
-              <circle cx="28" cy="28" r="12" fill="none" stroke="#38bdf8" stroke-width="4" id="ringStand" stroke-dasharray="0 75" stroke-linecap="round" transform="rotate(-90 28 28)"/>
-            </svg>
-          </div>
-          <div class="ring-labels">
-            <div class="ring-label-row">
-              <span><span class="ring-label-dot" style="background:#ef4444;"></span><span style="color:var(--c-text-dim)" data-i18n="act_move">Move</span></span>
-              <span id="actMove" style="color:#ef4444;font-weight:700;">-</span>
-            </div>
-            <div class="ring-label-row">
-              <span><span class="ring-label-dot" style="background:var(--accent);"></span><span style="color:var(--c-text-dim)" data-i18n="act_exercise">Exercise</span></span>
-              <span id="actExercise" style="color:var(--accent);font-weight:700;">-</span>
-            </div>
-            <div class="ring-label-row">
-              <span><span class="ring-label-dot" style="background:#38bdf8;"></span><span style="color:var(--c-text-dim)" data-i18n="act_stand">Stand</span></span>
-              <span id="actStand" style="color:#38bdf8;font-weight:700;">-</span>
-            </div>
-          </div>
+        <div class="feed-head">
+          <span class="feed-head-cmd"><span class="prompt">$</span> htop --body --snapshot <span id="actDate"></span></span>
         </div>
-        <hr class="life-divider">
-        <div class="life-stat-row"><span class="life-stat-key" data-i18n="act_steps">Steps</span><span class="life-stat-val" id="actSteps">-</span></div>
-        <div class="life-stat-row"><span class="life-stat-key" data-i18n="act_sleep">Sleep</span><span class="life-stat-val" id="actSleep" style="color:#38bdf8;">-</span></div>
-        <div class="life-stat-row"><span class="life-stat-key" data-i18n="act_hr">Resting HR</span><span class="life-stat-val" id="actHR" style="color:#f472b6;">-</span></div>
-        <div class="life-stat-row"><span class="life-stat-key" data-i18n="act_spo2">SpO2</span><span class="life-stat-val" id="actSpO2" style="color:#a78bfa;">-</span></div>
-        <hr class="life-divider">
-        <div style="font-size:10px;color:var(--c-text-dim);margin-bottom:6px;" data-i18n="act_recent_workouts">Recent workouts</div>
-        <div id="actWorkouts" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
+        <div class="ht" id="actHtop"></div>
+        <div class="ht-foot">
+          <span><span data-i18n="act_ring_goals">ring goals</span> <strong id="actGoalMove">-</strong> kJ · <strong id="actGoalEx">-</strong> min · <strong id="actGoalStand">-</strong> h</span>
+          <span class="src">Apple Health</span>
+        </div>
       </div>
 
       <!-- Music -->
@@ -1982,11 +1767,8 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
       <!-- Setup (gear + software, as neofetch) -->
       <SetupCard />
 
-      <!-- World Map -->
-      <div class="card card-map" id="footprints">
-        <div class="section-title" data-i18n="sec_footprints">Footprints</div>
-        <FootprintsMap client:visible cities={footprintCities} />
-      </div>
+      <!-- Footprints -->
+      <FootprintsCard cities={footprintCities} />
 
       <!-- Reading -->
       <div class="card card-reading" id="reading">
@@ -2240,110 +2022,7 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
       </script>
 
       <!-- Letter Consultation -->
-      <div class="card card-letter" id="letter">
-        <div class="section-title" data-i18n="sec_letter">Letter Consultation</div>
-        <div class="letter-intro" data-i18n="letter_intro">
-          Questions about career, tech, or personal growth? Write me a letter. I offer free email consultation on topics like career planning, software engineering, job hunting, writing, and productivity tools.
-        </div>
-
-        <div class="letter-highlight-row">
-          <div class="letter-highlight-card">
-            <div class="letter-highlight-num" style="color: var(--accent);">130<span style="font-size:12px;color:var(--c-text-muted)">+</span></div>
-            <div class="letter-highlight-label" data-i18n="letter_letters">Letters</div>
-          </div>
-          <div class="letter-highlight-card">
-            <div class="letter-highlight-num" style="color: var(--accent);">22</div>
-            <div class="letter-highlight-label" data-i18n="letter_people">People</div>
-          </div>
-          <div class="letter-highlight-card">
-            <div class="letter-highlight-num" style="color: var(--accent);">120,026<span style="font-size:12px;color:var(--c-text-muted)">字</span></div>
-            <div class="letter-highlight-label" data-i18n="letter_total_words">Total Words</div>
-          </div>
-          <div class="letter-highlight-card">
-            <div class="letter-highlight-num" style="color: var(--accent);">~920<span style="font-size:12px;color:var(--c-text-muted)">字</span></div>
-            <div class="letter-highlight-label" data-i18n="letter_avg_words">Avg Words/Letter</div>
-          </div>
-        </div>
-
-        <div class="letter-heatmap-section">
-          <div class="letter-heatmap-label" data-i18n="letter_heatmap_label">Letter activity · 2023 — 2026</div>
-          <div class="letter-heatmap-grid">
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label">Mar</span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l3"></div><div class="letter-heatmap-cell l2"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label">Apr</span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l4"></div><div class="letter-heatmap-cell l2"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label">May</span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l2"></div><div class="letter-heatmap-cell l1"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label"></span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell"></div><div class="letter-heatmap-cell"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label"></span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l1"></div><div class="letter-heatmap-cell"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label">Aug</span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l2"></div><div class="letter-heatmap-cell l1"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label"></span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell"></div><div class="letter-heatmap-cell"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label"></span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell"></div><div class="letter-heatmap-cell"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label"></span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell"></div><div class="letter-heatmap-cell"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label"></span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell"></div><div class="letter-heatmap-cell"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label">Jan</span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell"></div><div class="letter-heatmap-cell"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label"></span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l1"></div><div class="letter-heatmap-cell"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label">Mar</span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l2"></div><div class="letter-heatmap-cell l1"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label">Apr</span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l3"></div><div class="letter-heatmap-cell l2"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label">May</span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l2"></div><div class="letter-heatmap-cell l1"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label">Jun</span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l2"></div><div class="letter-heatmap-cell l1"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label"></span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell"></div><div class="letter-heatmap-cell"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label"></span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell"></div><div class="letter-heatmap-cell"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label">Sep</span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l4"></div><div class="letter-heatmap-cell l3"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label">Oct</span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l2"></div><div class="letter-heatmap-cell l1"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label">Nov</span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l3"></div><div class="letter-heatmap-cell l2"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label"></span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l1"></div><div class="letter-heatmap-cell"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label">Jan</span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l3"></div><div class="letter-heatmap-cell l2"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label">Feb</span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l4"></div><div class="letter-heatmap-cell l3"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label"></span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l1"></div><div class="letter-heatmap-cell"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label">Apr</span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l4"></div><div class="letter-heatmap-cell l3"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label"></span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l2"></div><div class="letter-heatmap-cell l1"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label">Jun</span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l3"></div><div class="letter-heatmap-cell l2"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label">Jul</span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l2"></div><div class="letter-heatmap-cell l1"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label"></span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell"></div><div class="letter-heatmap-cell"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label">Sep</span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l1"></div><div class="letter-heatmap-cell"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label">Oct</span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l3"></div><div class="letter-heatmap-cell l2"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label"></span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l1"></div><div class="letter-heatmap-cell"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label"></span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell"></div><div class="letter-heatmap-cell"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label">Jan</span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l1"></div><div class="letter-heatmap-cell"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label">Feb</span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l4"></div><div class="letter-heatmap-cell l3"></div></div></div>
-            <div class="letter-heatmap-month"><span class="letter-heatmap-month-label">Mar</span><div class="letter-heatmap-cells"><div class="letter-heatmap-cell l1"></div><div class="letter-heatmap-cell l1"></div></div></div>
-          </div>
-        </div>
-
-        <div class="letter-topics-section">
-          <div class="letter-topics-label" data-i18n="letter_topics_label">Consultation Topics</div>
-          <div class="letter-topics">
-            <span class="letter-tag" data-i18n="lt_career">Career Planning</span>
-            <span class="letter-tag" data-i18n="lt_growth">Personal Growth</span>
-            <span class="letter-tag" data-i18n="lt_tech">Tech</span>
-            <span class="letter-tag" data-i18n="lt_writing">Writing</span>
-            <span class="letter-tag" data-i18n="lt_productivity">Productivity</span>
-          </div>
-          <div class="letter-meta" style="display:flex;gap:20px;margin-top:10px;font-size:12px;color:var(--c-text-muted);align-items:center;">
-            <span style="display:inline-flex;align-items:center;gap:5px;">
-              <span style="color:var(--accent);">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
-              <span style="color:var(--accent);font-weight:600;">4.9</span>
-              <span data-i18n="letter_satisfaction">Satisfaction</span>
-            </span>
-            <span style="display:inline-flex;align-items:center;gap:5px;">
-              <span style="display:inline-flex;gap:2px;align-items:center;">
-                <span style="width:14px;height:3px;background:var(--accent);border-radius:1px;display:inline-block;"></span>
-                <span style="width:14px;height:3px;background:var(--accent);border-radius:1px;display:inline-block;"></span>
-                <span style="width:14px;height:3px;background:var(--accent);border-radius:1px;display:inline-block;"></span>
-                <span style="width:6px;height:6px;background:var(--accent);border-radius:50%;display:inline-block;box-shadow:0 0 4px rgba(var(--accent-rgb),0.5);"></span>
-              </span>
-              <span style="color:var(--accent);font-weight:600;">~7d</span>
-              <span data-i18n="letter_avg_reply">Avg Reply</span>
-            </span>
-          </div>
-        </div>
-
-        <a href="mailto:airingdeng@gmail.com?subject=Letter%20Consultation" class="letter-btn" data-umami-event="letter-write-open" data-umami-event-surface="home" data-umami-event-placement="consultation">
-          <span class="letter-btn-icon">&#x2709;</span>
-          <span data-i18n="letter_btn_free">Write to Me — It's Free</span>
-        </a>
-        <div class="letter-note" data-i18n="letter_free_note">Free · Privacy protected · Selected and anonymized more than 180 days after the exchange ends</div>
-
-        <PaidConsultation />
-      </div>
+      <LetterCard />
 
       <EchoHomeEntry />
 
@@ -4689,74 +4368,64 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         bindTips(el('mood'));
       }
 
-      // ── Activity ──
+      // ── Activity: Apple Health as an htop snapshot ──
+      // Ring goals match the old rings card: 1500 kJ move, 30 min exercise,
+      // 12 h stand. Sleep is shown as a share of the 24-hour day.
       var health = data.health;
       if (health) {
-        el('actMove').textContent = health.activeEnergy + ' kJ';
-        el('actExercise').textContent = health.exerciseMin + ' min';
-        el('actStand').textContent = health.standHours + ' hr';
-
-        el('actSteps').textContent = fmtNum(health.steps);
-        el('actSleep').textContent = health.sleep + 'h';
-        el('actHR').textContent = health.restingHR + ' bpm';
-        el('actSpO2').textContent = health.spo2 + '%';
-
-        // Activity rings (proportional arcs)
-        // Move: goal ~1500 kJ, Exercise: goal 30 min, Stand: goal 12 hr
-        var moveRatio = Math.min(health.activeEnergy / 1500, 1);
-        var exRatio = Math.min(health.exerciseMin / 30, 1);
-        var standRatio = Math.min(health.standHours / 12, 1);
-
-        var moveCirc = 2 * Math.PI * 24; // ~150.8
-        var exCirc = 2 * Math.PI * 18;   // ~113.1
-        var standCirc = 2 * Math.PI * 12; // ~75.4
-
-        el('ringMove').setAttribute('stroke-dasharray', (moveRatio * moveCirc).toFixed(1) + ' ' + moveCirc.toFixed(1));
-        el('ringExercise').setAttribute('stroke-dasharray', (exRatio * exCirc).toFixed(1) + ' ' + exCirc.toFixed(1));
-        el('ringStand').setAttribute('stroke-dasharray', (standRatio * standCirc).toFixed(1) + ' ' + standCirc.toFixed(1));
-      }
-
-      // Workouts
-      var workouts = data.workouts;
-      if (workouts && workouts.recentWorkouts) {
-        var wEl = el('actWorkouts');
-        workouts.recentWorkouts.forEach(function(w) {
-          var tag = document.createElement('span');
-          tag.className = 'life-tag';
-          tag.textContent = w.name;
-          wEl.appendChild(tag);
+        var GOAL = { move: 1500, exercise: 30, stand: 12 };
+        var asOf = new Date(health.date + 'T00:00:00');
+        var age = Math.max(0, Math.floor((Date.now() - asOf.getTime()) / 864e5));
+        var pct = function(v, g) { return Math.round(v / g * 100) + '%'; };
+        // A meter is htop's [||||    value] bar; the bars are clipped to the fill.
+        var meter = function(k, frac, val, cls, tip) {
+          var f = Math.max(0, Math.min(1, frac));
+          return '<div class="ht-m" data-tip="' + esc(tip) + '"><span class="k">' + k + '</span><span class="br">[</span>' +
+            '<span class="bar"><span class="trk"><span class="fill ' + cls + '" style="width:' + (f * 100).toFixed(1) + '%">' + new Array(200).join('|') + '</span></span>' +
+            '<span class="val">' + val + '</span></span><span class="br">]</span></div>';
+        };
+        // Heart and lungs never stop (R); sleep and legs wait (S); a day with
+        // no exercise leaves the exercise process a zombie (Z).
+        var procs = [
+          { pid: 1, user: 'root', s: 'R', v: health.restingHR + ' bpm', cmd: 'heart', arg: '--resting', t: 'resting heart rate' },
+          { pid: 2, user: 'root', s: 'R', v: health.spo2 + ' %', cmd: 'lungs', arg: '--spo2', t: 'blood oxygen saturation' },
+          { pid: 3, user: 'airing', s: 'S', v: health.sleep + ' h', cmd: 'sleep', arg: '--last-night', t: 'sleep duration' },
+          { pid: 4, user: 'airing', s: 'S', v: fmtNum(health.steps), cmd: 'legs', arg: '--steps', t: 'step count' },
+          { pid: 5, user: 'airing', s: health.exerciseMin > 0 ? 'S' : 'Z', v: health.exerciseMin + ' min', cmd: 'exercise', arg: health.exerciseMin > 0 ? '' : '<defunct>', t: 'exercise minutes · goal ' + GOAL.exercise }
+        ];
+        var running = procs.filter(function(p) { return p.s === 'R'; }).length;
+        var zombies = procs.filter(function(p) { return p.s === 'Z'; }).length;
+        var h = meter('Move', health.activeEnergy / GOAL.move, health.activeEnergy + '/' + GOAL.move + 'kJ', 'mv', 'move ring · ' + pct(health.activeEnergy, GOAL.move)) +
+          meter('Exer', health.exerciseMin / GOAL.exercise, health.exerciseMin + '/' + GOAL.exercise + 'min', 'ex', 'exercise ring · ' + pct(health.exerciseMin, GOAL.exercise)) +
+          meter('Stand', health.standHours / GOAL.stand, health.standHours + '/' + GOAL.stand + 'h', 'st', 'stand ring · ' + pct(health.standHours, GOAL.stand)) +
+          meter('Sleep', health.sleep / 24, health.sleep + '/24h', 'sl', 'sleep · ' + pct(health.sleep, 24) + ' of the day');
+        h += '<div class="ht-info">' +
+          '<div><span class="c">Tasks:</span> <b>' + procs.length + '</b>, <b>' + running + '</b> running' + (zombies ? ', <b class="z">' + zombies + '</b> zombie' : '') + '</div>' +
+          '<div><span class="c">Load average:</span> <b>' + health.restingHR + '</b> bpm <span class="dim">resting</span></div>' +
+          '<div><span class="c">Snapshot:</span> <b>' + esc(health.date) + '</b> <span class="z">(' + age + 'd ago)</span></div></div>';
+        h += '<div class="ht-tb"><div class="ht-row hd"><span class="pid">PID</span><span>USER</span><span>S</span><span class="v">VALUE</span><span>Command</span></div>';
+        procs.forEach(function(p, i) {
+          h += '<div class="ht-row' + (i === 0 ? ' sel' : '') + '" data-tip="' + esc(p.t + ' · ' + p.v + ' · ' + health.date) + '">' +
+            '<span class="pid">' + p.pid + '</span><span>' + p.user + '</span><span class="s ' + p.s + '">' + p.s + '</span>' +
+            '<span class="v">' + p.v + '</span><span class="cmd"><b>' + p.cmd + '</b> <i>' + esc(p.arg) + '</i></span></div>';
         });
-      }
-    })();
-  </script>
-
-  <script is:inline>
-    // ── GitHub Card ──
-    (function() {
-      var data = window.__GITHUB_DATA__;
-      if (!data || !data.login) return;
-
-      function fmt(n) {
-        if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
-        return String(n);
-      }
-
-      function fmtNum(n) {
-        return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-      }
-
-      var el = function(id) { return document.getElementById(id); };
-      el('ghLink').textContent = data.login;
-      el('ghLink').href = 'https://github.com/' + data.login;
-      if (data.bio) el('ghBio').textContent = data.bio;
-      el('ghFollowers').textContent = fmtNum(data.followers);
-      el('ghRepos').textContent = fmt(data.repos);
-      el('ghFollowing').textContent = fmt(data.following);
-      if (data.sinceYear) {
-        var sinceDate = new Date(parseInt(data.sinceYear), 0, 1);
-        var days = Math.floor((new Date() - sinceDate) / 86400000);
-        var yrs = (days / 365.25).toFixed(2);
-        el('ghSince').textContent = fmtNum(days) + 'd';
+        h += '</div>';
+        // The function-key bar is decoration, as in htop.
+        h += '<div class="ht-fk" aria-hidden="true">' + [['F1', 'Help'], ['F3', 'Search'], ['F5', 'Tree'], ['F6', 'SortBy'], ['F10', 'Quit']].map(function(k) {
+          return '<span><b>' + k[0] + '</b><em>' + k[1] + '</em></span>';
+        }).join('') + '</div>';
+        var ht = el('actHtop');
+        ht.innerHTML = h;
+        // The cyan selection bar follows the pointer, like moving through htop.
+        var rows = ht.querySelectorAll('.ht-row:not(.hd)');
+        rows.forEach(function(r) {
+          r.addEventListener('mouseenter', function() { rows.forEach(function(x) { x.classList.toggle('sel', x === r); }); });
+        });
+        bindTips(ht);
+        el('actDate').textContent = health.date;
+        el('actGoalMove').textContent = GOAL.move;
+        el('actGoalEx').textContent = GOAL.exercise;
+        el('actGoalStand').textContent = GOAL.stand;
       }
     })();
   </script>

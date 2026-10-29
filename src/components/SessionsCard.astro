@@ -1,0 +1,199 @@
+---
+// src/components/SessionsCard.astro
+//
+// Homepage "Work Sessions" card: Rize totals printed as the output of
+// `time` (real = everything, user = focus, sys = meetings, idle = breaks),
+// and beside it one stack of squares per month, one square per hour, focus
+// at the bottom, then meetings, then breaks.
+//
+// The numbers are the Rize export that used to be written into index.astro;
+// Rize stopped syncing after March 2026, so the header says how long ago.
+interface Month {
+  m: string; y: number; full: string;
+  focus: number; meeting: number; brk: number;
+  top: [string, number][];
+}
+const MONTHS: Month[] = [
+  { m: 'Nov', y: 25, full: 'November 2025', focus: 19.1, meeting: 12.1, brk: 12.7, top: [['Meetings', 12], ['Code', 8], ['Docs', 3]] },
+  { m: 'Dec', y: 25, full: 'December 2025', focus: 68.0, meeting: 25.4, brk: 26.4, top: [['Code', 36], ['Meetings', 22], ['Docs', 9]] },
+  { m: 'Jan', y: 26, full: 'January 2026', focus: 31.0, meeting: 12.8, brk: 15.8, top: [['Code', 19], ['Meetings', 13], ['Design', 2]] },
+  { m: 'Feb', y: 26, full: 'February 2026', focus: 24.8, meeting: 17.7, brk: 15.0, top: [['Meetings', 18], ['Code', 9], ['Docs', 8]] },
+  { m: 'Mar', y: 26, full: 'March 2026', focus: 22.6, meeting: 22.6, brk: 11.1, top: [['Meetings', 23], ['Code', 12], ['Docs', 5]] },
+];
+// First day after the last synced month; the header counts months since.
+const SYNCED_UNTIL = '2026-04-01';
+
+const total = (s: Month) => s.focus + s.meeting + s.brk;
+const sum = MONTHS.reduce((a, s) => ({ focus: a.focus + s.focus, meeting: a.meeting + s.meeting, brk: a.brk + s.brk }), { focus: 0, meeting: 0, brk: 0 });
+const sumAll = sum.focus + sum.meeting + sum.brk;
+const busiest = MONTHS.reduce((a, s) => (total(s) > total(a) ? s : a));
+const hm = (h: number) => { const m = Math.round(h * 60); return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}m`; };
+const pc = (v: number) => Math.round(v / sumAll * 100) + '%';
+const h1 = (n: number) => n.toFixed(1);
+
+// Whole hours per month (largest remainder, so the three parts add up to the
+// month's rounded total).
+function split(s: Month) {
+  const parts = ([['f', s.focus], ['mt', s.meeting], ['b', s.brk]] as const)
+    .map(([k, v]) => ({ k, n: Math.floor(v), r: v - Math.floor(v) }));
+  const left = Math.round(total(s)) - parts.reduce((a, p) => a + p.n, 0);
+  [...parts].sort((a, b) => b.r - a.r).slice(0, left).forEach(p => p.n++);
+  return parts.flatMap(p => Array.from({ length: p.n }, () => p.k));
+}
+
+const ageMonths = (d: Date) => {
+  const from = new Date(SYNCED_UNTIL + 'T00:00:00');
+  return Math.max(0, (d.getFullYear() - from.getFullYear()) * 12 + d.getMonth() - from.getMonth() + 1);
+};
+const TIME_ROWS = [
+  { cls: 'real', k: 'real', v: sumAll, key: 'sess_total', label: 'Total', pct: '' },
+  { cls: 'user', k: 'user', v: sum.focus, key: 'sess_focus', label: 'Focus', pct: pc(sum.focus) },
+  { cls: 'sys', k: 'sys', v: sum.meeting, key: 'sess_meeting', label: 'Meeting', pct: pc(sum.meeting) },
+  { cls: 'idle', k: 'idle', v: sum.brk, key: 'sess_break', label: 'Break', pct: pc(sum.brk) },
+];
+---
+<div class="card card-sessions" id="sessions">
+  <div class="section-title" data-i18n="sec_sessions">Work Sessions</div>
+  <div class="feed-head">
+    <span class="feed-head-cmd"><span class="prompt">$</span> time rize work --since 2025-11 --until 2026-03</span>
+    <span class="feed-head-total">
+      <span data-i18n="sess_last_sync">last sync</span>{' '}<strong id="sessAge" data-since={SYNCED_UNTIL}>{ageMonths(new Date())}</strong>{' '}<span data-i18n="sess_months_ago">months ago</span>
+    </span>
+  </div>
+  <div class="tm">
+    <div class="tm-out">
+      {TIME_ROWS.map(r => (
+        <div class:list={['r', r.cls]}>
+          <span class="k">{r.k}</span><span class="v">{hm(r.v)}</span><span class="lb" data-i18n={r.key}>{r.label}</span><span class="pc">{r.pct}</span>
+        </div>
+      ))}
+      <div class="note">
+        # <span data-i18n="sess_note_span">5 months</span>, Nov 2025 – Mar 2026<br>
+        # <span data-i18n="sess_busiest">busiest</span>: {busiest.m} ({Math.round(total(busiest))}h, {Math.round(busiest.focus / total(busiest) * 100)}% <span class="lc" data-i18n="sess_focus">Focus</span>)
+      </div>
+    </div>
+    <div>
+      <div class="wf-wrap" id="sessWaffle">
+        {MONTHS.map(s => (
+          <div class="wf" data-tip={`${s.full} · ${h1(total(s))}h · focus ${h1(s.focus)} · meeting ${h1(s.meeting)} · break ${h1(s.brk)} · ${s.top.map(([a, h]) => `${a} ${h}h`).join(' · ')}`}>
+            <span class="wf-tot">{Math.round(total(s))}h</span>
+            <div class="wf-grid">{split(s).map(k => <i class={k}></i>)}</div>
+            <span class="wf-lab">{s.m} '{s.y}</span>
+            <span class="wf-top">{s.top[0][0]}<span class="h"> {s.top[0][1]}h</span></span>
+          </div>
+        ))}
+      </div>
+      <div class="wf-lg">
+        <span class="lk"><i class="f"></i><span data-i18n="sess_focus">Focus</span></span>
+        <span class="lk"><i class="mt"></i><span data-i18n="sess_meeting">Meeting</span></span>
+        <span class="lk"><i class="b"></i><span data-i18n="sess_break">Break</span></span>
+        <span class="src"><span data-i18n="sess_cell">1 cell = 1h</span> · <a href="https://rize.io" target="_blank" rel="noopener">Rize</a></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { bindTips } from '../scripts/card-tips';
+
+  bindTips(document.getElementById('sessWaffle'));
+  // The build may be older than today; recount the months since the last sync.
+  const age = document.getElementById('sessAge');
+  if (age?.dataset.since) {
+    const from = new Date(age.dataset.since + 'T00:00:00'), now = new Date();
+    age.textContent = String(Math.max(0, (now.getFullYear() - from.getFullYear()) * 12 + now.getMonth() - from.getMonth() + 1));
+  }
+</script>
+
+<style>
+  .tm {
+    --mt: #a78bfa;
+    display: grid;
+    grid-template-columns: 252px minmax(0, 1fr);
+    gap: 28px;
+    align-items: end;
+  }
+  :global([data-mode='light']) .tm { --mt: #7c3aed; }
+  .tm-out { font-size: 12px; line-height: 1.75; }
+  .tm-out .r {
+    display: grid;
+    grid-template-columns: 4.5ch 8ch minmax(0, 1fr) 4ch;
+    column-gap: 1ch;
+  }
+  .tm-out .k { color: var(--c-text-muted); }
+  .tm-out .v { text-align: right; font-variant-numeric: tabular-nums; }
+  .tm-out .lb { color: var(--c-text-dim); text-transform: lowercase; }
+  .tm-out .pc { text-align: right; color: var(--c-text-muted); }
+  .tm-out .real .v { color: var(--c-text); font-weight: 700; }
+  .tm-out .user .v { color: var(--accent); }
+  .tm-out .sys .v { color: var(--mt); }
+  .tm-out .idle .v { color: var(--c-text-muted); }
+  .tm-out .note { margin-top: 8px; font-size: 10.5px; line-height: 1.6; color: var(--c-text-dim); }
+  .tm-out .note .lc { text-transform: lowercase; }
+
+  /* One square per hour; the grid is flipped so the stack grows upward. */
+  .wf-wrap {
+    --cell: 6px;
+    --cg: 2px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 10px;
+  }
+  .wf {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+  }
+  .wf-tot { font-size: 11px; font-weight: 600; color: var(--c-text); }
+  .wf-grid {
+    display: grid;
+    grid-template-columns: repeat(10, var(--cell));
+    grid-auto-rows: var(--cell);
+    gap: var(--cg);
+    transform: scaleY(-1);
+  }
+  .wf-grid i,
+  .wf-lg i { border-radius: 1px; background: rgba(var(--c-overlay-rgb), 0.22); }
+  .wf-grid i.f,
+  .wf-lg i.f { background: var(--accent); }
+  .wf-grid i.mt,
+  .wf-lg i.mt { background: var(--mt); }
+  .wf:hover .wf-grid { filter: brightness(1.2); }
+  .wf-lab { font-size: 10px; letter-spacing: 1px; color: var(--c-text-muted); text-transform: uppercase; }
+  .wf-top { margin-top: -4px; font-size: 9.5px; white-space: nowrap; color: var(--c-text-dim); }
+  .wf-lg {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin-top: 14px;
+    font-size: 10.5px;
+    color: var(--c-text-muted);
+  }
+  .wf-lg i {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 5px;
+  }
+  .wf-lg .lk { text-transform: lowercase; }
+  .wf-lg .src { margin-left: auto; color: var(--c-text-dim); }
+  .wf-lg .src a { color: inherit; text-decoration: none; }
+  .wf-lg .src a:hover { color: var(--c-text-muted); }
+
+  /* The command gets its own line on phones instead of being cut short. */
+  @media (max-width: 480px) {
+    .feed-head { flex-wrap: wrap; row-gap: 2px; }
+    .feed-head-cmd { flex-basis: 100%; }
+  }
+  @media (max-width: 640px) {
+    .tm { grid-template-columns: 1fr; gap: 18px; }
+    .wf-wrap { --cell: 4px; --cg: 1.5px; gap: 6px; }
+    .wf-top .h { display: none; }
+  }
+  @media (max-width: 340px) {
+    .wf-wrap { --cell: 3.5px; --cg: 1px; }
+  }
+</style>
