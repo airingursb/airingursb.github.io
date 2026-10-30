@@ -1,0 +1,613 @@
+---
+// src/components/SkillsCard.astro
+//
+// Homepage Skills card, drawn as a green-phosphor CRT radar in a bezel with
+// screws and a name plate. The four quadrants are the four skill groups and
+// the four rings are the level (closer to the centre = more fluent); the
+// sweep makes each blip flash as it passes. The target log on the right is
+// linked both ways with the blips, clicking a quadrant label shows only that
+// group, and the open-source roles sit below as IFF transponders.
+//
+// Data: src/data/skills.ts. Everything is rendered here; the script only
+// adds hover / click behaviour.
+import { SKILLS, OSS, SKILL_GROUPS, RADAR_ORDER, CV_URL } from '../data/skills';
+import type { Skill, SkillLevel } from '../data/skills';
+
+type RadarGroup = (typeof RADAR_ORDER)[number];
+
+// Bearings of each quadrant, clockwise from north.
+const QUAD: Record<RadarGroup, [number, number]> = { web: [270, 360], cross: [0, 90], ai: [90, 180], game: [180, 270] };
+const RING: Record<SkillLevel, [number, number]> = { expert: [0.18, 0.42], proficient: [0.46, 0.62], familiar: [0.68, 0.8], learning: [0.86, 0.94] };
+
+interface Blip extends Skill { no: number; ang: number; x: number; y: number }
+
+const blips: Blip[] = [];
+let no = 0;
+for (const g of RADAR_ORDER) {
+  const items = SKILLS.filter(s => s.group === g);
+  const [a0, a1] = QUAD[g];
+  for (const s of items) {
+    const [r0, r1] = RING[s.level];
+    const same = items.filter(x => x.level === s.level);
+    const j = same.indexOf(s);
+    const ang = a0 + 14 + (j + 0.5) * ((a1 - a0 - 28) / same.length) + (s.level === 'proficient' ? 6 : s.level === 'familiar' ? -5 : 0);
+    const rad = same.length > 1 ? r0 + (r1 - r0) * (j % 2 ? 0.9 : 0.15) : (r0 + r1) / 2;
+    const t = (ang * Math.PI) / 180;
+    blips.push({ ...s, no: ++no, ang, x: 50 + Math.sin(t) * rad * 50, y: 50 - Math.cos(t) * rad * 50 });
+  }
+}
+
+const pct = (n: number) => n.toFixed(2) + '%';
+const brg = (a: number) => String(Math.round(a) % 360).padStart(3, '0') + '°';
+const BAR_N: Record<SkillLevel, number> = { expert: 10, proficient: 7, familiar: 4, learning: 2 };
+const bar = (lv: SkillLevel) => '█'.repeat(BAR_N[lv]) + '░'.repeat(10 - BAR_N[lv]);
+
+// Scope face: rings, cross hair, ticks every 10° and ring labels.
+const ticks = Array.from({ length: 36 }, (_, i) => {
+  const a = i * 10, r = a % 30 ? 94 : 91, t = (a * Math.PI) / 180;
+  const sx = Math.sin(t), cy = -Math.cos(t);
+  return `M${(sx * r).toFixed(2)} ${(cy * r).toFixed(2)}L${(sx * 97).toFixed(2)} ${(cy * 97).toFixed(2)}`;
+}).join('');
+
+const CORNERS: { g: RadarGroup; q: string; up: boolean; cls: string }[] = [
+  { g: 'web', q: 'Q1', up: true, cls: 'tl' },
+  { g: 'cross', q: 'Q2', up: true, cls: 'tr' },
+  { g: 'game', q: 'Q4', up: false, cls: 'bl' },
+  { g: 'ai', q: 'Q3', up: false, cls: 'br' },
+];
+
+const first = blips[0];
+---
+<div class="card card-skills" id="skills">
+  <div class="section-title-row">
+    <span class="section-title" data-i18n="sec_skills">Skills</span>
+    <a class="photos-strip-more" href={CV_URL} target="_blank" rel="noopener">CV →</a>
+  </div>
+  <div class="feed-head">
+    <span class="feed-head-cmd"><span class="prompt">$</span> radar scan ~/skills</span>
+    <span class="feed-head-total"><strong>{blips.length}</strong> <span data-i18n="sk_targets">targets</span><span class="x2"> · <strong>{OSS.length}</strong> <span data-i18n="sk_friendly">friendly</span></span></span>
+  </div>
+
+  <div class="sc-wrap">
+    <div class="sc-left">
+      <div class="sc-dev">
+        <i class="sc-screw" style="left:8px;top:8px;--sr:20deg"></i><i class="sc-screw" style="right:8px;top:8px;--sr:70deg"></i><i class="sc-screw" style="left:8px;bottom:8px;--sr:110deg"></i><i class="sc-screw" style="right:8px;bottom:8px;--sr:150deg"></i>
+        {[CORNERS.slice(0, 2), CORNERS.slice(2)].map((row, ri) => (
+          <>
+            {ri === 1 && (
+              <div class="sc-scope" data-sk-scope>
+                <svg class="grid" viewBox="-100 -100 200 200" fill="none" stroke="#4ade80" aria-hidden="true">
+                  {[44, 65, 83, 97].map(r => <circle r={r} stroke-opacity=".32" stroke-width=".6" />)}
+                  <path d="M-97 0H97M0 -97V97" stroke-opacity=".3" stroke-width=".5" />
+                  <path d={ticks} stroke-opacity=".45" stroke-width=".6" />
+                  {([['EXPERT', 30], ['PROF', 55], ['FAMIL', 74], ['LEARN', 90]] as const).map(([t, r]) => (
+                    <text x="-2" y={r + 1.5} text-anchor="end" fill="#4ade80" fill-opacity=".55" stroke="none" font-size="4.2" font-family="ui-monospace,monospace">{t}</text>
+                  ))}
+                </svg>
+                <div class="sc-sweep"></div>
+                {blips.map(b => (
+                  <button class="bp" type="button" data-k={b.id} data-g={b.group} style={`left:${pct(b.x)};top:${pct(b.y)};--dl:${((b.ang / 360) * 4 - 4).toFixed(2)}s`} aria-label={`${b.name} · ${b.level}`}>{b.no}</button>
+                ))}
+                <div class="sc-glass"></div>
+                <div class="sc-tip" data-sk-tip aria-hidden="true"><span class="t-lg"><i></i></span><span data-tip-tx></span></div>
+              </div>
+            )}
+            <div class:list={['sc-qrow', { b: ri === 1 }]}>
+              {row.map(c => (
+                <button class:list={['sc-q', c.cls]} type="button" data-g={c.g} aria-pressed="false" style={`--gc:${SKILL_GROUPS[c.g].color}`}>
+                  <b>{c.up ? '▲' : '▼'} {c.q}</b>{SKILL_GROUPS[c.g].name}
+                </button>
+              ))}
+            </div>
+          </>
+        ))}
+        <div class="sc-plate"><span><i class="led"></i>SKL-RADAR · MK II</span><span>SRC/CV</span></div>
+      </div>
+
+      <div class="sc-iff">
+        <div class="sc-iff-h"><span><span class="prompt">$</span> iff --list friendly</span><span><b>{OSS.length}</b> <span data-i18n="sk_oss_ids">open-source IDs</span></span></div>
+        <div class="sc-iff-row">
+          {OSS.map((o, i) => (
+            <button class="iff" type="button" data-oss={o.id} title={o.cv}>
+              <i class="led" style={`--dl:${(i * 0.37).toFixed(2)}s`}></i>
+              <span class:list={['lg', { dk: o.dark }]}><img src={o.logo} alt="" width="24" height="24" loading="lazy" decoding="async" /></span>
+              <span class="t"><b>{o.name}</b><span>{o.role.toUpperCase()}</span></span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    <div class="sc-log" data-sk-log>
+      <div class="sc-lh" aria-hidden="true"><span>#</span><span>TARGET</span><span>RING</span><span class="rt">BRG</span></div>
+      {RADAR_ORDER.map(g => (
+        <>
+          <div class="sc-g" style={`--gc:${SKILL_GROUPS[g].color}`}>── {SKILL_GROUPS[g].name}/</div>
+          {blips.filter(b => b.group === g).map(b => (
+            <button class="sc-row" type="button" data-k={b.id} data-g={g}>
+              <span class="n">{String(b.no).padStart(2, '0')}</span><span class="nm">{b.name}</span><span class:list={['r', `lv-${b.level}`]}>{b.level.toUpperCase()}</span><span class="bg">{brg(b.ang)}</span>
+            </button>
+          ))}
+        </>
+      ))}
+      <div class="sc-who" data-sk-who aria-live="polite">
+        <div class="w1">
+          <span class="prompt">$</span> whois <b data-w="nm">{first.name}</b> · <span class:list={['w-lv', `lv-${first.level}`]} data-w="lv"><span class="w-bar" data-w="bar">{bar(first.level)}</span> <span data-w="lvt">{first.level}</span></span> · <span data-w="g" style={`color:${SKILL_GROUPS[first.group].color}`}>{SKILL_GROUPS[first.group].name}</span>
+        </div>
+        <div class="w2"><span data-w="src">CV · </span><span data-w="tx">{first.cv}</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="src-line">
+    <span data-i18n="sk_hint">Hover a blip or log row to link · click a corner to filter</span>
+    <span><span data-i18n="sk_data_from">Data from</span> <a href={CV_URL} target="_blank" rel="noopener">CV</a></span>
+  </div>
+</div>
+
+<script>
+  import { SKILLS, OSS, SKILL_GROUPS } from '../data/skills';
+  import type { SkillLevel } from '../data/skills';
+
+  const card = document.getElementById('skills');
+  const scope = card?.querySelector<HTMLElement>('[data-sk-scope]');
+  const log = card?.querySelector<HTMLElement>('[data-sk-log]');
+  const who = card?.querySelector<HTMLElement>('[data-sk-who]');
+  const tip = card?.querySelector<HTMLElement>('[data-sk-tip]');
+  const tipTx = tip?.querySelector<HTMLElement>('[data-tip-tx]');
+
+  if (card && scope && log && who && tip && tipTx) {
+    const byId = new Map(SKILLS.map(s => [s.id, s]));
+    const ossById = new Map(OSS.map(o => [o.id, o]));
+    const BAR_N: Record<SkillLevel, number> = { expert: 10, proficient: 7, familiar: 4, learning: 2 };
+    const w = (k: string) => who.querySelector<HTMLElement>(`[data-w="${k}"]`)!;
+    const isZh = () => document.documentElement.lang.toLowerCase().startsWith('zh');
+    let picked: { kind: 'skill' | 'oss'; id: string } = { kind: 'skill', id: SKILLS[0].id };
+
+    const render = () => {
+      const lv = w('lv'), bar = w('bar');
+      if (picked.kind === 'skill') {
+        const s = byId.get(picked.id);
+        if (!s) return;
+        w('nm').textContent = s.name;
+        lv.className = `w-lv lv-${s.level}`;
+        bar.hidden = false;
+        bar.textContent = '█'.repeat(BAR_N[s.level]) + '░'.repeat(10 - BAR_N[s.level]);
+        w('lvt').textContent = s.level;
+        w('g').textContent = SKILL_GROUPS[s.group].name;
+        w('g').style.color = SKILL_GROUPS[s.group].color;
+        w('src').hidden = !s.cv;
+        w('tx').textContent = s.cv ?? (s.about ? (isZh() ? s.about.zh : s.about.en) : '');
+      } else {
+        const o = ossById.get(picked.id);
+        if (!o) return;
+        w('nm').textContent = o.name;
+        lv.className = 'w-lv w-role';
+        bar.hidden = true;
+        w('lvt').textContent = o.role;
+        w('g').textContent = SKILL_GROUPS.oss.name;
+        w('g').style.color = SKILL_GROUPS.oss.color;
+        w('src').hidden = false;
+        w('tx').textContent = o.cv;
+      }
+    };
+
+    const linked = (id: string) => card.querySelectorAll<HTMLElement>(`.bp[data-k="${id}"], .sc-row[data-k="${id}"]`);
+    const highlight = (id: string, on: boolean) => {
+      linked(id).forEach(el => el.classList.toggle('hl', on));
+      const b = scope.querySelector<HTMLElement>(`.bp[data-k="${id}"]`);
+      const s = byId.get(id);
+      if (on && b && s) {
+        tipTx.textContent = `${s.name} · ${s.level}`;
+        tip.style.setProperty('--bg', s.bg);
+        tip.style.setProperty('--fg', s.fg);
+        tip.style.setProperty('--m', `url(${s.logo})`);
+        tip.style.left = b.style.left;
+        tip.style.top = b.style.top;
+        tip.classList.add('on');
+      } else {
+        tip.classList.remove('on');
+      }
+    };
+
+    const target = (e: Event) => (e.target as Element | null)?.closest<HTMLElement>('.bp, .sc-row') ?? null;
+    const leave = (e: Event) => {
+      const t = target(e);
+      const to = (e as MouseEvent | FocusEvent).relatedTarget as Element | null;
+      if (t?.dataset.k && !(to && t.contains(to))) highlight(t.dataset.k, false);
+    };
+    const enter = (e: Event) => { const t = target(e); if (t?.dataset.k) highlight(t.dataset.k, true); };
+    card.addEventListener('mouseover', enter);
+    card.addEventListener('mouseout', leave);
+    card.addEventListener('focusin', enter);
+    card.addEventListener('focusout', leave);
+
+    const corners = card.querySelectorAll<HTMLElement>('.sc-q');
+    card.addEventListener('click', e => {
+      const el = e.target as Element;
+      const t = target(e);
+      if (t?.dataset.k) { picked = { kind: 'skill', id: t.dataset.k }; render(); return; }
+      const iff = el.closest<HTMLElement>('.iff');
+      if (iff?.dataset.oss) { picked = { kind: 'oss', id: iff.dataset.oss }; render(); return; }
+      const q = el.closest<HTMLElement>('.sc-q');
+      if (!q) return;
+      const on = !q.classList.contains('on');
+      corners.forEach(x => { x.classList.remove('on'); x.setAttribute('aria-pressed', 'false'); });
+      scope.classList.toggle('filtering', on);
+      log.classList.toggle('filtering', on);
+      card.querySelectorAll('.bp, .sc-row').forEach(x => x.classList.remove('lit'));
+      if (on) {
+        q.classList.add('on');
+        q.setAttribute('aria-pressed', 'true');
+        card.querySelectorAll(`.bp[data-g="${q.dataset.g}"], .sc-row[data-g="${q.dataset.g}"]`).forEach(x => x.classList.add('lit'));
+      }
+    });
+
+    window.addEventListener('langchange', () => requestAnimationFrame(render));
+  }
+</script>
+
+<style>
+  .card-skills {
+    container: skcard / inline-size;
+    --g-web: #38bdf8;
+    --g-game: #f472b6;
+    --g-cross: #a78bfa;
+    --g-oss: #fbbf24;
+    --g-ai: #fb923c;
+    --sc-bz1: #2a2f36;
+    --sc-bz2: #1a1d22;
+    --sc-lab: #9aa4b2;
+    --lv-prof: #e8dcc0;
+    --lv-fam: #9aa4b2;
+    --lv-learn: #c4b5fd;
+  }
+  :global(html[data-mode='light']) .card-skills {
+    --g-web: #0284c7;
+    --g-game: #db2777;
+    --g-cross: #7c3aed;
+    --g-oss: #b45309;
+    --g-ai: #c2410c;
+    --sc-bz1: #e4e2da;
+    --sc-bz2: #cfccc1;
+    --sc-lab: #57534e;
+    --lv-prof: #8a6d2c;
+    --lv-fam: #57606a;
+    --lv-learn: #6d28d9;
+  }
+  .prompt { color: var(--accent); }
+  .lv-expert { color: var(--accent); }
+  .lv-proficient { color: var(--lv-prof); }
+  .lv-familiar { color: var(--lv-fam); }
+  .lv-learning { color: var(--lv-learn); }
+
+  .sc-wrap {
+    display: grid;
+    grid-template-columns: 322px minmax(0, 1fr);
+    gap: 22px;
+    align-items: start;
+  }
+  .sc-left { min-width: 0; }
+
+  /* ── Device: bezel, screws, quadrant labels, scope, plate ── */
+  .sc-dev {
+    position: relative;
+    padding: 15px;
+    border-radius: 18px;
+    background: linear-gradient(160deg, var(--sc-bz1), var(--sc-bz2));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      inset 0 -2px 0 rgba(0, 0, 0, 0.25),
+      0 18px 28px -18px rgba(0, 0, 0, 0.7),
+      0 0 0 1px rgba(var(--c-overlay-rgb), 0.06);
+  }
+  .sc-screw {
+    position: absolute;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #d1d5db, #6b7280);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+  }
+  .sc-screw::after {
+    content: '';
+    position: absolute;
+    left: 1px;
+    right: 1px;
+    top: 4px;
+    height: 1px;
+    background: rgba(0, 0, 0, 0.5);
+    transform: rotate(var(--sr, 30deg));
+  }
+  .sc-qrow { display: flex; justify-content: space-between; align-items: flex-end; margin: 0 2px 6px; }
+  .sc-qrow.b { align-items: flex-start; margin: 6px 2px 0; }
+  .sc-q {
+    position: relative;
+    z-index: 2;
+    font: inherit;
+    font-size: 10px;
+    line-height: 1.25;
+    letter-spacing: 0.5px;
+    color: var(--sc-lab);
+    background: none;
+    border: 0;
+    padding: 2px;
+    cursor: pointer;
+    text-align: left;
+  }
+  .sc-q b { display: block; font-size: 9px; color: var(--gc); letter-spacing: 1px; }
+  .sc-q:hover,
+  .sc-q.on { color: var(--c-text); }
+  .sc-q.tr,
+  .sc-q.br { text-align: right; }
+  .sc-qrow.b .sc-q { display: flex; flex-direction: column-reverse; }
+  .sc-q:focus-visible,
+  .bp:focus-visible,
+  .sc-row:focus-visible,
+  .iff:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
+
+  .sc-scope {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    overflow: hidden;
+    background: radial-gradient(circle, #0c2a17 0%, #071a0e 62%, #030b06 100%);
+    box-shadow:
+      inset 0 0 0 3px #0a0f0c,
+      inset 0 0 30px rgba(0, 0, 0, 0.9),
+      0 0 0 5px #0d1110,
+      0 0 0 6px rgba(255, 255, 255, 0.08);
+  }
+  .sc-scope .grid { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .sc-sweep {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(
+      from 0deg,
+      rgba(74, 222, 128, 0) 0deg,
+      rgba(74, 222, 128, 0) 280deg,
+      rgba(74, 222, 128, 0.28) 352deg,
+      rgba(170, 255, 200, 0.75) 359.5deg,
+      rgba(74, 222, 128, 0) 360deg
+    );
+    animation: scSweep 4s linear infinite;
+  }
+  @keyframes scSweep { to { transform: rotate(360deg); } }
+  .sc-glass {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse at 32% 22%, rgba(255, 255, 255, 0.12), transparent 38%),
+      repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.12) 0 1px, transparent 1px 3px);
+  }
+  .bp {
+    position: absolute;
+    z-index: 1;
+    width: 18px;
+    height: 18px;
+    margin: -9px 0 0 -9px;
+    border-radius: 50%;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 18px;
+    text-align: center;
+    color: #04140a;
+    background: #7dffae;
+    box-shadow: 0 0 8px 2px rgba(74, 222, 128, 0.75);
+    cursor: pointer;
+    animation: bpPulse 4s linear infinite;
+    animation-delay: var(--dl);
+  }
+  @keyframes bpPulse {
+    0% { opacity: 1; transform: scale(1.3); }
+    8% { transform: scale(1); }
+    100% { opacity: 0.38; }
+  }
+  .bp:hover,
+  .bp.hl { animation: none; opacity: 1; transform: scale(1.35); z-index: 3; }
+  .sc-scope.filtering .bp:not(.lit) { animation: none; opacity: 0.12; }
+  .sc-tip {
+    position: absolute;
+    z-index: 4;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-size: 10.5px;
+    color: #c9ffd9;
+    background: rgba(2, 14, 6, 0.9);
+    border: 1px solid rgba(74, 222, 128, 0.5);
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, -150%);
+    transition: opacity 0.12s;
+  }
+  .sc-tip.on { opacity: 1; }
+  .t-lg {
+    display: inline-grid;
+    place-items: center;
+    width: 13px;
+    height: 13px;
+    margin-right: 5px;
+    vertical-align: -2px;
+    border-radius: 3px;
+    background: var(--bg);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
+  }
+  .t-lg i {
+    width: 9px;
+    height: 9px;
+    background: var(--fg);
+    -webkit-mask: var(--m) center / contain no-repeat;
+    mask: var(--m) center / contain no-repeat;
+  }
+  .sc-plate {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    padding: 0 4px;
+    font-size: 9.5px;
+    letter-spacing: 2px;
+    color: var(--sc-lab);
+  }
+  .sc-plate .led {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 6px #4ade80;
+    animation: led 1.6s steps(2) infinite;
+  }
+  @keyframes led { 50% { opacity: 0.25; } }
+
+  /* ── Target log ── */
+  .sc-log { font-size: 12px; min-width: 0; }
+  .sc-lh,
+  .sc-row {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr) 82px 46px;
+    gap: 8px;
+  }
+  .sc-lh {
+    padding: 0 6px 6px;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--c-text-dim);
+    border-bottom: 1px solid rgba(var(--c-overlay-rgb), 0.08);
+  }
+  .sc-lh .rt { text-align: right; }
+  .sc-g { margin-top: 8px; padding: 0 6px 2px; font-size: 10.5px; color: var(--gc); letter-spacing: 0.5px; }
+  .sc-row {
+    width: 100%;
+    padding: 1px 6px;
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.55;
+    text-align: left;
+    color: var(--c-text);
+    background: none;
+    border: 0;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .sc-row .n { color: var(--c-text-dim); }
+  .sc-row .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sc-row .bg { color: var(--c-text-dim); text-align: right; }
+  .sc-row .r { font-size: 10.5px; letter-spacing: 0.5px; }
+  .sc-row:hover,
+  .sc-row.hl { background: rgba(var(--accent-rgb), 0.1); }
+  .sc-log.filtering .sc-row:not(.lit) { opacity: 0.3; }
+
+  .sc-who {
+    margin-top: 10px;
+    padding: 8px 10px;
+    min-height: 58px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--c-text-muted);
+    background: rgba(var(--c-overlay-rgb), 0.035);
+    border: 1px solid rgba(var(--c-overlay-rgb), 0.07);
+  }
+  .sc-who b { color: var(--c-text); font-weight: 600; }
+  .sc-who [data-w='nm'],
+  .sc-who [data-w='lv'],
+  .sc-who [data-w='g'] { white-space: nowrap; }
+  .sc-who .w-role { color: var(--g-oss); font-weight: 700; }
+  .w-bar[hidden],
+  [data-w='src'][hidden] { display: none; }
+
+  /* ── IFF transponders (open-source roles) ── */
+  .sc-iff { margin-top: 16px; }
+  .sc-iff-h { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--c-text-muted); margin-bottom: 8px; }
+  .sc-iff-h b { color: var(--c-text); }
+  .sc-iff-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .sc-iff-row .iff:last-child { grid-column: 1 / -1; }
+  .iff {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 6px 8px;
+    font: inherit;
+    text-align: left;
+    color: inherit;
+    border: 0;
+    border-radius: 8px;
+    background: linear-gradient(160deg, var(--sc-bz1), var(--sc-bz2));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 0 1px rgba(var(--c-overlay-rgb), 0.07);
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .iff:hover { transform: translateY(-2px); }
+  .iff .lg {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    overflow: hidden;
+    border-radius: 6px;
+    background: #fff;
+  }
+  .iff .lg img { display: block; width: auto; height: auto; max-width: 24px; max-height: 23px; }
+  .iff .lg.dk { background: #232323; }
+  .iff .t { min-width: 0; font-size: 10px; line-height: 1.35; color: var(--sc-lab); }
+  .iff .t b { display: block; font-size: 11.5px; color: var(--c-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .iff .t span { color: var(--g-oss); font-weight: 700; letter-spacing: 0.5px; }
+  .iff .led {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 5px #4ade80;
+    animation: led 2s steps(2) infinite;
+    animation-delay: var(--dl);
+  }
+
+  .src-line {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 6px 14px;
+    margin-top: 14px;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--c-text-dim);
+  }
+  .src-line a { color: var(--c-text-muted); text-decoration: none; transition: color 0.2s; }
+  .src-line a:hover { color: var(--accent); }
+
+  .feed-head-total { white-space: nowrap; }
+  @container skcard (max-width: 560px) {
+    .x2 { display: none; }
+  }
+  @container skcard (max-width: 700px) {
+    .sc-wrap { grid-template-columns: minmax(0, 1fr); }
+    .sc-dev { max-width: 360px; width: 100%; margin: 0 auto; }
+  }
+  @container skcard (min-width: 560px) and (max-width: 700px) {
+    .sc-iff-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .sc-iff-row .iff:last-child { grid-column: auto; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sc-sweep { display: none; }
+    .bp,
+    .sc-plate .led,
+    .iff .led { animation: none; }
+    .iff { transition: none; }
+  }
+</style>
