@@ -2284,6 +2284,7 @@ RSS <span data-sub-copy="realtimeLabel">实时</span> </button> </div> <section 
       });
     }
     function failMessage(err) {
+      if (err && err.code === 'RESERVED_NAME') return T.reservedName;
       var detail = err && typeof (err.error || err.message) === 'string' ? (err.error || err.message) : '';
       return T.sendFail + (detail && detail.length < 120 ? ' (' + detail + ')' : '');
     }
@@ -2342,10 +2343,16 @@ RSS <span data-sub-copy="realtimeLabel">实时</span> </button> </div> <section 
     function apiGet(path) {
       return fetch(API + path, { headers: { 'Origin': location.origin } }).then(handleResponse);
     }
+    // The owner's name/emails are reserved server-side; the owner's browser
+    // proves who it is with the token saved by /admin (same origin).
+    function adminHeaders(h) {
+      try { var t = localStorage.getItem('admin-token'); if (t) h.Authorization = 'Bearer ' + t; } catch (e) {}
+      return h;
+    }
     function apiPost(path, body) {
       return fetch(API + path, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: adminHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(body)
       }).then(handleResponse);
     }
@@ -3320,7 +3327,7 @@ RSS <span data-sub-copy="realtimeLabel">实时</span> </button> </div> <section 
 
   root.BlogComments = { init: init };
 })(window);
-</script> <script>(function(){const boot = {"kind":"post","lang":"zh","t":{"locale":"zh-CN","title":"评论","count":"{n} 条评论","countOne":"{n} 条评论","countPending":"—","writeComment":"写评论 ↓","nickname":"昵称","email":"邮箱","website":"网址（选填）","placeholder":"写点什么…","contentField":"内容","replyPlaceholder":"写下回复…","submit":"发送","sending":"发送中…","reply":"回复","cancel":"取消","close":"关闭","inlineSubmit":"评论","notify":"有人回复时邮件通知我","notifyShort":"有人回复时通知我","loading":"正在读取评论…","loadFail":"评论暂时无法读取。","inlineLoadFail":"划线评论暂时无法读取。","retry":"重试","empty":"还没有评论，来聊两句。","sent":"评论已发送。","replySent":"回复已发送。","sendFail":"发送失败，内容已保留，请稍后重试。","missing":"请填写{fields}。","fieldSep":"、","badEmail":"邮箱格式不正确。","needSelection":"选中的文字已失效，请重新划选。","replyingTo":"回复 @{name}","cancelReply":"取消回复","loadMore":"加载更多（还有 {n} 条）","expand":"展开全文","collapse":"收起","author":"作者","like":"点赞","railLabel":"划线评论","railEmpty":"选中正文文字，即可添加划线评论。","highlightLabel":"划线评论：{name}","otherLang":"来自另一语言版本的划线","fab":"为选中的文字添加评论","sheetLabel":"划线评论","popoverLabel":"添加划线评论","composeLabel":"发表评论","replyLabel":"回复这条划线评论"},"api":"https://chat.ursb.me","content":"#postContent","grid":"#contentGrid","rail":"#commentRail","mobileMax":1100,"anchors":true};
+</script> <script>(function(){const boot = {"kind":"post","lang":"zh","t":{"locale":"zh-CN","title":"评论","count":"{n} 条评论","countOne":"{n} 条评论","countPending":"—","writeComment":"写评论 ↓","nickname":"昵称","email":"邮箱","website":"网址（选填）","placeholder":"写点什么…","contentField":"内容","replyPlaceholder":"写下回复…","submit":"发送","sending":"发送中…","reply":"回复","cancel":"取消","close":"关闭","inlineSubmit":"评论","notify":"有人回复时邮件通知我","notifyShort":"有人回复时通知我","loading":"正在读取评论…","loadFail":"评论暂时无法读取。","inlineLoadFail":"划线评论暂时无法读取。","retry":"重试","empty":"还没有评论，来聊两句。","sent":"评论已发送。","replySent":"回复已发送。","sendFail":"发送失败，内容已保留，请稍后重试。","reservedName":"这个名字是站长保留的，换一个吧。","missing":"请填写{fields}。","fieldSep":"、","badEmail":"邮箱格式不正确。","needSelection":"选中的文字已失效，请重新划选。","replyingTo":"回复 @{name}","cancelReply":"取消回复","loadMore":"加载更多（还有 {n} 条）","expand":"展开全文","collapse":"收起","author":"作者","like":"点赞","railLabel":"划线评论","railEmpty":"选中正文文字，即可添加划线评论。","highlightLabel":"划线评论：{name}","otherLang":"来自另一语言版本的划线","fab":"为选中的文字添加评论","sheetLabel":"划线评论","popoverLabel":"添加划线评论","composeLabel":"发表评论","replyLabel":"回复这条划线评论"},"api":"https://chat.ursb.me","content":"#postContent","grid":"#contentGrid","rail":"#commentRail","mobileMax":1100,"anchors":true};
 
   (function () {
     var path = location.pathname;

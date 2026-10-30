@@ -305,9 +305,12 @@ RSS <span data-sub-copy="realtimeLabel">实时</span> </button> </div> <section 
     return fetch(API + path, { headers: { 'Origin': location.origin } }).then(handleResponse);
   }
   function apiPost(path, body) {
+    var headers = { 'Content-Type': 'application/json' };
+    // The owner's name is reserved server-side; /admin's token proves it's him.
+    try { var t = localStorage.getItem('admin-token'); if (t) headers.Authorization = 'Bearer ' + t; } catch (e) {}
     return fetch(API + path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       body: JSON.stringify(body)
     }).then(handleResponse);
   }
@@ -445,8 +448,10 @@ RSS <span data-sub-copy="realtimeLabel">实时</span> </button> </div> <section 
         gbTextarea.value = '';
         delete gbTextarea.dataset.parentId;
       }
-    }).catch(function() {
-      alert('Failed to send. Please try again.');
+    }).catch(function(err) {
+      alert(err && err.code === 'RESERVED_NAME'
+        ? 'That name is reserved for the site owner. Please pick another one.'
+        : 'Failed to send. Please try again.');
     }).finally(function() {
       gbSubmit.disabled = false;
       gbSubmit.textContent = 'Submit';

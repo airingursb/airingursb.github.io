@@ -499,12 +499,18 @@ const momentImageByDate = {"2026-10-17":"https://airing.ursb.me/images/channel/o
   }
 
   async function postComment(momentId, data) {
+    const headers = { 'Content-Type': 'application/json' };
+    // The owner's name is reserved server-side; /admin's token proves it's him.
+    try { const t = localStorage.getItem('admin-token'); if (t) headers.Authorization = 'Bearer ' + t; } catch (e) {}
     const res = await fetch(`${API_BASE}/api/moments/${momentId}/comments`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw Object.assign(new Error(`HTTP ${res.status}`), { code: body && body.code });
+    }
     return res.json();
   }
 
@@ -878,7 +884,9 @@ const momentImageByDate = {"2026-10-17":"https://airing.ursb.me/images/channel/o
     } catch (err) {
       console.error('Comment failed:', err);
       // Keep the draft; say what happened next to the form.
-      setStatus('Failed to send comment. Your text is kept, please try again later.', true);
+      setStatus(err && err.code === 'RESERVED_NAME'
+        ? 'That name is reserved for the site owner. Please pick another one.'
+        : 'Failed to send comment. Your text is kept, please try again later.', true);
     }
 
     submitBtn.disabled = false;
