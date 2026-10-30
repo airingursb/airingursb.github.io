@@ -1,0 +1,1 @@
+import{b as s}from"./card-tips.CeWyXaSZ.js";s(document.getElementById("sessWaffle"));const e=document.getElementById("sessAge");if(e?.dataset.since){const t=new Date(e.dataset.since+"T00:00:00"),n=new Date;e.textContent=String(Math.max(0,(n.getFullYear()-t.getFullYear())*12+n.getMonth()-t.getMonth()+1))}

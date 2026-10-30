@@ -1,0 +1,1 @@
+import{b as s,o as d}from"./card-tips.CeWyXaSZ.js";const e=document.getElementById("reposShelf");s(e);e&&"IntersectionObserver"in window&&!window.matchMedia("(prefers-reduced-motion: reduce)").matches&&(e.classList.add("armed"),d(e,()=>e.classList.add("play")));

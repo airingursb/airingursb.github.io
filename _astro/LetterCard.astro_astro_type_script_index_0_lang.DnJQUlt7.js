@@ -1,0 +1,1 @@
+import{b as n}from"./card-tips.CeWyXaSZ.js";n(document.getElementById("letterStamps"));const t=document.getElementById("consultationPauseButton"),e=document.getElementById("consultationPauseDialog");t instanceof HTMLButtonElement&&e instanceof HTMLDialogElement&&t.addEventListener("click",()=>e.showModal());
