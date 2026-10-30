@@ -49,7 +49,7 @@
     })();
   </script><link rel="stylesheet" href="/_astro/SiteHeader.D55r4xys.css">
 <link rel="stylesheet" href="/_astro/MobileToc.Du_AvQ2a.css">
-<link rel="stylesheet" href="/_astro/BaseLayout.MvVzC-cK.css">
+<link rel="stylesheet" href="/_astro/BaseLayout.CBwNo3TW.css">
 <link rel="stylesheet" href="/_astro/UmamiLoader.DRjtQQ9I.css">
 <style>html:has(.fn-page){--fn-bg: #14130f;--fn-bg-soft: #1c1b16;--fn-paper: #1d1c17;--fn-ink: #ece6d8;--fn-ink-soft: #c9c2b2;--fn-mute: #a19b8f;--fn-rule: #3d3a31;--fn-rule-soft: #2e2c25;--fn-copper: #e0916b;--fn-blue: #6fa9d4;--fn-purple: #b48edb;--fn-green: #7fbf9e;--fn-red: #e88472;--fn-brown: #cf9a63;--fn-chip-on-bg: #ece6d8;--fn-chip-on-ink: #14130f;--c-bg: var(--fn-bg);--c-bg-rgb: 20, 19, 15;--c-bg-alt: var(--fn-paper);--c-text: var(--fn-ink);--c-text-muted: var(--fn-mute);--c-text-dim: var(--fn-mute);--c-border: var(--fn-rule-soft);--c-border-light: var(--fn-rule);--accent: var(--fn-blue);--accent-rgb: 111, 169, 212}html[data-mode=light]:has(.fn-page){--fn-bg: #f4efe6;--fn-bg-soft: #ebe5d8;--fn-paper: #faf6ed;--fn-ink: #15171c;--fn-ink-soft: #3c4148;--fn-mute: #5d636d;--fn-rule: #c7c4ba;--fn-rule-soft: #ddd9cd;--fn-copper: #b35a1f;--fn-blue: #1f5c8c;--fn-purple: #6b3aa3;--fn-green: #2d6a4f;--fn-red: #b3422c;--fn-brown: #8a5a2a;--fn-chip-on-bg: #15171c;--fn-chip-on-ink: #faf6ed;--c-bg-rgb: 244, 239, 230;--accent-rgb: 31, 92, 140}body:has(.fn-page){background:var(--fn-bg)}.fn-page{--fn-serif: "Source Serif 4", Georgia, "Noto Serif SC", "Source Han Serif SC", "Songti SC", STSong, serif;--fn-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", "Helvetica Neue", sans-serif;--fn-mono: "JetBrains Mono", "SF Mono", Menlo, ui-monospace, monospace;background:var(--fn-bg);color:var(--fn-ink)}.fn-hl-copper{color:var(--fn-copper)}.fn-hl-blue{color:var(--fn-blue)}.fn-hl-purple{color:var(--fn-purple)}.fn-hl-green{color:var(--fn-green)}.fn-hl-red{color:var(--fn-red)}.fn-hl-brown{color:var(--fn-brown)}.fn-kicker{font-family:var(--fn-mono);font-size:11px;letter-spacing:1.5px;color:var(--fn-mute)}.fn-card{display:flex;flex-direction:column;gap:12px;padding:26px 26px 22px;background:var(--fn-paper);border:1px solid var(--fn-rule-soft);border-radius:4px;color:var(--fn-ink);text-decoration:none;transition:border-color .2s ease}.fn-card:hover{border-color:var(--fn-ink)}.fn-card:focus-visible{outline:2px solid var(--fn-blue);outline-offset:2px}.fn-card-title{margin:0;font-family:var(--fn-serif);font-size:23px;font-weight:700;line-height:1.35;overflow-wrap:anywhere}.fn-card-summary{margin:0;font-size:14px;line-height:1.75;color:var(--fn-ink-soft);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.fn-card-foot{margin-top:auto;display:flex;justify-content:space-between;gap:12px;padding-top:14px;border-top:1px solid var(--fn-rule-soft);font-family:var(--fn-mono);font-size:11px;color:var(--fn-mute)}.fn-chip{display:inline-flex;align-items:center;gap:8px;flex-shrink:0;height:40px;padding:0 16px;border-radius:20px;border:1px solid var(--fn-rule);background:transparent;color:var(--fn-ink);font:inherit;font-size:14px;cursor:pointer;text-decoration:none;transition:border-color .15s ease}.fn-chip:hover{border-color:var(--fn-ink)}.fn-chip-count{font-family:var(--fn-mono);font-size:11px;color:var(--fn-mute)}.fn-chip.is-on,.fn-chip[aria-pressed=true]{background:var(--fn-chip-on-bg);border-color:var(--fn-chip-on-bg);color:var(--fn-chip-on-ink)}.fn-chip.is-on .fn-chip-count,.fn-chip[aria-pressed=true] .fn-chip-count{color:inherit;opacity:.7}.fn-chip:focus-visible{outline:2px solid var(--fn-blue);outline-offset:2px}.fn-chip-sm{height:32px;padding:0 14px;font-size:13px;border-radius:16px}body:has(.fn-page){display:block;padding:0;align-items:stretch;justify-content:stretch}
 </style>
@@ -265,6 +265,12 @@
  * unresolved email gets a neutral placeholder plus data-avatar-email, and
  * hydrate()/observe() swap in the real URL once the hash resolves. prime()
  * lets callers hash a batch before the first render so it paints correctly.
+ *
+ * Since 2026-10 the comment API no longer returns other people's emails. Each
+ * comment carries `avatar_key` (a server-side HMAC of the email, not an email
+ * hash) and `is_author` instead; those win whenever they are present. The
+ * email path stays for the visitor's own compose preview and for responses
+ * from a server that has not been updated yet.
  */
 (function (root) {
   var AUTHOR_AVATAR = '/images/airing-avatar-48.webp';
@@ -280,6 +286,18 @@
   function normalize(email) { return String(email || '').trim().toLowerCase(); }
   function isAuthor(email) { return AUTHOR_EMAILS.indexOf(normalize(email)) !== -1; }
   function gravatarFromHash(hash) { return 'https://gravatar.com/avatar/' + hash + '?d=robohash&s=80'; }
+  // avatar_key is not an email hash, so it never matches a real Gravatar
+  // account; f=y forces the robohash default either way.
+  function avatarFromKey(key) {
+    return /^[0-9a-f]{16,64}$/.test(String(key || '')) ? 'https://gravatar.com/avatar/' + key + '?d=robohash&s=80&f=y' : GRAVATAR_DEFAULT;
+  }
+  // Server-provided identity first (is_author / avatar_key), else the email.
+  function hasServerIdentity(c) { return !!c && (typeof c.is_author === 'boolean' || 'avatar_key' in c); }
+  function isAuthorComment(c) {
+    if (!c) return false;
+    if (typeof c.is_author === 'boolean') return c.is_author;
+    return isAuthor(c.email);
+  }
 
   function sha256Hex(str) {
     var subtle = root.crypto && root.crypto.subtle;
@@ -335,8 +353,9 @@
   // Attribute string for an <img>: `src="…"` (+ data-avatar-email while pending).
   function imgAttrs(comment) {
     var email = comment ? comment.email : '';
-    if (isAuthor(email)) return 'src="' + escAttr(AUTHOR_AVATAR) + '"';
+    if (isAuthorComment(comment)) return 'src="' + escAttr(AUTHOR_AVATAR) + '"';
     if (comment && comment.avatar) return 'src="' + escAttr(comment.avatar) + '"';
+    if (hasServerIdentity(comment) && !email) return 'src="' + escAttr(avatarFromKey(comment.avatar_key)) + '"';
     var url = peek(email);
     if (url) return 'src="' + escAttr(url) + '"';
     resolve(email);
@@ -375,6 +394,8 @@
     PLACEHOLDER: PLACEHOLDER,
     normalize: normalize,
     isAuthor: isAuthor,
+    isAuthorComment: isAuthorComment,
+    avatarFromKey: avatarFromKey,
     gravatarFromHash: gravatarFromHash,
     sha256Hex: sha256Hex,
     peek: peek,
@@ -417,7 +438,8 @@
   var PAGE_SIZE = 20;
 
   function init(cfg) {
-    var API = 'https://chat.ursb.me';
+    // cfg.api is '/__chat' under `astro dev` (read-only proxy, astro.config.mjs).
+    var API = cfg.api || 'https://chat.ursb.me';
     var SLUG = cfg.slug;
     var PAGE_LANG = cfg.lang === 'en' ? 'en' : 'zh';
     var T = cfg.t;
@@ -558,13 +580,14 @@
       if (id.website) bcWebsite.value = id.website;
     }
 
-    // Avatars: see src/lib/comment-avatar.js (authors -> GitHub avatar, everyone
-    // else -> per-email SHA-256 Gravatar with robohash fallback).
+    // Avatars: see src/lib/comment-avatar.js (authors -> blog avatar, everyone
+    // else -> robohash from the server's avatar_key; the API no longer sends
+    // other people's emails, the email path is for older API responses).
     var CA = root.CommentAvatar;
     CA.observe();
     function commentAvatarAttrs(comment) { return CA.imgAttrs(comment); }
     function authorTag(c) {
-      return c && c.email && CA.isAuthor(c.email) ? '<span class="cm-author-tag">' + esc(T.author) + '</span>' : '';
+      return CA.isAuthorComment(c) ? '<span class="cm-author-tag">' + esc(T.author) + '</span>' : '';
     }
     function updateComposeAvatar(email) {
       if (!email) return;
@@ -1564,7 +1587,7 @@
 
   root.BlogComments = { init: init };
 })(window);
-</script> <script>(function(){const boot = {"kind":"note","lang":"en","t":{"locale":"en-US","title":"Comments","count":"{n} comments","countOne":"{n} comment","countPending":"—","writeComment":"Write a comment ↓","nickname":"Nickname","email":"Email","website":"Website (optional)","placeholder":"Write a comment…","contentField":"your comment","replyPlaceholder":"Write a reply…","submit":"Submit","sending":"Sending…","reply":"Reply","cancel":"Cancel","close":"Close","inlineSubmit":"Comment","notify":"Notify me of replies via email","notifyShort":"Notify me of replies","loading":"Loading comments…","loadFail":"Comments could not be loaded.","inlineLoadFail":"Inline comments could not be loaded.","retry":"Retry","empty":"No comments yet. Start the conversation.","sent":"Comment posted.","replySent":"Reply posted.","sendFail":"Could not send. Your text is kept, please try again.","missing":"Please fill in {fields}.","fieldSep":", ","badEmail":"Please enter a valid email address.","needSelection":"The selected text is no longer available. Please select it again.","replyingTo":"Replying to @{name}","cancelReply":"Cancel reply","loadMore":"Load more ({n} left)","expand":"Show more","collapse":"Show less","author":"Author","like":"Like","railLabel":"Comments","railEmpty":"Select text to add an inline comment.","highlightLabel":"Inline comment by {name}","otherLang":"Highlighted on the other-language version","fab":"Comment on the selected text","sheetLabel":"Inline comment","popoverLabel":"Add an inline comment","composeLabel":"Leave a comment","replyLabel":"Reply to this inline comment"},"content":".note-detail-page .prose","grid":".three-col","rail":".meta-sidebar","mobileMax":960,"anchors":false};
+</script> <script>(function(){const boot = {"kind":"note","lang":"en","t":{"locale":"en-US","title":"Comments","count":"{n} comments","countOne":"{n} comment","countPending":"—","writeComment":"Write a comment ↓","nickname":"Nickname","email":"Email","website":"Website (optional)","placeholder":"Write a comment…","contentField":"your comment","replyPlaceholder":"Write a reply…","submit":"Submit","sending":"Sending…","reply":"Reply","cancel":"Cancel","close":"Close","inlineSubmit":"Comment","notify":"Notify me of replies via email","notifyShort":"Notify me of replies","loading":"Loading comments…","loadFail":"Comments could not be loaded.","inlineLoadFail":"Inline comments could not be loaded.","retry":"Retry","empty":"No comments yet. Start the conversation.","sent":"Comment posted.","replySent":"Reply posted.","sendFail":"Could not send. Your text is kept, please try again.","missing":"Please fill in {fields}.","fieldSep":", ","badEmail":"Please enter a valid email address.","needSelection":"The selected text is no longer available. Please select it again.","replyingTo":"Replying to @{name}","cancelReply":"Cancel reply","loadMore":"Load more ({n} left)","expand":"Show more","collapse":"Show less","author":"Author","like":"Like","railLabel":"Comments","railEmpty":"Select text to add an inline comment.","highlightLabel":"Inline comment by {name}","otherLang":"Highlighted on the other-language version","fab":"Comment on the selected text","sheetLabel":"Inline comment","popoverLabel":"Add an inline comment","composeLabel":"Leave a comment","replyLabel":"Reply to this inline comment"},"api":"https://chat.ursb.me","content":".note-detail-page .prose","grid":".three-col","rail":".meta-sidebar","mobileMax":960,"anchors":false};
 
   (function () {
     var path = location.pathname;

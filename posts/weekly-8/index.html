@@ -141,7 +141,7 @@
 <link rel="stylesheet" href="/_astro/700.DK-WyZDw.css">
 <link rel="stylesheet" href="/_astro/SiteHeader.D55r4xys.css">
 <link rel="stylesheet" href="/_astro/MobileToc.Du_AvQ2a.css">
-<link rel="stylesheet" href="/_astro/BaseLayout.MvVzC-cK.css">
+<link rel="stylesheet" href="/_astro/BaseLayout.CBwNo3TW.css">
 <style>.blog-pet[data-astro-cid-ewtfjlrh]{position:fixed;right:16px;bottom:72px;z-index:80;width:144px;height:144px;pointer-events:none;filter:drop-shadow(0 6px 14px rgba(0,0,0,.18));transform-origin:0 0}.blog-pet[data-astro-cid-ewtfjlrh][hidden]{display:none!important}.blog-pet[data-astro-cid-ewtfjlrh][data-pet-docked=true]{visibility:hidden}.blog-pet[data-astro-cid-ewtfjlrh][data-pet-travelling=true]{will-change:transform}.blog-pet[data-astro-cid-ewtfjlrh][data-pet-travelling=true] .blog-pet-dismiss[data-astro-cid-ewtfjlrh]{display:none}.blog-pet-canvas[data-astro-cid-ewtfjlrh]{width:100%;height:100%;display:block}.blog-pet-fallback[data-astro-cid-ewtfjlrh]{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;display:none}.blog-pet[data-astro-cid-ewtfjlrh].is-fallback .blog-pet-canvas[data-astro-cid-ewtfjlrh]{display:none}.blog-pet[data-astro-cid-ewtfjlrh].is-fallback .blog-pet-fallback[data-astro-cid-ewtfjlrh]{display:block}.blog-pet-dismiss[data-astro-cid-ewtfjlrh]{position:absolute;top:-4px;left:-4px;width:22px;height:22px;border-radius:50%;border:1px solid rgba(127,127,127,.35);background:#ffffffb8;color:#666;font-size:14px;line-height:1;cursor:pointer;opacity:0;transition:opacity .2s;z-index:2;pointer-events:auto}.blog-pet[data-astro-cid-ewtfjlrh]:hover .blog-pet-dismiss[data-astro-cid-ewtfjlrh],.blog-pet[data-astro-cid-ewtfjlrh]:focus-within .blog-pet-dismiss[data-astro-cid-ewtfjlrh]{opacity:1}@media(max-width:1100px){.blog-pet[data-astro-cid-ewtfjlrh]{display:none!important}}@media(prefers-reduced-motion:reduce){.blog-pet-canvas[data-astro-cid-ewtfjlrh]{display:none}.blog-pet-fallback[data-astro-cid-ewtfjlrh]{display:block}}@media print{.blog-pet[data-astro-cid-ewtfjlrh]{display:none!important}}.article-reading-dock[data-astro-cid-n3zy3z32]{--editorial-dock-size: 96px;--editorial-dock: .42s;--editorial-ease: cubic-bezier(.2, .8, .2, 1);inline-size:var(--editorial-dock-size);block-size:var(--editorial-dock-size);margin:var(--space-6, 24px) auto}.article-reading-dock[data-astro-cid-n3zy3z32][hidden]{display:none}.article-reading-replay[data-astro-cid-n3zy3z32]{display:block;inline-size:100%;block-size:100%;margin:0;padding:0;border:0;border-radius:4px;background:transparent;cursor:pointer;visibility:hidden}.article-reading-dock[data-astro-cid-n3zy3z32][data-dock-state=docked] .article-reading-replay[data-astro-cid-n3zy3z32]{visibility:visible}.article-reading-replay[data-astro-cid-n3zy3z32]:focus-visible{outline:2px solid var(--accent);outline-offset:4px}@media print{.article-reading-dock[data-astro-cid-n3zy3z32]{display:none}}
 </style>
 <link rel="stylesheet" href="/_astro/UmamiLoader.DRjtQQ9I.css">
@@ -1071,6 +1071,12 @@ RSS <span data-sub-copy="realtimeLabel">实时</span> </button> </div> <section 
  * unresolved email gets a neutral placeholder plus data-avatar-email, and
  * hydrate()/observe() swap in the real URL once the hash resolves. prime()
  * lets callers hash a batch before the first render so it paints correctly.
+ *
+ * Since 2026-10 the comment API no longer returns other people's emails. Each
+ * comment carries `avatar_key` (a server-side HMAC of the email, not an email
+ * hash) and `is_author` instead; those win whenever they are present. The
+ * email path stays for the visitor's own compose preview and for responses
+ * from a server that has not been updated yet.
  */
 (function (root) {
   var AUTHOR_AVATAR = '/images/airing-avatar-48.webp';
@@ -1086,6 +1092,18 @@ RSS <span data-sub-copy="realtimeLabel">实时</span> </button> </div> <section 
   function normalize(email) { return String(email || '').trim().toLowerCase(); }
   function isAuthor(email) { return AUTHOR_EMAILS.indexOf(normalize(email)) !== -1; }
   function gravatarFromHash(hash) { return 'https://gravatar.com/avatar/' + hash + '?d=robohash&s=80'; }
+  // avatar_key is not an email hash, so it never matches a real Gravatar
+  // account; f=y forces the robohash default either way.
+  function avatarFromKey(key) {
+    return /^[0-9a-f]{16,64}$/.test(String(key || '')) ? 'https://gravatar.com/avatar/' + key + '?d=robohash&s=80&f=y' : GRAVATAR_DEFAULT;
+  }
+  // Server-provided identity first (is_author / avatar_key), else the email.
+  function hasServerIdentity(c) { return !!c && (typeof c.is_author === 'boolean' || 'avatar_key' in c); }
+  function isAuthorComment(c) {
+    if (!c) return false;
+    if (typeof c.is_author === 'boolean') return c.is_author;
+    return isAuthor(c.email);
+  }
 
   function sha256Hex(str) {
     var subtle = root.crypto && root.crypto.subtle;
@@ -1141,8 +1159,9 @@ RSS <span data-sub-copy="realtimeLabel">实时</span> </button> </div> <section 
   // Attribute string for an <img>: `src="…"` (+ data-avatar-email while pending).
   function imgAttrs(comment) {
     var email = comment ? comment.email : '';
-    if (isAuthor(email)) return 'src="' + escAttr(AUTHOR_AVATAR) + '"';
+    if (isAuthorComment(comment)) return 'src="' + escAttr(AUTHOR_AVATAR) + '"';
     if (comment && comment.avatar) return 'src="' + escAttr(comment.avatar) + '"';
+    if (hasServerIdentity(comment) && !email) return 'src="' + escAttr(avatarFromKey(comment.avatar_key)) + '"';
     var url = peek(email);
     if (url) return 'src="' + escAttr(url) + '"';
     resolve(email);
@@ -1181,6 +1200,8 @@ RSS <span data-sub-copy="realtimeLabel">实时</span> </button> </div> <section 
     PLACEHOLDER: PLACEHOLDER,
     normalize: normalize,
     isAuthor: isAuthor,
+    isAuthorComment: isAuthorComment,
+    avatarFromKey: avatarFromKey,
     gravatarFromHash: gravatarFromHash,
     sha256Hex: sha256Hex,
     peek: peek,
@@ -1223,7 +1244,8 @@ RSS <span data-sub-copy="realtimeLabel">实时</span> </button> </div> <section 
   var PAGE_SIZE = 20;
 
   function init(cfg) {
-    var API = 'https://chat.ursb.me';
+    // cfg.api is '/__chat' under `astro dev` (read-only proxy, astro.config.mjs).
+    var API = cfg.api || 'https://chat.ursb.me';
     var SLUG = cfg.slug;
     var PAGE_LANG = cfg.lang === 'en' ? 'en' : 'zh';
     var T = cfg.t;
@@ -1364,13 +1386,14 @@ RSS <span data-sub-copy="realtimeLabel">实时</span> </button> </div> <section 
       if (id.website) bcWebsite.value = id.website;
     }
 
-    // Avatars: see src/lib/comment-avatar.js (authors -> GitHub avatar, everyone
-    // else -> per-email SHA-256 Gravatar with robohash fallback).
+    // Avatars: see src/lib/comment-avatar.js (authors -> blog avatar, everyone
+    // else -> robohash from the server's avatar_key; the API no longer sends
+    // other people's emails, the email path is for older API responses).
     var CA = root.CommentAvatar;
     CA.observe();
     function commentAvatarAttrs(comment) { return CA.imgAttrs(comment); }
     function authorTag(c) {
-      return c && c.email && CA.isAuthor(c.email) ? '<span class="cm-author-tag">' + esc(T.author) + '</span>' : '';
+      return CA.isAuthorComment(c) ? '<span class="cm-author-tag">' + esc(T.author) + '</span>' : '';
     }
     function updateComposeAvatar(email) {
       if (!email) return;
@@ -2370,7 +2393,7 @@ RSS <span data-sub-copy="realtimeLabel">实时</span> </button> </div> <section 
 
   root.BlogComments = { init: init };
 })(window);
-</script> <script>(function(){const boot = {"kind":"post","lang":"zh","t":{"locale":"zh-CN","title":"评论","count":"{n} 条评论","countOne":"{n} 条评论","countPending":"—","writeComment":"写评论 ↓","nickname":"昵称","email":"邮箱","website":"网址（选填）","placeholder":"写点什么…","contentField":"内容","replyPlaceholder":"写下回复…","submit":"发送","sending":"发送中…","reply":"回复","cancel":"取消","close":"关闭","inlineSubmit":"评论","notify":"有人回复时邮件通知我","notifyShort":"有人回复时通知我","loading":"正在读取评论…","loadFail":"评论暂时无法读取。","inlineLoadFail":"划线评论暂时无法读取。","retry":"重试","empty":"还没有评论，来聊两句。","sent":"评论已发送。","replySent":"回复已发送。","sendFail":"发送失败，内容已保留，请稍后重试。","missing":"请填写{fields}。","fieldSep":"、","badEmail":"邮箱格式不正确。","needSelection":"选中的文字已失效，请重新划选。","replyingTo":"回复 @{name}","cancelReply":"取消回复","loadMore":"加载更多（还有 {n} 条）","expand":"展开全文","collapse":"收起","author":"作者","like":"点赞","railLabel":"划线评论","railEmpty":"选中正文文字，即可添加划线评论。","highlightLabel":"划线评论：{name}","otherLang":"来自另一语言版本的划线","fab":"为选中的文字添加评论","sheetLabel":"划线评论","popoverLabel":"添加划线评论","composeLabel":"发表评论","replyLabel":"回复这条划线评论"},"content":"#postContent","grid":"#contentGrid","rail":"#commentRail","mobileMax":1100,"anchors":true};
+</script> <script>(function(){const boot = {"kind":"post","lang":"zh","t":{"locale":"zh-CN","title":"评论","count":"{n} 条评论","countOne":"{n} 条评论","countPending":"—","writeComment":"写评论 ↓","nickname":"昵称","email":"邮箱","website":"网址（选填）","placeholder":"写点什么…","contentField":"内容","replyPlaceholder":"写下回复…","submit":"发送","sending":"发送中…","reply":"回复","cancel":"取消","close":"关闭","inlineSubmit":"评论","notify":"有人回复时邮件通知我","notifyShort":"有人回复时通知我","loading":"正在读取评论…","loadFail":"评论暂时无法读取。","inlineLoadFail":"划线评论暂时无法读取。","retry":"重试","empty":"还没有评论，来聊两句。","sent":"评论已发送。","replySent":"回复已发送。","sendFail":"发送失败，内容已保留，请稍后重试。","missing":"请填写{fields}。","fieldSep":"、","badEmail":"邮箱格式不正确。","needSelection":"选中的文字已失效，请重新划选。","replyingTo":"回复 @{name}","cancelReply":"取消回复","loadMore":"加载更多（还有 {n} 条）","expand":"展开全文","collapse":"收起","author":"作者","like":"点赞","railLabel":"划线评论","railEmpty":"选中正文文字，即可添加划线评论。","highlightLabel":"划线评论：{name}","otherLang":"来自另一语言版本的划线","fab":"为选中的文字添加评论","sheetLabel":"划线评论","popoverLabel":"添加划线评论","composeLabel":"发表评论","replyLabel":"回复这条划线评论"},"api":"https://chat.ursb.me","content":"#postContent","grid":"#contentGrid","rail":"#commentRail","mobileMax":1100,"anchors":true};
 
   (function () {
     var path = location.pathname;
