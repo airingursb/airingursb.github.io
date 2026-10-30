@@ -29,7 +29,8 @@
   var PAGE_SIZE = 20;
 
   function init(cfg) {
-    var API = 'https://chat.ursb.me';
+    // cfg.api is '/__chat' under `astro dev` (read-only proxy, astro.config.mjs).
+    var API = cfg.api || 'https://chat.ursb.me';
     var SLUG = cfg.slug;
     var PAGE_LANG = cfg.lang === 'en' ? 'en' : 'zh';
     var T = cfg.t;
@@ -170,13 +171,14 @@
       if (id.website) bcWebsite.value = id.website;
     }
 
-    // Avatars: see src/lib/comment-avatar.js (authors -> GitHub avatar, everyone
-    // else -> per-email SHA-256 Gravatar with robohash fallback).
+    // Avatars: see src/lib/comment-avatar.js (authors -> blog avatar, everyone
+    // else -> robohash from the server's avatar_key; the API no longer sends
+    // other people's emails, the email path is for older API responses).
     var CA = root.CommentAvatar;
     CA.observe();
     function commentAvatarAttrs(comment) { return CA.imgAttrs(comment); }
     function authorTag(c) {
-      return c && c.email && CA.isAuthor(c.email) ? '<span class="cm-author-tag">' + esc(T.author) + '</span>' : '';
+      return CA.isAuthorComment(c) ? '<span class="cm-author-tag">' + esc(T.author) + '</span>' : '';
     }
     function updateComposeAvatar(email) {
       if (!email) return;

@@ -1058,9 +1058,14 @@ for (const c of allComics) {
     // instead of nesting wrappers, so indentation no longer compounds with depth.
     const MAX_INDENT_DEPTH = 4;
     function renderComment(c, depth) {
-      const avatarSrc = c.email
-        ? `https://www.gravatar.com/avatar/${c.emailMd5 || ''}?d=robohash&s=48`
-        : GRAVATAR;
+      // avatar_key / is_author replace the email in API responses (2026-10).
+      const avatarSrc = c.is_author
+        ? '/images/airing-avatar-48.webp'
+        : /^[0-9a-f]{16,64}$/.test(String(c.avatar_key || ''))
+          ? `https://gravatar.com/avatar/${c.avatar_key}?d=robohash&f=y&s=48`
+          : c.email
+            ? `https://www.gravatar.com/avatar/${c.emailMd5 || ''}?d=robohash&s=48`
+            : GRAVATAR;
       const cd = Math.min(depth, MAX_INDENT_DEPTH);
       const childHtml = (children[c.id] || [])
         .map(ch => renderComment(ch, depth + 1)).join('');

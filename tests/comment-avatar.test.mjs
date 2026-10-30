@@ -62,3 +62,19 @@ test('emailsOf walks nested replies', () => {
   const CA = load();
   assert.deepEqual([...CA.emailsOf([{ email: 'a', replies: [{ email: 'b', replies: [{ email: 'c' }] }] }, { email: 'd' }])], ['a', 'b', 'c', 'd']);
 });
+
+// 2026-10: the API sends avatar_key + is_author instead of other people's emails.
+test('server identity: is_author wins and avatar_key becomes a forced robohash', () => {
+  const CA = load();
+  const key = '99c2cb5f9c7b0405bce5bde47496f31b';
+  assert.equal(CA.imgAttrs({ is_author: true, avatar_key: key }), `src="${attr(GH)}"`);
+  assert.equal(CA.imgAttrs({ is_author: false, avatar_key: key }), `src="${attr(`https://gravatar.com/avatar/${key}?d=robohash&s=80&f=y`)}"`);
+  assert.equal(CA.imgAttrs({ is_author: false, avatar_key: null }), `src="${attr('https://gravatar.com/avatar/?d=robohash&s=80')}"`);
+  // A key that is not hex never reaches the URL.
+  assert.equal(CA.avatarFromKey('"><script>'), 'https://gravatar.com/avatar/?d=robohash&s=80');
+  assert.equal(CA.isAuthorComment({ is_author: true }), true);
+  assert.equal(CA.isAuthorComment({ is_author: false, email: 'me@ursb.me' }), false, 'server flag beats the email');
+  assert.equal(CA.isAuthorComment({ email: 'me@ursb.me' }), true, 'old API responses still work');
+  assert.equal(CA.isAuthorComment(null), false);
+  assert.deepEqual([...CA.emailsOf([{ avatar_key: key, replies: [{ avatar_key: key }] }])], []);
+});

@@ -40,6 +40,38 @@ export default defineConfig({
   site: 'https://ursb.me',
   output: 'static',
   trailingSlash: 'always',
+  vite: {
+    server: {
+      proxy: {
+        // Dev only (`astro dev`; never part of the static build). chat.ursb.me
+        // allows only ursb.me origins, so localhost / LAN dev pages get a CORS
+        // 403. Comment and guestbook reads go through /__chat instead (see
+        // CommentsRuntime.astro, GuestbookCard.astro). The proxy is read-only:
+        // anything but GET/HEAD is refused here, so a dev page can never post,
+        // like or delete on production. Origin/Referer/Cookie are dropped so
+        // the API sees a plain server-side read.
+        '/__chat': {
+          target: 'https://chat.ursb.me',
+          changeOrigin: true,
+          rewrite: (p) => p.replace(/^\/__chat/, ''),
+          bypass(req, res) {
+            if (req.method === 'GET' || req.method === 'HEAD') return undefined;
+            res.statusCode = 405;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ code: 'DEV_PROXY_READ_ONLY', message: 'The dev proxy only forwards GET.' }));
+            return req.url;
+          },
+          configure(proxy) {
+            proxy.on('proxyReq', (proxyReq) => {
+              proxyReq.removeHeader('origin');
+              proxyReq.removeHeader('referer');
+              proxyReq.removeHeader('cookie');
+            });
+          },
+        },
+      },
+    },
+  },
   image: {
     domains: ['r2.airingdeng.com'],
   },

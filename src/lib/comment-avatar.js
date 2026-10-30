@@ -10,6 +10,12 @@
  * unresolved email gets a neutral placeholder plus data-avatar-email, and
  * hydrate()/observe() swap in the real URL once the hash resolves. prime()
  * lets callers hash a batch before the first render so it paints correctly.
+ *
+ * Since 2026-10 the comment API no longer returns other people's emails. Each
+ * comment carries `avatar_key` (a server-side HMAC of the email, not an email
+ * hash) and `is_author` instead; those win whenever they are present. The
+ * email path stays for the visitor's own compose preview and for responses
+ * from a server that has not been updated yet.
  */
 (function (root) {
   var AUTHOR_AVATAR = '/images/airing-avatar-48.webp';
@@ -25,6 +31,18 @@
   function normalize(email) { return String(email || '').trim().toLowerCase(); }
   function isAuthor(email) { return AUTHOR_EMAILS.indexOf(normalize(email)) !== -1; }
   function gravatarFromHash(hash) { return 'https://gravatar.com/avatar/' + hash + '?d=robohash&s=80'; }
+  // avatar_key is not an email hash, so it never matches a real Gravatar
+  // account; f=y forces the robohash default either way.
+  function avatarFromKey(key) {
+    return /^[0-9a-f]{16,64}$/.test(String(key || '')) ? 'https://gravatar.com/avatar/' + key + '?d=robohash&s=80&f=y' : GRAVATAR_DEFAULT;
+  }
+  // Server-provided identity first (is_author / avatar_key), else the email.
+  function hasServerIdentity(c) { return !!c && (typeof c.is_author === 'boolean' || 'avatar_key' in c); }
+  function isAuthorComment(c) {
+    if (!c) return false;
+    if (typeof c.is_author === 'boolean') return c.is_author;
+    return isAuthor(c.email);
+  }
 
   function sha256Hex(str) {
     var subtle = root.crypto && root.crypto.subtle;
@@ -80,8 +98,9 @@
   // Attribute string for an <img>: `src="…"` (+ data-avatar-email while pending).
   function imgAttrs(comment) {
     var email = comment ? comment.email : '';
-    if (isAuthor(email)) return 'src="' + escAttr(AUTHOR_AVATAR) + '"';
+    if (isAuthorComment(comment)) return 'src="' + escAttr(AUTHOR_AVATAR) + '"';
     if (comment && comment.avatar) return 'src="' + escAttr(comment.avatar) + '"';
+    if (hasServerIdentity(comment) && !email) return 'src="' + escAttr(avatarFromKey(comment.avatar_key)) + '"';
     var url = peek(email);
     if (url) return 'src="' + escAttr(url) + '"';
     resolve(email);
@@ -120,6 +139,8 @@
     PLACEHOLDER: PLACEHOLDER,
     normalize: normalize,
     isAuthor: isAuthor,
+    isAuthorComment: isAuthorComment,
+    avatarFromKey: avatarFromKey,
     gravatarFromHash: gravatarFromHash,
     sha256Hex: sha256Hex,
     peek: peek,

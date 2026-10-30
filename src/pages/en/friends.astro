@@ -630,6 +630,21 @@ function getSiteStatus(f: { availability: string }): 'ok' | 'error' | 'unknown' 
     }).catch(function() { imgEl.src = _placeholderGravatar(s); });
   }
 
+  // The comment API sends avatar_key / is_author instead of other people's
+  // emails (2026-10); fall back to the email for older responses.
+  function applyCommentAvatar(imgEl, c, size) {
+    if (!imgEl) return;
+    var s = size || 80;
+    if (c && (typeof c.is_author === 'boolean' || 'avatar_key' in c) && !c.email) {
+      if (c.is_author) { imgEl.src = '/images/airing-avatar-48.webp'; return; }
+      imgEl.src = /^[0-9a-f]{16,64}$/.test(String(c.avatar_key || ''))
+        ? 'https://gravatar.com/avatar/' + c.avatar_key + '?d=robohash&f=y&s=' + s
+        : _placeholderGravatar(s);
+      return;
+    }
+    applyGravatar(imgEl, c && c.email, s);
+  }
+
   function updateComposeAvatar(email) {
     applyGravatar(gbComposeAvatar, email, 80);
   }
@@ -725,7 +740,7 @@ function getSiteStatus(f: { availability: string }): 'ok' | 'error' | 'unknown' 
         '<div class="bc-replies-container"></div>' +
       '</div>';
 
-    applyGravatar(div.querySelector('.bc-avatar-img'), c.email, avatarSize * 2);
+    applyCommentAvatar(div.querySelector('.bc-avatar-img'), c, avatarSize * 2);
 
     div.querySelector('.bc-like-btn').addEventListener('click', function() {
       var btn = this;

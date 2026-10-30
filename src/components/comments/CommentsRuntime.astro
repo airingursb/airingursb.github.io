@@ -17,7 +17,10 @@ const t = commentStrings(lang);
 const config = kind === 'post'
   ? { content: '#postContent', grid: '#contentGrid', rail: '#commentRail', mobileMax: 1100, anchors: true }
   : { content: '.note-detail-page .prose', grid: '.three-col', rail: '.meta-sidebar', mobileMax: 960, anchors: false };
-const boot = { kind, lang, t, ...config };
+// Under `astro dev` the API goes through the read-only /__chat proxy
+// (astro.config.mjs): chat.ursb.me only allows ursb.me origins.
+const api = import.meta.env.DEV ? '/__chat' : 'https://chat.ursb.me';
+const boot = { kind, lang, t, api, ...config };
 ---
 <script is:inline set:html={commentAvatarJs}></script>
 <script is:inline set:html={commentsClientJs}></script>
