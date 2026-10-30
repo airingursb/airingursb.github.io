@@ -10,12 +10,12 @@ import {
   HOME_CARD_PAIRS as PAIR,
   type HomeChapter,
 } from '../data/home-chapters';
+import { createTermWindow, esc, type TermWindow } from './term-window';
 
 type Flat = { id: string; ch: string; el: HTMLElement };
 type State = { chapter: string; active: string[]; pastIntro: boolean };
 
 const lang = () => ((document.documentElement.lang || '').toLowerCase().startsWith('en') ? 'en' : 'zh');
-const esc = (s: string) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const cardName = (id: string) => (CARD[id] ? (lang() === 'en' ? CARD[id][1] : CARD[id][0]) : id);
 const cardFile = (id: string) => (CARD[id] ? CARD[id][2] : '');
@@ -102,44 +102,12 @@ function jump(target: string) {
 }
 function unlock() { if (lock) { lock = null; onScroll(); } }
 
-// ── the prompt + the ls window ──
-const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
-let ps: HTMLButtonElement, scrim: HTMLDivElement, win: HTMLDivElement;
-let input: HTMLInputElement, list: HTMLDivElement, ft: HTMLDivElement;
+// ── the prompt + the ls window (chrome: src/scripts/term-window.ts) ──
+let tw: TermWindow;
 let rows: { t: string }[] = [];
-let sel = 0, shownPath = '~', typing = 0;
+let preselect = false;
 
-const userHTML = () => '<span class="nc-u">airing<span class="nc-u-host">@ursb.me</span></span><span class="nc-c">:</span>';
 const chPath = () => { const ch = chOf(state.active[0]); return ch.id === 'home' ? '~' : ch.path; };
-const isOpen = () => document.documentElement.classList.contains('nc-open');
-
-function psHTML(path: string) {
-  return '<span class="nc-lights" aria-hidden="true"><i></i><i></i><i></i></span><span class="nc-line">' + userHTML() +
-    '<span class="nc-p">' + esc(path) + '</span><span class="nc-d">$</span><span class="nc-cur" aria-hidden="true"></span></span>' +
-    '<span class="nc-kbd" aria-hidden="true"><kbd>' + (isMac ? '⌘' : 'Ctrl') + '</kbd><kbd>K</kbd></span>';
-}
-
-// Backspace the differing tail, then type the new path one char at a time.
-function typeTo(path: string) {
-  const el = ps.querySelector('.nc-p') as HTMLElement;
-  const my = ++typing;
-  const from = el.textContent || '';
-  shownPath = path;
-  if (from === path) return;
-  if (reduceMotion()) { el.textContent = path; ps.classList.remove('typing'); return; }
-  let k = 0;
-  while (k < from.length && k < path.length && from[k] === path[k]) k++;
-  let cur = from, phase: 'del' | 'type' = 'del';
-  ps.classList.add('typing');
-  (function step() {
-    if (my !== typing) return;
-    if (phase === 'del') { if (cur.length > k) cur = cur.slice(0, -1); else phase = 'type'; }
-    if (phase === 'type' && cur.length < path.length) cur = path.slice(0, cur.length + 1);
-    el.textContent = cur;
-    if (cur !== path) setTimeout(step, phase === 'del' ? 16 : 30);
-    else ps.classList.remove('typing');
-  })();
-}
 
 function hi(text: string, q: string) {
   const t = esc(text);
@@ -149,8 +117,8 @@ function hi(text: string, q: string) {
   return esc(text.slice(0, i)) + '<mark>' + esc(text.slice(i, i + q.length)) + '</mark>' + esc(text.slice(i + q.length));
 }
 
-function build() {
-  const q = input.value.trim().toLowerCase().replace(/^cd\s+/, '').replace(/^~\//, '').replace(/\/$/, '');
+function build(w: TermWindow) {
+  const q = w.input.value.trim().toLowerCase().replace(/^cd\s+/, '').replace(/^~\//, '').replace(/\/$/, '');
   const L = lang();
   let h = '';
   rows = [];
@@ -162,7 +130,7 @@ function build() {
     if (!chHit && !files.length) return;
     if (ch.id !== 'home') {
       rows.push({ t: 'ch:' + ch.id });
-      h += '<button type="button" class="nc-row dir" data-i="' + (rows.length - 1) + '"><span class="m">drwxr-xr-x</span><span class="nm">' +
+      h += '<button type="button" class="tw-row dir" data-i="' + (rows.length - 1) + '"><span class="m">drwxr-xr-x</span><span class="nm">' +
         hi(ch.path + '/', q) + '</span><span class="cm"># ' + hi(chName(ch), q) + '<span class="dd"> · ' + esc(chDesc(ch)) +
         '</span></span><span class="r">' + present.length + '</span></button>';
     }
@@ -170,89 +138,27 @@ function build() {
       rows.push({ t: id });
       const here = state.active.includes(id);
       const fname = cardFile(id);
-      h += '<button type="button" class="nc-row file' + (here ? ' here' : '') + '" data-i="' + (rows.length - 1) + '"><span class="m">' +
+      h += '<button type="button" class="tw-row file' + (here ? ' here' : '') + '" data-i="' + (rows.length - 1) + '"><span class="m">' +
         (/\/$/.test(fname) ? 'drwxr-xr-x' : '-rw-r--r--') + '</span><span class="nm">' + hi(cardName(id), q) + '</span><span class="fx">' +
         hi(fname, q) + '</span><span class="r">' + (here ? (L === 'en' ? '● you are here' : '● 当前位置') : '') + '</span></button>';
     });
   });
-  list.innerHTML = h || '<div class="nc-empty">ls: ' + esc(input.value) + ': No such file or directory</div>';
-  if (sel >= rows.length) sel = rows.length - 1;
-  if (sel < 0) sel = 0;
-  paint();
+  w.list.innerHTML = h || '<div class="tw-empty">ls: ' + esc(w.input.value) + ': No such file or directory</div>';
+  // on open, pre-select the card you are on
+  if (preselect) {
+    preselect = false;
+    for (let i = 0; i < rows.length; i++) if (rows[i].t === state.active[0]) { w.sel = i; break; }
+  }
   const cnt = rows.filter((r) => !r.t.startsWith('ch:')).length;
-  (ft.querySelector('.n') as HTMLElement).textContent = L === 'en' ? cnt + ' items' : cnt + ' 项';
-}
-
-function paint(scroll?: boolean | 'center') {
-  list.querySelectorAll<HTMLElement>('.nc-row').forEach((r) => {
-    const on = +r.dataset.i! === sel;
-    r.classList.toggle('sel', on);
-    r.setAttribute('aria-selected', on ? 'true' : 'false');
-  });
-  const s = list.querySelector('.nc-row.sel');
-  if (s && scroll) s.scrollIntoView({ block: scroll === 'center' ? 'center' : 'nearest' });
-}
-
-let lastFocus: Element | null = null;
-function open() {
-  lastFocus = document.activeElement;
-  document.documentElement.classList.add('nc-open');
-  input.value = '';
-  build();
-  // pre-select the card you are on
-  for (let i = 0; i < rows.length; i++) if (rows[i].t === state.active[0]) { sel = i; break; }
-  paint('center');
-  (win.querySelector('.nc-in label') as HTMLElement).innerHTML = userHTML() + '<span class="nc-p">' + esc(chPath()) +
-    '</span><span class="nc-d">$</span> <span class="nc-c">cd</span>';
-  if (matchMedia('(pointer:fine)').matches) setTimeout(() => input.focus(), 30);
-  else win.focus();
-}
-function close(restore = true) {
-  document.documentElement.classList.remove('nc-open');
-  input.blur();
-  if (restore && lastFocus instanceof HTMLElement && lastFocus !== document.body) lastFocus.focus({ preventScroll: true });
-}
-function go(i: number) { const r = rows[i]; if (!r) return; close(false); jump(r.t); }
-
-function render() {
-  const L = lang();
-  ps.innerHTML = psHTML(shownPath);
-  ps.setAttribute('aria-label', L === 'en' ? 'Jump to a section (⌘K)' : '跳转到任意卡片（⌘K）');
-  win.setAttribute('aria-label', L === 'en' ? 'Jump to a card' : '跳转到卡片');
-  win.innerHTML = '<div class="nc-tb"><span class="nc-lights" aria-hidden="true"><i></i><i></i><i></i></span><span class="t">airing@ursb.me — ls -la ~ — 80×24</span></div>' +
-    '<div class="nc-in"><label for="nc-q"></label><input id="nc-q" type="text" autocomplete="off" spellcheck="false" role="combobox" aria-controls="nc-list" aria-expanded="true" placeholder="' +
-    (L === 'en' ? 'filter: music / life / books' : '过滤：音乐 / life / 书') + '"></div>' +
-    '<div class="nc-list" id="nc-list" role="listbox"></div>' +
-    '<div class="nc-ft"><span><b>↑↓</b> ' + (L === 'en' ? 'select' : '选择') + '</span><span><b>↵</b> cd</span><span class="k"><b>esc</b> ' +
-    (L === 'en' ? 'close' : '关闭') + '</span><span class="n"></span></div>';
-  input = win.querySelector('input')!;
-  list = win.querySelector('.nc-list')!;
-  ft = win.querySelector('.nc-ft')!;
-  input.addEventListener('input', () => {
-    sel = 0; build();
-    // with a query, select the first matching card (a directory only if nothing else matched)
-    if (input.value.trim()) for (let i = 0; i < rows.length; i++) if (!rows[i].t.startsWith('ch:')) { sel = i; break; }
-    paint(true);
-  });
-  input.addEventListener('keydown', (e) => {
-    if (e.isComposing) return;
-    if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(rows.length - 1, sel + 1); paint(true); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(0, sel - 1); paint(true); }
-    else if (e.key === 'Enter') { e.preventDefault(); go(sel); }
-    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
-  });
-  list.addEventListener('click', (e) => { const r = (e.target as Element).closest<HTMLElement>('.nc-row'); if (r) go(+r.dataset.i!); });
-  list.addEventListener('mousemove', (e) => {
-    const r = (e.target as Element).closest<HTMLElement>('.nc-row');
-    if (r && +r.dataset.i! !== sel) { sel = +r.dataset.i!; paint(); }
-  });
+  w.setCount(L === 'en' ? cnt + ' items' : cnt + ' 项');
+  return rows.length;
 }
 
 function update() {
-  ps.classList.toggle('show', state.pastIntro);
+  tw.showPrompt(state.pastIntro);
   document.documentElement.classList.toggle('nc-shown', state.pastIntro);
-  typeTo(chPath());
-  if (isOpen()) build();
+  tw.setPath(chPath());
+  if (tw.isOpen()) tw.refresh();
 }
 
 let raf = 0;
@@ -269,32 +175,33 @@ function init() {
   }));
   if (!flat.length) return;
 
-  ps = document.createElement('button');
-  ps.className = 'nc-ps'; ps.type = 'button';
-  scrim = document.createElement('div');
-  scrim.className = 'nc-scrim';
-  win = document.createElement('div');
-  win.className = 'nc-win'; win.tabIndex = -1;
-  win.setAttribute('role', 'dialog'); win.setAttribute('aria-modal', 'true');
-  document.body.append(ps, scrim, win);
-  render();
-  ps.addEventListener('click', open);
-  scrim.addEventListener('click', () => close());
-  addEventListener('keydown', (e) => {
-    const openNow = isOpen();
-    const ae = document.activeElement as HTMLElement | null;
-    const typingInField = !!ae && (/INPUT|TEXTAREA|SELECT/.test(ae.tagName) || ae.isContentEditable);
-    if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && (e.key === 'k' || e.key === 'K')) {
-      e.preventDefault(); e.stopPropagation(); openNow ? close() : open();
-    } else if (e.key === 'Escape' && openNow) close();
-    else if (e.key === '/' && !openNow && !typingInField && !e.metaKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); open(); }
-  }, true);
+  tw = createTermWindow({
+    name: 'nc',
+    titles: () => ['airing@ursb.me — ls -la ~ — 80×24', 'airing@ursb.me — ls -la ~', 'ls -la ~'],
+    ariaLabel: () => (lang() === 'en' ? 'Jump to a card' : '跳转到卡片'),
+    promptAria: () => (lang() === 'en' ? 'Jump to a section (⌘K)' : '跳转到任意卡片（⌘K）'),
+    placeholder: () => (lang() === 'en' ? 'filter: music / life / books' : '过滤：音乐 / life / 书'),
+    cmd: () => 'cd',
+    path: chPath,
+    footer: () => {
+      const L = lang();
+      return '<span><b>↑↓</b> ' + (L === 'en' ? 'select' : '选择') + '</span><span><b>↵</b> cd</span><span class="k"><b>esc</b> ' +
+        (L === 'en' ? 'close' : '关闭') + '</span>';
+    },
+    build,
+    go: (i, w) => { const r = rows[i]; if (!r) return; w.close(false); jump(r.t); },
+    onOpen: () => { preselect = true; },
+    // with a query, select the first matching card (a directory only if nothing else matched)
+    onInput: (w) => {
+      if (w.input.value.trim()) for (let i = 0; i < rows.length; i++) if (!rows[i].t.startsWith('ch:')) { w.sel = i; break; }
+    },
+  });
 
   addEventListener('scroll', onScroll, { passive: true });
   addEventListener('resize', onScroll);
   addEventListener('wheel', unlock, { passive: true });
   addEventListener('touchstart', unlock, { passive: true });
-  addEventListener('keydown', (e) => { if (!isOpen() && /^(Arrow|Page|Home|End| )/.test(e.key)) unlock(); });
+  addEventListener('keydown', (e) => { if (!tw.isOpen() && /^(Arrow|Page|Home|End| )/.test(e.key)) unlock(); });
 
   // In-page #anchors (e.g. the IRC card's #留言) scroll smoothly to the card.
   document.addEventListener('click', (e) => {
@@ -309,7 +216,7 @@ function init() {
   });
 
   // language switch (applyTranslations flips <html lang>): re-render labels
-  new MutationObserver(() => { render(); update(); })
+  new MutationObserver(() => { tw.render(); update(); })
     .observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
 
   state.chapter = ''; // force the first update
