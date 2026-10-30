@@ -632,21 +632,69 @@ def generate_raindrop_script(data):
 # ── GitHub ──────────────────────────────────────────────────
 
 GITHUB_USER = 'airingursb'
+GITHUB_TOP_REPOS = 4
+
+
+def github_api(path):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (compatible; FeedBot/1.0)',
+        'Accept': 'application/vnd.github+json',
+    }
+    token = os.environ.get('GITHUB_TOKEN', '')
+    if token:
+        headers['Authorization'] = f'Bearer {token}'
+    req = urllib.request.Request(f'https://api.github.com{path}', headers=headers)
+    resp = urllib.request.urlopen(req, timeout=30)
+    return json.loads(resp.read().decode('utf-8'))
+
+
+def slim_repo(r):
+    """Repo fields the homepage cartridges use. A leading emoji in the
+    description (most of these repos start with one) becomes the label art."""
+    desc = (r.get('description') or '').strip()
+    m = re.match(r'^([^\w\s《(（]+)\s*(.*)$', desc)
+    emoji, desc = (m.group(1).strip(), m.group(2).strip()) if m else ('', desc)
+    return {
+        'name': r.get('name', ''),
+        'stars': r.get('stargazers_count', 0),
+        'lang': r.get('language') or '',
+        'created': (r.get('created_at') or '')[:10],
+        'pushed': (r.get('pushed_at') or '')[:10],
+        'emoji': emoji,
+        'desc': desc,
+    }
+
+
+def fetch_github_repos():
+    """Every public repo the user owns (paged, 100 at a time), forks dropped:
+    count, total stars, the most-starred few and the latest pushed one."""
+    repos, page = [], 1
+    while True:
+        batch = github_api(f'/users/{GITHUB_USER}/repos?type=owner&per_page=100&page={page}')
+        repos.extend(batch)
+        if len(batch) < 100:
+            break
+        page += 1
+    own = [r for r in repos if not r.get('fork')]
+    by_stars = sorted(own, key=lambda r: (-r.get('stargazers_count', 0), r.get('name', '')))
+    latest = max(own, key=lambda r: r.get('pushed_at') or '', default=None)
+    return {
+        'nonForkRepos': len(own),
+        'stars': sum(r.get('stargazers_count', 0) for r in own),
+        'topRepos': [slim_repo(r) for r in by_stars[:GITHUB_TOP_REPOS]],
+        'latestRepo': slim_repo(latest) if latest else None,
+    }
+
 
 def fetch_github_data():
-    url = f'https://api.github.com/users/{GITHUB_USER}'
-    req = urllib.request.Request(url, headers={
-        'User-Agent': 'Mozilla/5.0 (compatible; FeedBot/1.0)',
-    })
-    resp = urllib.request.urlopen(req, timeout=30)
-    user = json.loads(resp.read().decode('utf-8'))
+    user = github_api(f'/users/{GITHUB_USER}')
 
     created = user.get('created_at', '')
     since_year = ''
     if created:
         since_year = created[:4]
 
-    return {
+    data = {
         'login': user.get('login', ''),
         'avatar': user.get('avatar_url', ''),
         'bio': user.get('bio', ''),
@@ -655,6 +703,21 @@ def fetch_github_data():
         'repos': user.get('public_repos', 0),
         'sinceYear': since_year,
     }
+    try:
+        data.update(fetch_github_repos())
+    except Exception as e:
+        # Keep the last good repo list rather than dropping the card's data.
+        print(f'GitHub repos: error - {e}', file=sys.stderr)
+        prev_path = os.path.join(os.path.dirname(__file__), '..', 'src', 'data', 'github.json')
+        try:
+            with open(prev_path, encoding='utf-8') as f:
+                prev = json.load(f)
+            for key in ('nonForkRepos', 'stars', 'topRepos', 'latestRepo'):
+                if key in prev:
+                    data[key] = prev[key]
+        except (OSError, ValueError):
+            pass
+    return data
 
 
 def generate_github_script(data):
@@ -797,7 +860,8 @@ def main():
         gh_data = fetch_github_data()
         gh_html = generate_github_script(gh_data)
         content = replace_section(content, '<!-- GITHUB_DATA_START -->', '<!-- GITHUB_DATA_END -->', gh_html)
-        print(f'GitHub: @{gh_data["login"]} - {gh_data["followers"]} followers, {gh_data["repos"]} repos')
+        print(f'GitHub: @{gh_data["login"]} - {gh_data["followers"]} followers, {gh_data["repos"]} repos, '
+              f'{gh_data.get("nonForkRepos", "?")} own / {gh_data.get("stars", "?")} stars')
         changed = True
     except Exception as e:
         print(f'GitHub: error - {e}', file=sys.stderr)

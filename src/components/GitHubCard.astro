@@ -1,17 +1,26 @@
 ---
 // src/components/GitHubCard.astro
 //
-// Homepage "GitHub" card as a staff badge laid on its side: the green band
-// with the lanyard slot on top, the ID photo on the left, name, @login and
-// the WWDC line (pulled from the bio) in the middle, the three counts on the
-// right, and a barcode along the bottom. Narrow screens stand it upright.
+// Two half-width homepage cards side by side:
 //
-// Data is src/data/github.json (refreshed by the feed script). The barcode
-// encodes the login's bits; the number beside it is the GitHub user id from
-// the avatar URL.
+// "GitHub" — a staff badge standing upright: the green band with the lanyard
+// slot, ID photo, name, @login and the WWDC line (pulled from the bio), the
+// three counts, and a barcode along the bottom.
+//
+// "Repositories" — a cartridge shelf. The four most-starred own repos are
+// game cartridges on a Hall of Fame shelf (label art is the emoji their
+// description starts with, plus stars and the year they were created); the
+// console underneath has the most recently pushed repo plugged in.
+//
+// Data is src/data/github.json, refreshed by scripts/update_feed.py, which
+// pages through every owned repo (forks dropped) for the counts and lists.
+// The barcode encodes the login's bits; the number beside it is the GitHub
+// user id from the avatar URL. Label colours are GitHub's language colours.
 import githubData from '../data/github.json';
 
-const gh = githubData;
+type Repo = { name: string; stars: number; lang: string; created: string; pushed: string; emoji: string; desc: string };
+
+const gh = githubData as typeof githubData & { nonForkRepos?: number; stars?: number; topRepos?: Repo[]; latestRepo?: Repo | null };
 const id = (gh.avatar.match(/\/u\/(\d+)/) || [])[1] ?? '';
 const years = new Date().getFullYear() - Number(gh.sinceYear);
 const bioLines = gh.bio.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
@@ -29,27 +38,38 @@ for (let i = 0; i < bits.length; i++) {
   if (i % 2 === 0) bars.push({ x: bx, w });
   bx += w + (bits[i] === '1' ? 1 : 0.6);
 }
+
+const LANG_COLOR: Record<string, string> = {
+  Python: '#3572A5', HTML: '#e34c26', JavaScript: '#f1e05a', TypeScript: '#3178c6', Astro: '#ff5a03',
+  Swift: '#F05138', Java: '#b07219', Vue: '#41b883', Go: '#00ADD8', CSS: '#563d7c', Shell: '#89e051',
+};
+const LANG_TAG: Record<string, string> = { Python: 'PY', JavaScript: 'JS', HTML: 'HTML', TypeScript: 'TS', Swift: 'SWIFT', Java: 'JAVA', Vue: 'VUE', Go: 'GO', CSS: 'CSS', Shell: 'SH' };
+const top = gh.topRepos ?? [];
+const latest = gh.latestRepo ?? null;
+const topYears = top.map(r => r.created.slice(0, 4)).sort();
+const fame = topYears.length ? (topYears[0] === topYears[topYears.length - 1] ? topYears[0] : `${topYears[0]}–${topYears[topYears.length - 1]}`) : '';
+const repoUrl = (name: string) => `https://github.com/${gh.login}/${name}`;
 ---
 <div class="card card-github" id="github">
   <div class="section-title">GitHub</div>
   <a class="bd" href={`https://github.com/${gh.login}`} target="_blank" rel="noopener">
     <div class="bd-band" aria-hidden="true"><span>GITHUB</span><span class="slot"></span><span>MEMBER</span></div>
     <div class="bd-main">
-      <img class="bd-photo" src="/images/airing-avatar-48.webp" alt="" width="84" height="100" loading="lazy" decoding="async">
+      <img class="bd-photo" src="/images/airing-avatar-48.webp" alt="" width="70" height="84" loading="lazy" decoding="async">
       <div class="bd-who">
         <div class="bd-name">Airing</div>
         <div class="bd-login">@{gh.login}</div>
         <div class="bd-role">
           {wwdc && <><b>WWDC {wwdc} Scholar</b><br></>}
-          <span data-i18n="gh_member_since">member since</span> <b>{gh.sinceYear}</b> · {years} <span data-i18n="gh_yrs">yrs</span>
+          <span data-i18n="gh_member_since">member since</span>{' '}<b>{gh.sinceYear}</b> · {years}{' '}<span data-i18n="gh_yrs">yrs</span>
           {motto && <><br><span class="bd-motto">“{motto}”</span></>}
         </div>
       </div>
-      <div class="bd-stats">
-        <div>{fmt(gh.followers)}<span data-i18n="gh_followers">Followers</span></div>
-        <div>{fmt(gh.repos)}<span data-i18n="gh_repos">Repos</span></div>
-        <div>{fmt(gh.following)}<span data-i18n="gh_following">Following</span></div>
-      </div>
+    </div>
+    <div class="bd-stats">
+      <div>{fmt(gh.followers)}<span data-i18n="gh_followers">Followers</span></div>
+      <div>{fmt(gh.repos)}<span data-i18n="gh_repos">Repos</span></div>
+      <div>{fmt(gh.following)}<span data-i18n="gh_following">Following</span></div>
     </div>
     <div class="bd-foot">
       <svg class="bd-bc" viewBox={`0 0 ${Math.round(bx)} 22`} preserveAspectRatio="none" fill="currentColor" aria-hidden="true">
@@ -60,7 +80,59 @@ for (let i = 0; i < bits.length; i++) {
   </a>
 </div>
 
+{top.length > 0 && (
+  <div class="card card-repos" id="repos">
+    <div class="section-title" data-i18n="sec_repos">Repositories</div>
+    <div class="feed-head">
+      <span class="feed-head-cmd"><span class="prompt">$</span> gh repo list --sort stars -L {top.length}</span>
+      <span class="feed-head-total">★{' '}<strong>{fmt(gh.stars ?? 0)}</strong></span>
+    </div>
+    <div class="ct" id="reposShelf">
+      <div class="ct-shelf">
+        {top.map((r, i) => (
+          <a class="ct-cell" href={repoUrl(r.name)} target="_blank" rel="noopener" data-tip={`${r.name} · ${r.desc}`} aria-label={`${r.name}, ${fmt(r.stars)} stars`}>
+            <span class="cart-w"><span class="cart" style={`--i:${i};--lc:${LANG_COLOR[r.lang] ?? '#8b949e'}`}>
+              <span class="cart-lb">
+                <span class="cart-art">{LANG_TAG[r.lang] && <small>{LANG_TAG[r.lang]}</small>}<span>{r.emoji || '📦'}</span></span>
+                <span class="cart-tx">
+                  <span class="cart-nm">{r.name}</span>
+                  <span class="cart-st"><i>★</i>{fmt(r.stars)}</span>
+                  <span class="cart-yr">since {r.created.slice(0, 4)}</span>
+                </span>
+              </span>
+              <span class="cart-ar"></span>
+            </span></span>
+          </a>
+        ))}
+      </div>
+      <div class="plaque" aria-hidden="true"><span>HALL OF FAME · {fame}</span></div>
+      {latest && (
+        <a class="cons" href={repoUrl(latest.name)} target="_blank" rel="noopener" data-tip={latest.desc ? `${latest.name} · ${latest.desc}` : latest.name}>
+          <span class="cons-slot"><span class="cons-cart" style={`--lc:${LANG_COLOR[latest.lang] ?? '#8b949e'}`}><b></b><span>{latest.name}</span><em>★{fmt(latest.stars)}</em></span></span>
+          <span class="cons-led" aria-hidden="true"><i></i>POWER</span>
+          <span class="cons-lbl"><span>NOW PLAYING</span><span>pushed {latest.pushed.slice(5)}{latest.lang && ` · ${latest.lang}`}</span></span>
+        </a>
+      )}
+    </div>
+  </div>
+)}
+
+<script>
+  import { bindTips, onView } from '../scripts/card-tips';
+
+  const shelf = document.getElementById('reposShelf');
+  bindTips(shelf);
+  // Cartridges drop in and the console loads once the card scrolls into view.
+  if (shelf && 'IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    shelf.classList.add('armed');
+    onView(shelf, () => shelf.classList.add('play'));
+  }
+</script>
+
 <style>
+  .card-github, .card-repos { display: flex; flex-direction: column; }
+
+  /* ── Badge ── */
   .bd {
     position: relative;
     display: block;
@@ -78,7 +150,7 @@ for (let i = 0; i < bits.length; i++) {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 6px 14px;
+    padding: 6px 12px;
     background: var(--accent);
     color: var(--c-bg);
     font-size: 9.5px;
@@ -86,7 +158,7 @@ for (let i = 0; i < bits.length; i++) {
     letter-spacing: 2px;
   }
   .bd-band .slot {
-    width: 40px;
+    width: 34px;
     height: 7px;
     border-radius: 4px;
     background: var(--c-bg);
@@ -94,15 +166,14 @@ for (let i = 0; i < bits.length; i++) {
   }
   .bd-main {
     display: grid;
-    grid-template-columns: 84px minmax(0, 1fr) minmax(0, 300px);
-    gap: 18px;
-    align-items: center;
-    padding: 16px 16px 14px;
+    grid-template-columns: 70px minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px 12px 10px;
   }
   .bd-photo {
     display: block;
-    width: 84px;
-    height: 100px;
+    width: 70px;
+    height: 84px;
     object-fit: cover;
     border: 1px solid rgba(var(--c-overlay-rgb), 0.14);
     border-radius: 4px;
@@ -110,22 +181,20 @@ for (let i = 0; i < bits.length; i++) {
     filter: saturate(0.85);
   }
   .bd-who { min-width: 0; }
-  .bd-name { font-size: 18px; font-weight: 700; line-height: 1.2; }
-  .bd-login { font-size: 12px; color: var(--accent); }
-  .bd-role { margin-top: 8px; font-size: 11px; line-height: 1.6; color: var(--c-text-muted); }
+  .bd-name { font-size: 16px; font-weight: 700; line-height: 1.2; }
+  .bd-login { font-size: 11.5px; color: var(--accent); }
+  .bd-role { margin-top: 6px; font-size: 10.5px; line-height: 1.5; color: var(--c-text-muted); }
   .bd-role b { color: var(--c-text); font-weight: 600; }
   .bd-motto { color: var(--c-text-dim); }
   .bd-stats {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    align-self: stretch;
-    align-items: center;
-    border-left: 1px dashed rgba(var(--c-overlay-rgb), 0.14);
+    border-top: 1px dashed rgba(var(--c-overlay-rgb), 0.14);
   }
   .bd-stats div {
-    padding: 4px 0;
+    padding: 7px 0 6px;
     text-align: center;
-    font-size: 18px;
+    font-size: 14px;
     font-weight: 700;
     line-height: 1.3;
     font-variant-numeric: tabular-nums;
@@ -133,8 +202,7 @@ for (let i = 0; i < bits.length; i++) {
   .bd-stats div + div { border-left: 1px dashed rgba(var(--c-overlay-rgb), 0.14); }
   .bd-stats span {
     display: block;
-    margin-top: 2px;
-    font-size: 9px;
+    font-size: 8.5px;
     font-weight: 400;
     letter-spacing: 1.5px;
     color: var(--c-text-dim);
@@ -143,34 +211,220 @@ for (let i = 0; i < bits.length; i++) {
   .bd-foot {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 8px 16px 10px;
+    gap: 10px;
+    padding: 7px 12px 9px;
     border-top: 1px solid rgba(var(--c-overlay-rgb), 0.08);
   }
   .bd-bc { flex: 1; min-width: 0; height: 22px; color: var(--c-text); opacity: 0.8; }
-  .bd-id { font-size: 10px; letter-spacing: 1px; white-space: nowrap; color: var(--c-text-muted); }
+  .bd-id { font-size: 9.5px; letter-spacing: 1px; white-space: nowrap; color: var(--c-text-muted); }
 
-  /* Upright on phones: photo + name side by side, the counts underneath. */
-  @media (max-width: 600px) {
-    .bd-main {
-      grid-template-columns: 70px minmax(0, 1fr);
-      gap: 12px;
-      padding: 12px 12px 0;
-    }
-    .bd-photo { width: 70px; height: 84px; }
-    .bd-name { font-size: 16px; }
-    .bd-role { margin-top: 6px; font-size: 10.5px; line-height: 1.5; }
-    .bd-stats {
-      grid-column: 1 / -1;
-      margin: 0 -12px;
-      border-left: 0;
-      border-top: 1px dashed rgba(var(--c-overlay-rgb), 0.14);
-    }
-    .bd-stats div { padding: 7px 0 6px; font-size: 14px; }
-    .bd-stats span { font-size: 8.5px; }
-    .bd-foot { padding: 7px 12px 9px; }
+  /* ── Cartridge shelf ── */
+  .ct {
+    --plastic: #3b4048; --plastic-hi: #4a505a; --plastic-lo: #2a2e35;
+    --paper: #ece6d6; --ink: #2b2a26; --wood: #6b4f33; --wood-hi: #8a6a47;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  :global([data-mode='light']) .ct {
+    --plastic: #c9cbd0; --plastic-hi: #dcdee2; --plastic-lo: #a9acb3;
+    --paper: #fbf8ef; --wood: #b08a5f; --wood-hi: #c9a578;
+  }
+  .ct-shelf { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 14px; }
+  .ct-cell { position: relative; display: block; padding: 0 4px 9px; text-decoration: none; }
+  .ct-cell::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 9px;
+    background: linear-gradient(180deg, var(--wood-hi), var(--wood));
+    box-shadow: 0 5px 5px -4px rgba(0, 0, 0, 0.5), inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  }
+  .ct-cell:nth-child(4n+1)::after { border-radius: 2px 0 0 2px; }
+  .ct-cell:nth-child(4n)::after { border-radius: 0 2px 2px 0; }
+  .ct-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .cart {
+    position: relative;
+    display: block;
+    max-width: 104px;
+    margin: 0 auto;
+    aspect-ratio: 57 / 74;
+    container-type: inline-size;
+    border-radius: 4px 4px 3px 3px;
+    background: linear-gradient(180deg, var(--plastic-hi), var(--plastic) 30%, var(--plastic-lo));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -2px 0 rgba(0, 0, 0, 0.25), 0 3px 4px rgba(0, 0, 0, 0.35);
+    clip-path: polygon(0 0, 88% 0, 100% 7%, 100% 100%, 0 100%);
+    transform-origin: 50% 100%;
+  }
+  .cart-w { display: block; filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.35)); transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  @media (hover: hover) and (pointer: fine) {
+    .ct-cell:hover .cart-w { transform: translateY(-4px); }
+  }
+  .cart::before {
+    content: '';
+    position: absolute;
+    top: 4%;
+    left: 10%;
+    right: 18%;
+    height: 9%;
+    border-radius: 1px;
+    background: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.28) 0 1px, transparent 1px 4px);
+  }
+  .cart-lb {
+    position: absolute;
+    top: 17%;
+    left: 8%;
+    right: 8%;
+    bottom: 9%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 3px;
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+  }
+  .cart-art {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-size: 30cqw;
+    background: var(--lc);
+  }
+  .cart-art::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0 3px, transparent 3px 7px); }
+  .cart-art > span { position: relative; z-index: 1; line-height: 1; filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.25)); }
+  .cart-art small {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    z-index: 1;
+    padding: 0 2px;
+    border-radius: 2px;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 6.5px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    line-height: 1.5;
+  }
+  .cart-tx { display: block; padding: 3px 4px; line-height: 1.15; }
+  .cart-nm {
+    display: -webkit-box;
+    min-height: 2.2em;
+    overflow: hidden;
+    font-size: 8.5px;
+    font-weight: 700;
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .cart-st { display: block; font-size: 11px; font-weight: 800; letter-spacing: -0.2px; }
+  .cart-st i { font-style: normal; color: #c58a00; }
+  .cart-yr { display: block; overflow: hidden; font-size: 7.5px; color: rgba(43, 42, 38, 0.6); text-overflow: ellipsis; white-space: nowrap; }
+  .cart-ar {
+    position: absolute;
+    bottom: 2.5%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border: 3px solid transparent;
+    border-top: 4px solid rgba(0, 0, 0, 0.3);
+    border-bottom: 0;
+    transform: translateX(-50%);
+  }
+  .plaque { display: flex; justify-content: center; margin-top: -1px; }
+  .plaque span {
+    padding: 1px 8px;
+    border-radius: 0 0 3px 3px;
+    background: linear-gradient(180deg, #d9b45a, #a57d26);
+    color: #3b2a05;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
+  }
+
+  /* ── Console with the latest pushed repo ── */
+  .cons {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    margin-top: auto;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: linear-gradient(180deg, var(--plastic), var(--plastic-lo));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 2px 4px rgba(0, 0, 0, 0.3);
+    color: inherit;
+    text-decoration: none;
+  }
+  .plaque { margin-bottom: 12px; }
+  .cons:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .cons-slot {
+    position: relative;
+    display: block;
+    height: 26px;
+    overflow: hidden;
+    border-radius: 3px;
+    background: #0b0d10;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.8);
+  }
+  .cons-cart {
+    position: absolute;
+    top: 4px;
+    left: 10px;
+    right: 10px;
+    bottom: -6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 6px 6px;
+    border-radius: 3px 3px 0 0;
+    background: linear-gradient(180deg, var(--plastic-hi), var(--plastic));
+  }
+  .cons-cart b { flex: none; align-self: stretch; width: 6px; margin: 3px 0 0; border-radius: 1px; background: var(--lc); }
+  .cons-cart span { min-width: 0; overflow: hidden; font-size: 9.5px; font-weight: 700; color: var(--c-text); text-overflow: ellipsis; white-space: nowrap; }
+  :global([data-mode='light']) .cons-cart span { color: #1f2328; }
+  .cons-cart em { flex: none; margin-left: auto; font-size: 9px; font-style: normal; color: var(--c-text-muted); }
+  .cons-led { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 7px; letter-spacing: 1px; color: var(--c-text-muted); }
+  .cons-led i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 6px var(--accent); animation: blink 2.4s infinite; }
+  .cons-lbl {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: -4px;
+    font-size: 8px;
+    letter-spacing: 1.5px;
+    color: var(--c-text-muted);
+  }
+  .cons-lbl span:last-child { overflow: hidden; letter-spacing: 0; text-overflow: ellipsis; white-space: nowrap; }
+  .cons:hover .cons-cart span { color: var(--accent); }
+
+  /* Entrance: paused on the first frame until the card is in view. */
+  .ct.armed .cart { animation: cart-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both paused; animation-delay: calc(var(--i) * 90ms); }
+  .ct.armed .cons-cart { animation: slot-in 0.7s 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both paused; }
+  .ct.armed.play .cart, .ct.armed.play .cons-cart { animation-play-state: running; }
+  @keyframes cart-in { from { transform: translateY(-14px); opacity: 0; } }
+  @keyframes slot-in { from { transform: translateY(-120%); } }
+  @keyframes blink { 50% { opacity: 0.35; } }
+
+  @media (max-width: 640px) {
+    .ct-shelf { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ct-cell { padding: 0 14px 9px; }
+    .ct-cell:nth-child(2n+1)::after { border-radius: 2px 0 0 2px; }
+    .ct-cell:nth-child(2n)::after { border-radius: 0 2px 2px 0; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .bd { transition: none; }
+    .bd, .cart-w { transition: none; }
+    .cons-led i { animation: none; }
+    .ct-cell:hover .cart-w { transform: none; }
   }
 </style>
