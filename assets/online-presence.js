@@ -740,6 +740,12 @@
   function render(counts) {
     counts = applyLocalDemoCounts(counts || {});
     lastCounts = counts;
+    // Share the counts with other widgets (the homepage Intro card's /who map)
+    // so they do not poll the API a second time.
+    window.__onlineCounts = counts;
+    try {
+      window.dispatchEvent(new CustomEvent('online-counts', { detail: counts }));
+    } catch (_) {}
     for (var i = 0; i < elements.length; i++) {
       var el = elements[i];
       var mode = el.getAttribute('data-online') || 'site';
