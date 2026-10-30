@@ -12,6 +12,11 @@
 // The ✉ / FREE / AIRMAIL on the stamp, the text round the postmark and the
 // PAUSED stamp are decoration. Monthly levels (0–4) are the letter heatmap
 // that used to be on this card, Mar 2023 → Mar 2026.
+//
+// The card is full width and carries the Echo entry (letter slot + magazine
+// rack, src/features/echo/components/HomeEntry.astro) in its slot, so the
+// letters and the issues they turn into read as one piece.
+import { issuesFor } from '../features/echo/data/issues';
 const EMAIL = 'airingdeng@gmail.com';
 const MAILTO = `mailto:${EMAIL}?subject=Letter%20Consultation`;
 const START: [number, number] = [2023, 3];
@@ -29,11 +34,13 @@ const TOPICS: [string, string][] = [
 ];
 const PAID_OK: [string, string][] = [['lpt_career', 'Career Planning'], ['lpt_growth', 'Personal Growth'], ['lpt_hunting', 'Job Hunting'], ['lpt_writing', 'Writing']];
 const PAID_NO: [string, string][] = [['lpt_biz', 'Business Consulting'], ['lpt_data', 'Data Consulting']];
+const ISSUES = issuesFor('zh').length;
 ---
 <div class="card card-letter" id="letter">
-  <div class="section-title" data-i18n="sec_letter">Letter Consultation</div>
+  <div class="section-title" data-i18n="sec_letter_echo">Letters &amp; Echo</div>
   <div class="feed-head">
     <span class="feed-head-cmd"><span class="prompt">$</span> mail -s "Letter Consultation" {EMAIL}</span>
+    <span class="feed-head-total"><span class="lc-zh">130+ 封 → {ISSUES} 期</span><span class="lc-en">130+ letters → {ISSUES} issues</span></span>
   </div>
 
   <div class="env">
@@ -45,7 +52,7 @@ const PAID_NO: [string, string][] = [['lpt_biz', 'Business Consulting'], ['lpt_d
           <span class="env-k" data-i18n="letter_env_to">To</span>
           <span class="who"><a href={MAILTO}>Airing</a></span>
           <span></span>
-          <a class="addr" href={MAILTO}>{EMAIL}</a>
+          <a class="addr" href={MAILTO}>{EMAIL.replace(/@.*/, '')}<wbr />{EMAIL.replace(/^[^@]*/, '')}</a>
           <span class="env-k" data-i18n="letter_env_re">Re</span>
           <div class="chips">{TOPICS.map(([k, t]) => <span class="chip" data-i18n={k}>{t}</span>)}</div>
         </div>
@@ -117,6 +124,8 @@ const PAID_NO: [string, string][] = [['lpt_biz', 'Business Consulting'], ['lpt_d
     <div class="l-note" data-i18n="letter_paid_note">Mandarin or English · Refundable · Personal growth only · No business/data consulting · All sessions recorded</div>
   </div>
 
+  <slot />
+
   <dialog id="consultationPauseDialog" aria-labelledby="consultationPauseTitle" aria-describedby="consultationPauseDescription">
     <h2 id="consultationPauseTitle" data-i18n="letter_paused_title">Paid consultations are paused</h2>
     <p id="consultationPauseDescription" data-i18n="letter_paused_notice">My capacity is limited, so paid consultations are on hold. Free email conversations are still welcome.</p>
@@ -175,7 +184,11 @@ const PAID_NO: [string, string][] = [['lpt_biz', 'Business Consulting'], ['lpt_d
   .env-to a { text-decoration: none; }
   .env-to .who a { color: var(--c-text); }
   .env-to .who a:hover { color: var(--accent); }
-  .env-to .addr { overflow-wrap: anywhere; font-size: 12px; color: var(--accent); }
+  /* Never split inside the address; on very narrow cards it may wrap only before the @. */
+  .env-to .addr { overflow-wrap: normal; word-break: keep-all; font-size: 12px; color: var(--accent); }
+  .lc-en { display: none; }
+  :global(html:lang(en)) .card-letter .lc-zh { display: none; }
+  :global(html:lang(en)) .card-letter .lc-en { display: inline; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .chip {
     display: inline-block;
@@ -419,6 +432,9 @@ const PAID_NO: [string, string][] = [['lpt_biz', 'Business Consulting'], ['lpt_d
   @media (max-width: 480px) {
     .feed-head { flex-wrap: wrap; row-gap: 2px; }
     .feed-head-cmd { flex-basis: 100%; }
+  }
+  @media (max-width: 360px) {
+    .env-to .addr { font-size: 11px; }
   }
   @media (max-width: 640px) {
     .env { padding: 16px 14px 14px; }

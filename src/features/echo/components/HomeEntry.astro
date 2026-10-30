@@ -1,58 +1,306 @@
 ---
-import { Image } from 'astro:assets';
-import { issuesFor, issuePath } from '../data/issues';
-import { localPath } from '../data/i18n';
-import EditorialText from './EditorialText.astro';
-import type { ImageMetadata } from 'astro';
-import { issueArt } from '../data/covers';
-const covers = import.meta.glob<{ default: ImageMetadata }>('../../../../public/echo/share/*.png', { eager: true });
-const homeCover = (number: string, lang: string) => covers[`../../../../public/echo/share/${number}-${lang}.png`]?.default ?? issueArt(number);
+// Homepage Echo entry, drawn as the bottom half of the Letter card
+// (src/components/LetterCard.astro passes it through its slot):
+//
+//   1. a frosted-acrylic letter slot with a green-lit lip and an airmail
+//      letter half way in, "130+ letters → N issues" either side;
+//   2. `$ ls ~/echo` — an acrylic magazine rack holding every issue's cover.
+//      Newest issues stand in the front tier, fully visible; each tier behind
+//      shows only the top of its covers. Hovering pulls a magazine up.
+//
+// The rack is built from the issue data, so a new issue shelves itself:
+// 4 per tier on wide cards, 3 on phones (both sets are rendered and a
+// container query picks one; lazy images in the hidden set are not fetched).
+// Covers are the share cards shrunk to 360×480 JPEGs in public/echo/rack/
+// by scripts/echo-covers/rack.mjs, which runs on every dev start and build.
+import fs from 'node:fs';
+import path from 'node:path';
+import { issuesFor, issuePath, type Issue } from '../data/issues';
+import { lettersFor } from '../data/catalog';
+import { localPath, exchangeCount, type Locale } from '../data/i18n';
+import { readerForLetter } from '../data/reader-characters';
+
+const LETTERS = '130+';
+// A slight lean per magazine so the rack does not look printed.
+const TILT = [-1.1, 0.7, -0.4, 1.2, -0.8, 0.5, -1.3, 0.9, -0.2, 1, -0.6, 0.3];
 const locales = ['zh', 'en'] as const;
+
+const rackCover = (number: string, lang: Locale) => {
+  const jpg = `/echo/rack/${number}-${lang}.jpg`;
+  // Without a rack cover yet, fall back to the full-size share card.
+  return fs.existsSync(path.join(process.cwd(), 'public', jpg)) ? jpg : `/echo/share/${number}-${lang}.png`;
+};
+const newestFirst = (lang: Locale) => [...issuesFor(lang)].reverse();
+const issueCount = issuesFor('zh').length;
+
+function tiers(list: Issue[], cols: number) {
+  const rows: Issue[][] = [];
+  for (let k = 0; k < list.length; k += cols) rows.push(list.slice(k, k + cols));
+  return rows.reverse(); // oldest tier at the back (top), newest in front (bottom)
+}
+const stats = (lang: Locale) => {
+  const letters = lettersFor(lang);
+  return {
+    issues: issuesFor(lang).length,
+    exchanges: letters.length,
+    readers: new Set(letters.map(letter => readerForLetter(letter.id).id)).size,
+  };
+};
+const label = (issue: Issue) => `No.${issue.number} · ${issue.title}`;
 ---
-<div class="home-echo" id="echo">
+<div class="le-echo" id="echo">
+  <div class="slot">
+    <div class="slot-side l" aria-hidden="true">
+      <i class="slot-track"></i>
+      <span class="slot-stat"><b>{LETTERS}</b><span><span class="le-zh">封来信</span><span class="le-en">letters</span></span></span>
+    </div>
+    <div class="plate" aria-hidden="true">
+      <span class="mouth"><span class="mail-w"><i class="mail"></i></span><i class="flap"></i></span>
+      <span class="plate-l">LETTERS</span>
+    </div>
+    <div class="slot-side r" aria-hidden="true">
+      <span class="slot-stat"><b>{issueCount}</b><span><span class="le-zh">期回声</span><span class="le-en">issues</span></span></span>
+      <i class="slot-track"></i>
+    </div>
+    <p class="slot-cap">
+      <span class="le-zh"><span>通信结束 <b>180 天</b>后 ·</span> <span>隐去身份与私人细节 ·</span> <span>选编成刊</span></span>
+      <span class="le-en"><span><b>180+ days</b> after an exchange ends ·</span> <span>identities removed ·</span> <span>selected into Echo</span></span>
+    </p>
+  </div>
+
   {locales.map(lang => {
     const en = lang === 'en';
-    return <section class="card home-echo-edition" lang={lang} aria-labelledby={`home-echo-heading-${lang}`}>
-      <header class="home-echo-heading">
-        <div><h2 id={`home-echo-heading-${lang}`}>{en ? 'Echo · A correspondence journal' : '回声 · 通信期刊'}</h2><p>LETTERS TO AIRING</p></div>
-        <a class="home-echo-archive" href={localPath('/', lang)} data-umami-event="echo-entry-open" data-umami-event-surface="home" data-umami-event-lang={lang}>{en ? 'All issues' : '全部期刊'} <span aria-hidden="true">→</span></a>
-      </header>
-      <p class="home-echo-intro">{en ? 'A question from someone else. A reply that may speak to you.' : '从一个人的困惑，读到自己的答案。'}</p>
-      <p class="home-echo-description">{en ? 'Reader questions and my replies, gathered by theme. Each issue includes the complete, anonymized exchanges.' : <>把来信里的困境与我的回信，编成可以慢慢读的<span>专题</span>。每一期，都附有脱敏后的<span>完整往返。</span></>}</p>
-      <div class="home-echo-issues" data-count={Math.min(3, issuesFor(lang).length)}>
-        {[...issuesFor(lang)].reverse().slice(0, 3).map(issue => <a class="home-echo-issue" href={issuePath(issue.number, lang)} data-umami-event="echo-issue-open" data-umami-event-surface="home" data-umami-event-target={issue.number} data-umami-event-lang={lang}>
-          <Image src={homeCover(issue.number, lang)} alt="" width={108} widths={[96,192,240]} sizes="(max-width:480px) 80px,108px" format="webp" loading="lazy" />
-          <div><p class="home-echo-meta">No. {issue.number} <span>{issue.category}</span></p><h3>{en ? issue.headline.join(' ').replaceAll('-', '‑') : <EditorialText text={issue.headline.join('')} keepWords />}</h3><span class="home-echo-read">{en ? 'Open this issue' : '翻开这一期'} <span aria-hidden="true">↗</span></span></div>
-        </a>)}
+    const s = stats(lang);
+    const list = newestFirst(lang);
+    const newest = list[0]?.number;
+    return <section class="le-rack" lang={lang} aria-label={en ? 'Echo · A correspondence journal' : '回声 · 通信期刊'}>
+      <div class="r-head">
+        <span class="k"><span class="prompt">$</span> ls ~/echo</span>
+        <span class="n">{en
+          ? <><span><b>{s.issues}</b> issues</span> · <span><b>{s.exchanges}</b> exchanges</span> · <span><b>{s.readers}</b> readers</span></>
+          : <><span><b>{s.issues}</b> 期</span> · <span><b>{s.exchanges}</b> 组往返</span> · <span><b>{s.readers}</b> 位来信者</span></>}</span>
+        <a class="linkish" href={localPath('/', lang)} data-umami-event="echo-entry-open" data-umami-event-surface="home" data-umami-event-lang={lang}>{en ? 'All issues' : '全部期刊'} <span class="ar" aria-hidden="true">→</span></a>
       </div>
-      <p class="home-echo-note">{en ? 'Free letters & replies · Selected and anonymized more than 180 days after the exchange ends' : '免费来信与回信 · 通信结束超过 180 天后，再脱敏选编'}</p>
+      {[4, 3].map(cols => {
+        const rows = tiers(list, cols);
+        return <div class={`mr mr${cols}`} style={`--cols:${cols}`}>
+          {rows.map((row, r) => <div class:list={['mr-tier', { front: r === rows.length - 1 }]} style={`z-index:${r + 1}`}>
+            <div class="mr-row">
+              {row.map((issue, c) => <a class="mr-mag" href={issuePath(issue.number, lang)} style={`--r:${TILT[(Number(issue.number) - 1) % TILT.length]}deg;--i:${r * cols + c}`}
+                aria-label={label(issue)} title={`${label(issue)} · ${exchangeCount(issue.letterIds.length, lang)}`}
+                data-umami-event="echo-issue-open" data-umami-event-surface="home" data-umami-event-target={issue.number} data-umami-event-lang={lang}>
+                {issue.number === newest && <span class="badge-new" aria-hidden="true">{en ? 'NEW' : '新一期'}</span>}
+                <img src={rackCover(issue.number, lang)} alt="" width="360" height="480" loading="lazy" decoding="async" />
+              </a>)}
+            </div>
+            <div class="mr-rail" style={`--t:${r}`}></div>
+          </div>)}
+        </div>;
+      })}
+      <p class="r-legend">{en
+        ? <>Newest issues up front, older rows behind · <b>hover</b> to pull one out</>
+        : <>前排是最新的几期，往后一排比一排早 · <b>悬停</b>把一本抽出来看</>}</p>
     </section>;
   })}
 </div>
+
+<script>
+  import { onView } from '../../../scripts/card-tips';
+
+  // The letter drops into the slot and the rack fills once, when it scrolls into view.
+  const echo = document.getElementById('echo');
+  if (echo && 'IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    echo.classList.add('armed');
+    onView(echo.querySelector('.slot'), () => {
+      echo.classList.add('play');
+      // Disarm afterwards so the other language's rack does not replay it on a language switch.
+      const covers = echo.querySelectorAll('.le-rack[lang="zh"] .mr4 .mr-mag').length;
+      setTimeout(() => echo.classList.remove('armed', 'play'), 1600 + covers * 60);
+    });
+  }
+</script>
+
 <style>
-.home-echo { grid-column: 1 / -1; }
-.home-echo-edition[lang='en'] { display: none; }
-:global(html:lang(en)) .home-echo-edition[lang='zh'] { display: none; }
-:global(html:lang(en)) .home-echo-edition[lang='en'] { display: block; }
-.home-echo-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; }
-.home-echo-heading h2 { margin:0; color:var(--c-text); font:600 14px/1.5 var(--font-mono); }
-.home-echo-heading p { margin:4px 0 0; color:var(--c-text-muted); font-size:10px; letter-spacing:.08em; }
-.home-echo-archive { color:var(--c-text); display:inline-flex; align-items:center; gap:8px; min-height:44px; flex-shrink:0; font-size:12px; text-decoration:none; }
-.home-echo-intro { margin:24px 0 8px; color:var(--c-text); font:600 24px/1.5 Georgia,'Noto Serif SC',serif; text-wrap:balance; }
-.home-echo-description { margin:0; color:var(--c-text-muted); font-size:13px; line-height:1.85; }
-.home-echo-issues { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; margin-top:24px; }
-.home-echo-issues[data-count="1"] { grid-template-columns:1fr; }
-.home-echo-description span { white-space:nowrap; }
-.home-echo-issue { display:grid; grid-template-columns:108px minmax(0,1fr); gap:16px; align-items:center; min-width:0; color:var(--c-text); text-decoration:none; }
-@media(min-width:1100px) { .home-echo-issues[data-count="3"] { grid-template-columns:repeat(3,minmax(0,1fr)); } .home-echo-issues[data-count="3"] .home-echo-issue { grid-template-columns:80px minmax(0,1fr); } }
-.home-echo-issue img { display:block; width:100%; height:auto; aspect-ratio:3 / 4; }
-.home-echo-meta { display:flex; gap:4px 8px; flex-wrap:wrap; margin:0 0 8px; color:var(--c-text-muted); font:11px/1.6 var(--font-mono); }
-.home-echo-issue h3 { margin:0; font:600 18px/1.5 Georgia,'Noto Serif SC',serif; text-wrap:balance; }
-.home-echo-read { display:inline-flex; align-items:center; gap:8px; min-height:44px; margin-top:8px; color:var(--c-text); font-size:12px; }
-.home-echo-issue:hover h3,.home-echo-archive:hover { text-decoration:underline; text-underline-offset:4px; }
-.home-echo [aria-hidden="true"] { color:var(--accent); }
-.home-echo a:focus-visible { outline:2px solid var(--accent); outline-offset:4px; }
-.home-echo-note { margin:24px 0 0; padding-top:16px; border-top:1px solid var(--c-border); color:var(--c-text-muted); font-size:11px; line-height:1.8; }
-@media(max-width:760px) { .home-echo-issues { grid-template-columns:1fr; } .home-echo-issue + .home-echo-issue { padding-top:16px; border-top:1px solid var(--c-border); } }
-@media(max-width:480px) { .home-echo-heading { align-items:flex-start; gap:8px; } .home-echo-heading h2 { max-width:190px; } .home-echo-intro { font-size:21px; } .home-echo-issue { grid-template-columns:80px minmax(0,1fr); } .home-echo-issue h3 { font-size:17px; } }
+  .le-echo { container: le / inline-size; --shadow: rgba(0, 0, 0, 0.5); }
+  :global([data-mode='light']) .le-echo { --shadow: rgba(15, 23, 42, 0.2); }
+  .le-en, .le-rack[lang='en'] { display: none; }
+  :global(html:lang(en)) .le-echo .le-zh,
+  :global(html:lang(en)) .le-rack[lang='zh'] { display: none; }
+  :global(html:lang(en)) .le-echo .le-en { display: inline; }
+  :global(html:lang(en)) .le-rack[lang='en'] { display: block; }
+
+  /* ── Letter slot: frosted acrylic, green-lit lip ── */
+  .slot { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px 16px; margin: 30px 0 24px; }
+  .slot-side { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .slot-track {
+    flex: 1; min-width: 0; height: 6px; border-radius: 1px;
+    background: repeating-linear-gradient(-45deg, rgba(var(--accent-rgb), 0.75) 0 6px, transparent 6px 9px, rgba(var(--c-overlay-rgb), 0.3) 9px 15px, transparent 15px 18px);
+  }
+  .slot-side.r .slot-track { opacity: 0.55; }
+  .slot-stat { flex: none; display: flex; flex-direction: column; line-height: 1.3; }
+  .slot-side.l .slot-stat { text-align: right; }
+  .slot-stat b { font-size: 18px; font-weight: 800; color: var(--c-text); }
+  .slot-stat > span { font-size: 12px; color: var(--c-text-muted); white-space: nowrap; }
+  .slot-cap { grid-column: 1 / -1; margin: 0; text-align: center; font-size: 12px; line-height: 1.6; color: var(--c-text-muted); }
+  .slot-cap b { color: var(--accent); font-weight: 700; }
+  .slot-cap span span { white-space: nowrap; }
+
+  .plate {
+    position: relative; display: flex; flex-direction: column; align-items: center;
+    width: 216px; height: 70px; padding-top: 18px; border-radius: 10px;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.03) 55%, rgba(var(--accent-rgb), 0.06));
+    -webkit-backdrop-filter: blur(6px) saturate(1.2); backdrop-filter: blur(6px) saturate(1.2);
+    border: 1px solid rgba(var(--accent-rgb), 0.55);
+    box-shadow: 0 0 18px rgba(var(--accent-rgb), 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -10px 18px rgba(var(--accent-rgb), 0.06), 0 10px 20px rgba(0, 0, 0, 0.35);
+  }
+  .plate::before, .plate::after {
+    content: ''; position: absolute; top: 50%; width: 10px; height: 10px; margin-top: -5px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(var(--accent-rgb), 0.9) 0 1.5px, rgba(var(--accent-rgb), 0.25) 2.5px, transparent 4px);
+    border: 1px solid rgba(var(--c-overlay-rgb), 0.25);
+  }
+  .plate::before { left: 12px; }
+  .plate::after { right: 12px; }
+  .mouth {
+    position: relative; width: 140px; height: 15px; border-radius: 4px; background: rgba(0, 0, 0, 0.7);
+    box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(var(--accent-rgb), 0.35), 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+  .flap {
+    position: absolute; left: -5px; right: -5px; top: -5px; z-index: 2; height: 8px; border-radius: 4px 4px 2px 2px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.12));
+    border-top: 1px solid rgba(var(--accent-rgb), 0.9); box-shadow: 0 2px 6px rgba(var(--accent-rgb), 0.3);
+    -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  }
+  .mail-w { position: absolute; left: 50%; bottom: 4px; z-index: 1; width: 66px; height: 96px; margin-left: -33px; overflow: hidden; pointer-events: none; }
+  .mail {
+    position: absolute; left: 4px; bottom: -14px; width: 56px; height: 40px; border-radius: 2px;
+    transform: rotate(-4deg); transform-origin: 50% 100%; transition: transform 0.35s cubic-bezier(0.3, 0.7, 0.3, 1);
+    background: #f4efe1; border: 3px solid transparent;
+    border-image: repeating-linear-gradient(-45deg, #2f9e5a 0 5px, #f4efe1 5px 7px, #c2453a 7px 12px, #f4efe1 12px 14px) 3;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.35);
+  }
+  .mail::before { content: ''; position: absolute; right: 2px; top: 2px; width: 8px; height: 10px; background: var(--accent); outline: 1px dotted #f4efe1; outline-offset: -1px; }
+  .mail::after {
+    content: ''; position: absolute; left: 4px; top: 6px; width: 20px; height: 7px; opacity: 0.7;
+    background: linear-gradient(#9aa0a6 0 1px, transparent 1px 3px, #9aa0a6 3px 4px, transparent 4px 6px, #9aa0a6 6px 7px);
+  }
+  .plate-l { margin-top: 10px; font-size: 10px; font-weight: 700; letter-spacing: 4px; color: var(--accent); opacity: 0.85; }
+  .slot:hover .mail { transform: translateY(9px) rotate(-1deg); }
+  :global([data-mode='light']) .le-echo .plate {
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.55) 55%, rgba(var(--accent-rgb), 0.08));
+    box-shadow: 0 0 16px rgba(var(--accent-rgb), 0.16), inset 0 1px 0 #fff, 0 8px 18px rgba(15, 23, 42, 0.1);
+  }
+  :global([data-mode='light']) .le-echo .mouth { background: rgba(15, 23, 42, 0.78); }
+  :global([data-mode='light']) .le-echo .mail { box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); }
+
+  /* ── Rack head / legend ── */
+  .r-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 14px; font-size: 12px; color: var(--c-text-muted); }
+  .r-head .k { color: var(--c-text); font-weight: 600; }
+  .r-head .prompt { color: var(--accent); }
+  .r-head .n b { color: var(--c-text); font-weight: 600; }
+  .r-head .n > span, .r-legend b { white-space: nowrap; }
+  .linkish { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; margin-left: auto; color: var(--c-text); text-decoration: none; }
+  .linkish .ar { color: var(--accent); }
+  .linkish:hover { text-decoration: underline; text-underline-offset: 4px; }
+  .le-echo a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .r-legend { margin: 12px 0 0; font-size: 12px; line-height: 1.6; color: var(--c-text-muted); }
+  .r-legend b { color: var(--c-text); font-weight: 600; }
+  .badge-new {
+    position: absolute; z-index: 3; left: -4px; top: -6px; padding: 1px 7px; border-radius: 3px;
+    background: var(--accent); color: var(--c-bg); font-size: 11px; font-weight: 800; letter-spacing: 0.5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35); transform: rotate(-4deg);
+  }
+
+  /* ── Acrylic magazine rack ──
+     Each tier = .mr-row (covers; its bottom edge clips the hidden lower part)
+     + .mr-rail (the acrylic front board, which overlaps the covers by --over
+     and blurs what shows through). Back tiers show the top 47% of a cover
+     (53% in English, whose titles run longer); the front tier shows it all. */
+  .mr {
+    --cols: 4; --gap: 18px; --pad: 22px; --rail: 24px; --over: 18px; --top: 10px; --vis-b: 0.47;
+    container: mr / inline-size; position: relative; padding: var(--top) 0 4px; border-radius: 8px;
+    background: linear-gradient(180deg, rgba(var(--c-overlay-rgb), 0.035), rgba(var(--c-overlay-rgb), 0.01));
+    box-shadow: inset 0 0 0 1px rgba(var(--c-overlay-rgb), 0.07);
+  }
+  .le-rack[lang='en'] .mr { --vis-b: 0.53; }
+  .mr::before, .mr::after {
+    content: ''; position: absolute; top: 6px; bottom: 6px; z-index: 40; width: 3px; border-radius: 2px; pointer-events: none;
+    background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.55), rgba(var(--accent-rgb), 0.12)); box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.3);
+  }
+  .mr::before { left: 4px; }
+  .mr::after { right: 4px; }
+  .mr3 { display: none; }
+  .mr-tier { position: relative; }
+  .mr-row {
+    --vis: var(--vis-b);
+    --colw: calc((100cqw - 2 * var(--pad) - (var(--cols) - 1) * var(--gap)) / var(--cols));
+    position: relative; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); column-gap: var(--gap); align-items: start;
+    height: calc(var(--colw) * 4 / 3 * var(--vis) + 12px + var(--over)); padding: 12px var(--pad) 0;
+    clip-path: inset(-60px -24px 0 -24px);
+  }
+  .mr-tier.front .mr-row { --vis: 0.99; }
+  .mr-mag {
+    position: relative; z-index: 1; display: block; transform-origin: 50% 100%;
+    transform: perspective(700px) rotateX(5deg) rotate(var(--r)); transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .mr-tier.front .mr-mag { transform: perspective(700px) rotateX(2deg) rotate(var(--r)); }
+  .mr-mag img { display: block; width: 100%; height: auto; aspect-ratio: 3 / 4; border-radius: 1px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12), 0 3px 8px var(--shadow); }
+  .mr-tier .mr-mag:hover, .mr-tier .mr-mag:focus-visible { transform: translateY(-14px) rotate(0deg); }
+  .mr-rail {
+    position: relative; z-index: 3; height: var(--rail); margin: calc(-1 * var(--over)) 10px 0; overflow: hidden; border-radius: 3px 3px 4px 4px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0, rgba(255, 255, 255, 0.06) 40%, rgba(255, 255, 255, 0.03) 70%, rgba(255, 255, 255, 0.12) 100%);
+    -webkit-backdrop-filter: blur(1.4px) saturate(1.15) brightness(0.92); backdrop-filter: blur(1.4px) saturate(1.15) brightness(0.92);
+    border-top: 1px solid rgba(var(--accent-rgb), 0.9);
+    box-shadow: 0 -2px 10px -2px rgba(var(--accent-rgb), 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 -1px 0 rgba(255, 255, 255, 0.18), 0 8px 12px -6px rgba(0, 0, 0, 0.6);
+  }
+  .mr-rail::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(100deg, transparent 0 18%, rgba(255, 255, 255, 0.16) 22%, transparent 30% 64%, rgba(255, 255, 255, 0.1) 67%, transparent 72%);
+  }
+  :global([data-mode='light']) .le-echo .mr-rail {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0, rgba(255, 255, 255, 0.38) 45%, rgba(255, 255, 255, 0.3) 70%, rgba(255, 255, 255, 0.6) 100%);
+    -webkit-backdrop-filter: blur(1.4px) saturate(1.1); backdrop-filter: blur(1.4px) saturate(1.1);
+    box-shadow: 0 -2px 10px -2px rgba(var(--accent-rgb), 0.35), inset 0 1px 0 #fff, inset 0 -1px 0 rgba(15, 23, 42, 0.08), 0 8px 12px -6px rgba(15, 23, 42, 0.25);
+  }
+  :global([data-mode='light']) .le-echo .mr-rail::before {
+    background: linear-gradient(100deg, transparent 0 18%, rgba(255, 255, 255, 0.7) 22%, transparent 30% 64%, rgba(255, 255, 255, 0.5) 67%, transparent 72%);
+  }
+
+  /* Entrance, once (the script only arms it without reduced motion). */
+  .le-echo.armed .mail { animation: le-mail-in 1.4s 0.2s cubic-bezier(0.3, 0.7, 0.3, 1) both paused; }
+  .le-echo.armed .mr-mag img { animation: le-mag-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both paused; animation-delay: calc(900ms + var(--i) * 60ms); }
+  .le-echo.armed .mr-rail { animation: le-rail-in 0.5s ease-out both paused; animation-delay: calc(700ms + var(--t) * 120ms); }
+  .le-echo.armed.play .mail, .le-echo.armed.play .mr-mag img, .le-echo.armed.play .mr-rail { animation-play-state: running; }
+  @keyframes le-mail-in { 0% { opacity: 0; transform: translateY(-58px) rotate(-14deg); } 25% { opacity: 1; } 72% { transform: translateY(8px) rotate(-2deg); } 100% { transform: translateY(0) rotate(-4deg); } }
+  @keyframes le-mag-in { from { opacity: 0; transform: translateY(-16px); } }
+  @keyframes le-rail-in { from { opacity: 0; clip-path: inset(0 100% 0 0); } to { opacity: 1; clip-path: inset(0 0 0 0); } }
+
+  /* ── Phone width ── */
+  @container le (max-width: 560px) {
+    .slot { gap: 10px 8px; margin: 26px 0 20px; }
+    .slot-track { display: none; }
+    .plate { width: min(148px, 50cqw); height: 64px; padding-top: 16px; }
+    .plate::before { left: 8px; }
+    .plate::after { right: 8px; }
+    .mouth { width: calc(100% - 44px); }
+    .plate-l { font-size: 9px; letter-spacing: 3px; }
+    .slot-stat b { font-size: 16px; }
+    .linkish { margin-left: 0; }
+    .mr4 { display: none; }
+    .mr3 { display: block; }
+    .mr { --gap: 10px; --pad: 14px; --top: 10px; --rail: 20px; --over: 15px; }
+    .mr-rail { margin-left: 8px; margin-right: 8px; }
+    .mr-row { padding-top: 10px; height: calc(var(--colw) * 4 / 3 * var(--vis) + 10px + var(--over)); }
+    .mr-tier .mr-mag:hover, .mr-tier .mr-mag:focus-visible { transform: translateY(-10px) rotate(0deg); }
+  }
+  @container le (max-width: 260px) {
+    .slot { grid-template-columns: auto auto; justify-content: center; gap: 10px 14px; }
+    .plate { grid-column: 1 / -1; grid-row: 1; justify-self: center; width: 156px; }
+    .slot-side { grid-row: 2; }
+    .slot-stat { flex-direction: row; align-items: baseline; gap: 6px; }
+    .slot-side.l::after { content: '→'; color: var(--accent); font-size: 14px; }
+    .slot-cap { grid-row: 3; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .mail, .mr-mag { transition: none; }
+  }
 </style>
