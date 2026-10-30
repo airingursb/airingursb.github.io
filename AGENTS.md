@@ -108,7 +108,8 @@ http://localhost:4321-4323
 ## Data Pipeline
 
 ### CI 自动更新 (每日)
-`scripts/update_feed.py` → 聚合 blog feed, Telegram, Readwise, Last.fm, GitHub, Raindrop → 输出 `src/data/` + 注入 `index.html`
+`scripts/update_feed.py` → 聚合 blog feed, Readwise, Last.fm, GitHub, Raindrop → 输出 `src/data/` + 注入 `index.html`
+`scripts/fetch_telegram.py` → Telegram 频道最近 30 条 → `src/data/telegram.json` + 图片 `public/images/tg/`（首页频道卡 `src/components/ChannelCard.astro`）
 
 ### 本地 Cron
 `scripts/collect_local_data.py` → Apple Health, Codex usage (ccusage), Daylio mood → `data/local_data.json`

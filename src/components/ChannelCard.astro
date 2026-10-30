@@ -1,0 +1,493 @@
+---
+// src/components/ChannelCard.astro
+//
+// Homepage "Channel" card: the @airingchannel Telegram channel drawn as a
+// Telegram desktop window. The sidebar has the channel profile, counters and
+// the latest shared photos; the chat pane shows the six newest posts on the
+// chat wallpaper, with "load older" revealing the rest in batches. Photos,
+// link previews and Douban "看过" posters render like the real client; hover
+// a bubble to react or copy its link, click a photo for a lightbox. Below
+// 560px the sidebar folds into a mobile-style header.
+//
+// Data is src/data/telegram.json, written by scripts/fetch_telegram.py, which
+// also self-hosts every image under public/images/tg/.
+import telegram from '../data/telegram.json';
+
+type Img = { src: string; w: number; h: number; video?: boolean };
+type Preview = { url: string; site: string; title: string; description: string; image?: Img; layout?: 'side' | 'wide' };
+type Douban = {
+  kind: 'movie' | 'book'; id: string; verb: string; title: string; url: string;
+  rating?: number; year?: number; minutes?: number; episodes?: number | null; tv?: boolean; author?: string; cover?: Img;
+};
+type Msg = {
+  id: number; url: string; date: string; title: string; text: string; html: string; views: string;
+  forwarded_from?: string; images: Img[]; preview: Preview | null; douban?: Douban;
+  reactions: { emoji: string; count: string }[];
+};
+type Channel = { title: string; handle: string; url: string; subscribers?: number; photos?: number; videos?: number; links?: number; messages?: number; avatar?: string };
+
+const data = telegram as unknown as { channel?: Channel; messages?: Msg[] };
+const ch: Channel = data.channel ?? { title: 'Airing Channel', handle: 'airingchannel', url: 'https://t.me/airingchannel' };
+const all: Msg[] = (Array.isArray(data.messages) ? data.messages : []).slice().sort((a, b) => b.id - a.id);
+
+const FIRST = 6;   // posts shown on load
+const BATCH = 8;   // posts per "load older"
+const latest = all.slice(0, FIRST);
+const older = all.slice(FIRST);
+const batches: Msg[][] = [];
+for (let i = 0; i < older.length; i += BATCH) batches.push(older.slice(i, i + BATCH));
+
+const fmt = (n?: number) => (typeof n === 'number' ? n.toLocaleString('en-US') : '–');
+const p2 = (n: number) => String(n).padStart(2, '0');
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// Timestamps in the channel owner's time zone (UTC+8)
+function local(iso: string) {
+  const d = new Date(new Date(iso).getTime() + 8 * 3600e3);
+  return { y: d.getUTCFullYear(), mo: d.getUTCMonth() + 1, d: d.getUTCDate(), hm: `${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}`, key: d.toISOString().slice(0, 10) };
+}
+const refYear = all.length ? local(all[0].date).y : new Date().getFullYear();
+function dateLabel(iso: string) {
+  const t = local(iso);
+  const yz = t.y !== refYear ? `${t.y} 年 ` : '';
+  const ye = t.y !== refYear ? `, ${t.y}` : '';
+  return { key: t.key, zh: `${yz}${t.mo} 月 ${t.d} 日`, en: `${MONTHS[t.mo - 1]} ${t.d}${ye}` };
+}
+
+// Message text: html is sanitised by the fetch script (a / b / i / code / s / u
+// and newlines). Drop the trailing URL a preview card already shows, turn the
+// bot's double-space paragraphs into line breaks and shorten bare URLs.
+function bodyHtml(m: Msg) {
+  let h = m.html || '';
+  if (m.douban) h = h.replace(/\s+-\s+<a [^>]*>https?:\/\/(?:movie|book)\.douban\.com[^<]*<\/a>\s*$/, '');
+  else if (m.preview) h = h.replace(/\s*<a [^>]*>https?:\/\/[^<]*<\/a>\s*$/, '');
+  h = h.replace(/ {2,}/g, '\n\n').replace(/ • /g, '\n• ').replace(/[ \t]+\n/g, '\n').replace(/\n[ \t]+/g, '\n');
+  h = h.replace(/(<a [^>]*>)(https?:\/\/[^<]+)(<\/a>)/g, (_, a, u, b) => a + u.replace(/^https?:\/\//, '').replace(/\/$/, '') + b);
+  return h.trim();
+}
+const plainLen = (h: string) => h.replace(/<[^>]+>/g, '').length;
+
+const VERB: Record<string, string> = { 看过: 'watched', 想看: 'wish_movie', 在看: 'watching', 读过: 'read', 想读: 'wish_book', 在读: 'reading' };
+const VERB_EN: Record<string, string> = { watched: 'Watched', wish_movie: 'Want to watch', watching: 'Watching', read: 'Read', wish_book: 'Want to read', reading: 'Reading' };
+const stars = (r = 0) => '★'.repeat(Math.max(0, Math.min(5, r)));
+const dimStars = (r = 0) => '★'.repeat(5 - Math.max(0, Math.min(5, r)));
+
+type Row = { kind: 'date'; key: string; zh: string; en: string } | { kind: 'msg'; m: Msg; t: ReturnType<typeof local>; body: string; long: boolean };
+// Chronological rows for one block; each block opens with a date chip (the
+// client hides a chip that repeats the day right above it).
+function rows(list: Msg[]): Row[] {
+  const out: Row[] = [];
+  let last = '';
+  list.slice().sort((a, b) => a.id - b.id).forEach((m) => {
+    const dl = dateLabel(m.date);
+    if (dl.key !== last) { out.push({ kind: 'date', ...dl }); last = dl.key; }
+    const body = bodyHtml(m);
+    out.push({ kind: 'msg', m, t: local(m.date), body, long: plainLen(body) > 160 });
+  });
+  return out;
+}
+// Oldest batch first in the DOM, the six newest posts last (visible)
+const blocks = [
+  ...batches.map((b, i) => ({ n: i + 1, rows: rows(b) })).reverse(),
+  { n: 0, rows: rows(latest) },
+];
+
+const media = all.flatMap((m) => m.images.filter((im) => !im.video).slice(0, 1).map((im) => ({ ...im, id: m.id, title: m.title }))).slice(0, 6);
+const handle = ch.handle || 'airingchannel';
+const EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const SHARE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 5l7 7-7 7M21 12H9a6 6 0 0 0-6 6"/></svg>';
+const REACTS = ['👍', '🔥', '❤️', '🫡'];
+const norm = (e: string) => e.replace(/️/g, '');
+---
+
+<div class="card card-channel" id="channel" data-tg-card>
+  <div class="section-title-row">
+    <span class="section-title" data-i18n="sec_channel">频道</span>
+    <a class="photos-strip-more" href={ch.url} target="_blank" rel="noopener">t.me/{handle} →</a>
+  </div>
+  <div class="feed-head">
+    <span class="feed-head-cmd"><span class="prompt">$</span> tg tail @{handle}</span>
+    <span class="feed-head-total"><strong>{fmt(ch.subscribers)}</strong> <span data-i18n="tg_subs">订阅</span><span class="x2"> · <strong>{fmt(ch.photos)}</strong> <span data-i18n="tg_photos_unit">张图</span></span></span>
+  </div>
+
+  <div class="ca-win">
+    <div class="ca-bar" aria-hidden="true"><i class="ca-dot" style="background:#ff5f57"></i><i class="ca-dot" style="background:#febc2e"></i><i class="ca-dot" style="background:#28c840"></i><span class="ca-title"><b>{ch.title}</b> — Telegram</span></div>
+    <div class="ca-body">
+      <aside class="ca-side">
+        <div class="ca-ava">
+          {ch.avatar && <img src={ch.avatar} alt={ch.title} width="76" height="76" loading="lazy" decoding="async" />}
+          <div class="nm">{ch.title}</div>
+          <div class="sub">@{handle}<br /><span>{fmt(ch.subscribers)}</span> <span data-i18n="tg_subscribers">位订阅者</span></div>
+        </div>
+        <div class="ca-desc"><span data-i18n="tg_desc">Airing 的频道</span><br />Blog <a href="https://ursb.me/" target="_blank" rel="noopener">ursb.me</a> · <span data-i18n="tg_group">群</span> <a href="https://t.me/airinggroup" target="_blank" rel="noopener">@airinggroup</a></div>
+        <div class="ca-stats">
+          <div><b>{fmt(ch.photos)}</b><span data-i18n="tg_stat_photos">图片</span></div>
+          <div><b>{fmt(ch.links)}</b><span data-i18n="tg_stat_links">链接</span></div>
+          <div><b>{fmt(ch.videos)}</b><span data-i18n="tg_stat_videos">视频</span></div>
+          <div><b>{fmt(ch.messages)}</b><span data-i18n="tg_stat_posts">条消息</span></div>
+        </div>
+        <div class="ca-mh"><span data-i18n="tg_shared_media">共享媒体</span><span>{fmt(ch.photos)}</span></div>
+        <div class="ca-media-grid">
+          {media.map((im) => {
+            const t = local(all.find((m) => m.id === im.id)!.date);
+            return <button type="button" class="ca-zoom" data-zoom={im.src} data-cap={`#${im.id} · ${p2(t.mo)}/${p2(t.d)} ${t.hm}`}><img src={im.src} alt={im.title || `#${im.id}`} width={im.w} height={im.h} loading="lazy" decoding="async" /></button>;
+          })}
+        </div>
+        <a class="ca-join" href={ch.url} target="_blank" rel="noopener" data-i18n="tg_join">加入频道</a>
+      </aside>
+
+      <div class="ca-chat">
+        <div class="ca-head">
+          {ch.avatar && <img src={ch.avatar} alt="" width="34" height="34" loading="lazy" decoding="async" />}
+          <div><div class="nm">{ch.title}</div><div class="sub"><span>{fmt(ch.subscribers)}</span> <span data-i18n="tg_subscribers">位订阅者</span></div></div>
+        </div>
+        <div class="ca-scroll" data-tg-scroll>
+          {batches.length > 0 && (
+            <button class="ca-older" type="button" data-tg-older>↑ <span data-i18n="tg_older">加载更早消息</span> (<span data-tg-left>{older.length}</span>)</button>
+          )}
+          {blocks.map((b) => (
+            <div class="ca-batch" data-tg-batch={b.n} hidden={b.n > 0}>
+              {b.rows.map((r) => r.kind === 'date' ? (
+                <div class="ca-date" data-key={r.key}><span class="tg-zh">{r.zh}</span><span class="tg-en">{r.en}</span></div>
+              ) : (
+                <div class="ca-msg" data-id={r.m.id}>
+                  {r.m.images.length > 0 && (
+                    <div class:list={['ca-media', { grid: r.m.images.length > 1 }]}>
+                      {r.m.images.map((im) => im.video ? (
+                        <a class="ca-vid" href={r.m.url} target="_blank" rel="noopener"><img src={im.src} alt={r.m.title || `#${r.m.id}`} width={im.w} height={im.h} loading="lazy" decoding="async" /><i aria-hidden="true">▶</i></a>
+                      ) : (
+                        <button type="button" class="ca-zoom" data-zoom={im.src} data-cap={`#${r.m.id} · ${p2(r.t.mo)}/${p2(r.t.d)} ${r.t.hm}`}><img src={im.src} alt={r.m.title || `#${r.m.id}`} width={im.w} height={im.h} loading="lazy" decoding="async" /></button>
+                      ))}
+                    </div>
+                  )}
+                  {r.m.forwarded_from ? (
+                    <div class="ca-from ca-fwd"><span data-i18n="tg_forwarded">转发自</span> <b>{r.m.forwarded_from}</b></div>
+                  ) : r.m.images.length === 0 && <div class="ca-from">{ch.title}</div>}
+                  {r.body && <div class:list={['ca-txt', { clamp: r.long }]} set:html={r.body} />}
+                  {r.long && <button class="ca-more" type="button" aria-expanded="false" data-tg-more><span class="o" data-i18n="tg_expand">展开全文 ↓</span><span class="c" data-i18n="tg_collapse">收起 ↑</span></button>}
+                  {r.m.preview && (
+                    <a class:list={['ca-lp', { side: r.m.preview.layout === 'side' && r.m.preview.image }]} href={r.m.preview.url} target="_blank" rel="noopener">
+                      {r.m.preview.site && <span class="s">{r.m.preview.site}</span>}
+                      {r.m.preview.title && <span class="t">{r.m.preview.title}</span>}
+                      {r.m.preview.description && <span class="d">{r.m.preview.description}</span>}
+                      {r.m.preview.image && <img src={r.m.preview.image.src} alt="" width={r.m.preview.image.w} height={r.m.preview.image.h} loading="lazy" decoding="async" />}
+                    </a>
+                  )}
+                  {r.m.douban && (
+                    <a class:list={['ca-lp', { side: r.m.douban.cover }]} href={r.m.douban.url} target="_blank" rel="noopener">
+                      <span class="s" data-i18n={r.m.douban.kind === 'book' ? 'tg_douban_book' : 'tg_douban_movie'}>{r.m.douban.kind === 'book' ? '豆瓣读书' : '豆瓣电影'}</span>
+                      <span class="t">{r.m.douban.title}{r.m.douban.year ? ` (${r.m.douban.year})` : ''}</span>
+                      <span class="d">
+                        {r.m.douban.rating ? <><span class="ca-stars" role="img" aria-label={`${r.m.douban.rating}/5`}>{stars(r.m.douban.rating)}<span class="dim">{dimStars(r.m.douban.rating)}</span></span> · </> : null}
+                        {r.m.douban.tv && r.m.douban.episodes ? <>{`${r.m.douban.episodes} `}<span data-i18n="tg_eps">集</span>{' · '}</> : null}
+                        {!r.m.douban.tv && r.m.douban.minutes ? <>{`${r.m.douban.minutes} `}<span data-i18n="tg_min">分钟</span>{' · '}</> : null}
+                        {r.m.douban.author ? <>{r.m.douban.author} · </> : null}
+                        <span data-i18n={`tg_verb_${VERB[r.m.douban.verb] ?? 'watched'}`}>{r.m.douban.verb}</span>
+                      </span>
+                      {r.m.douban.cover && <img src={r.m.douban.cover.src} alt={r.m.douban.title} width={r.m.douban.cover.w} height={r.m.douban.cover.h} loading="lazy" decoding="async" />}
+                    </a>
+                  )}
+                  <div class="ca-reacts">{r.m.reactions.map((x) => <span data-e={norm(x.emoji)} data-n={x.count}>{x.emoji} {x.count}</span>)}</div>
+                  <div class="ca-meta"><Fragment set:html={EYE} /><span>{r.m.views}</span><span>· {r.t.hm}</span></div>
+                  <div class="ca-tools">{REACTS.map((e) => <button type="button" data-r={norm(e)} aria-label={e}>{e}</button>)}</div>
+                  <a class="ca-share" href={r.m.url} target="_blank" rel="noopener" title={`t.me/${handle}/${r.m.id}`} aria-label={`t.me/${handle}/${r.m.id}`} data-tg-share><Fragment set:html={SHARE} /></a>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div class="ca-foot"><button type="button" data-tg-mute aria-pressed="false"><span class="m-off" data-i18n="tg_mute">🔔 静音</span><span class="m-on" data-i18n="tg_unmute">🔕 取消静音</span></button></div>
+        <div class="ca-toast" role="status" aria-live="polite" data-tg-toast></div>
+      </div>
+    </div>
+  </div>
+  <div class="src-line">
+    <span data-i18n="tg_hint">悬停气泡：表情 / 转发 · 点图看大图 · 向上滚动或点「加载更早」</span>
+    <span><span data-i18n="tg_data_from">数据来自</span> <a href={`https://t.me/s/${handle}`} target="_blank" rel="noopener">t.me/s/{handle}</a></span>
+  </div>
+  <dialog class="ca-lb" data-tg-lb aria-label="Image">
+    <img alt="" />
+    <div class="cap"></div>
+  </dialog>
+</div>
+
+<style>
+  /* ── Window palette (dark default, light below) ── */
+  .card-channel {
+    container-type: inline-size;
+    container-name: tgcard;
+    --ca-side: #10161d; --ca-bar1: #1d232b; --ca-bar2: #171c22; --ca-bub: #182533; --ca-bub-t: #e6edf3; --ca-meta: #7d9bb3;
+    --ca-wall: #0e1a13; --ca-wall2: #12251a; --ca-date: rgba(0, 0, 0, .38); --ca-lp: rgba(74, 222, 128, .09); --ca-link: #6ab3f3;
+    --ca-pat: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' fill='none' stroke='%23ffffff' stroke-opacity='.055' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 34l24-10-7 24-6-9zM25 39l6-15'/%3E%3Ccircle cx='108' cy='26' r='8'/%3E%3Cpath d='M66 64l4 8 9 1-7 6 2 9-8-5-8 5 2-9-7-6 9-1z'/%3E%3Cpath d='M18 104l7 7-7 7M31 118h13'/%3E%3Cpath d='M108 104c0-5 7-7 9-2 2-5 9-3 9 2 0 6-9 11-9 11s-9-5-9-11z'/%3E%3Crect x='62' y='120' width='18' height='13' rx='2'/%3E%3Cpath d='M66 120v-3h10v3M128 66h10M133 61v10'/%3E%3C/svg%3E");
+  }
+  :global(html[data-mode="light"]) .card-channel {
+    --ca-side: #ffffff; --ca-bar1: #f3f4f6; --ca-bar2: #e8eaed; --ca-bub: #ffffff; --ca-bub-t: #1f2328; --ca-meta: #8b9aa6;
+    --ca-wall: #dbe7c6; --ca-wall2: #c3d9a6; --ca-date: rgba(52, 80, 40, .38); --ca-lp: rgba(22, 163, 74, .08); --ca-link: #2481cc;
+    --ca-pat: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' fill='none' stroke='%23284018' stroke-opacity='.12' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 34l24-10-7 24-6-9zM25 39l6-15'/%3E%3Ccircle cx='108' cy='26' r='8'/%3E%3Cpath d='M66 64l4 8 9 1-7 6 2 9-8-5-8 5 2-9-7-6 9-1z'/%3E%3Cpath d='M18 104l7 7-7 7M31 118h13'/%3E%3Cpath d='M108 104c0-5 7-7 9-2 2-5 9-3 9 2 0 6-9 11-9 11s-9-5-9-11z'/%3E%3Crect x='62' y='120' width='18' height='13' rx='2'/%3E%3Cpath d='M66 120v-3h10v3M128 66h10M133 61v10'/%3E%3C/svg%3E");
+  }
+
+  /* Bilingual date chips */
+  :global(html[lang='en']) .card-channel .tg-zh,
+  :global(html:not([lang='en'])) .card-channel .tg-en { display: none; }
+
+  .feed-head-total { white-space: nowrap; }
+  .ca-win :global(a), .src-line a { text-decoration: none; }
+  .ca-txt :global(a:hover), .ca-desc a:hover, .src-line a:hover { text-decoration: underline; }
+
+  /* ── Window chrome ── */
+  .ca-win { border-radius: 10px; overflow: hidden; border: 1px solid rgba(var(--c-overlay-rgb), .12); background: var(--ca-side); box-shadow: 0 22px 44px -22px rgba(0, 0, 0, .7), 0 1px 0 rgba(255, 255, 255, .04) inset; }
+  .ca-bar { height: 30px; display: flex; align-items: center; gap: 7px; padding: 0 12px; background: linear-gradient(var(--ca-bar1), var(--ca-bar2)); border-bottom: 1px solid rgba(0, 0, 0, .3); font-size: 11px; color: var(--c-text-muted); }
+  .ca-dot { width: 11px; height: 11px; border-radius: 50%; box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .25); }
+  .ca-title { flex: 1; text-align: center; margin-right: 44px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ca-title b { color: var(--c-text); font-weight: 600; }
+  .ca-body { display: grid; grid-template-columns: 210px minmax(0, 1fr); height: 560px; }
+
+  /* ── Sidebar ── */
+  .ca-side { display: flex; flex-direction: column; gap: 14px; padding: 18px 16px 16px; border-right: 1px solid rgba(var(--c-overlay-rgb), .08); min-height: 0; overflow: hidden; }
+  .ca-ava { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; }
+  .ca-ava img { width: 76px; height: 76px; border-radius: 50%; box-shadow: 0 0 0 3px rgba(var(--accent-rgb), .25); }
+  .ca-ava .nm { font-size: 14px; font-weight: 700; color: var(--c-text); }
+  .ca-ava .sub { font-size: 11px; color: var(--c-text-muted); }
+  .ca-desc { font-size: 11px; line-height: 1.7; color: var(--c-text-muted); border-left: 2px solid rgba(var(--accent-rgb), .5); padding-left: 8px; }
+  .ca-desc a { color: var(--accent); }
+  .ca-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .ca-stats div { padding: 6px 8px; border-radius: 6px; background: rgba(var(--c-overlay-rgb), .04); font-size: 10.5px; color: var(--c-text-muted); line-height: 1.35; }
+  .ca-stats b { display: block; font-size: 14px; color: var(--c-text); }
+  .ca-mh { font-size: 10.5px; color: var(--c-text-dim); letter-spacing: 1px; text-transform: uppercase; display: flex; justify-content: space-between; }
+  .ca-media-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; border-radius: 6px; overflow: hidden; }
+  .ca-media-grid img { width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; display: block; transition: filter .2s; }
+  .ca-media-grid .ca-zoom:hover img { filter: brightness(1.15); }
+  .ca-join { margin-top: auto; display: block; text-align: center; padding: 7px; border-radius: 6px; background: var(--accent); color: #0d1117; font-size: 12px; font-weight: 700; text-decoration: none; }
+  .ca-join:hover { filter: brightness(1.08); }
+
+  .ca-zoom { display: block; width: 100%; padding: 0; margin: 0; border: 0; background: none; cursor: zoom-in; font: inherit; }
+
+  /* ── Chat pane ── */
+  .ca-chat { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--ca-pat), linear-gradient(160deg, var(--ca-wall), var(--ca-wall2)); }
+  .ca-head { display: none; align-items: center; gap: 10px; padding: 8px 12px; background: var(--ca-side); border-bottom: 1px solid rgba(var(--c-overlay-rgb), .08); }
+  .ca-head img { width: 34px; height: 34px; border-radius: 50%; }
+  .ca-head .nm { font-size: 13px; font-weight: 700; color: var(--c-text); line-height: 1.3; }
+  .ca-head .sub { font-size: 11px; color: var(--c-text-muted); }
+  .ca-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px 54px 10px 16px; display: flex; flex-direction: column; gap: 8px; scrollbar-width: thin; scrollbar-color: rgba(var(--c-overlay-rgb), .2) transparent; }
+  .ca-batch { display: contents; }
+  .ca-batch[hidden] { display: none; }
+  .ca-older { align-self: center; font: inherit; font-size: 11px; background: var(--ca-date); color: #fff; border: 0; border-radius: 12px; padding: 3px 12px; cursor: pointer; }
+  .ca-older:hover { filter: brightness(1.3); }
+  .ca-date { align-self: center; background: var(--ca-date); color: #fff; font-size: 11px; padding: 2px 10px; border-radius: 12px; margin: 4px 0; }
+  .ca-date.dup { display: none; }
+
+  /* ── Bubble ── */
+  .ca-msg { position: relative; align-self: flex-start; width: min(400px, 100%); background: var(--ca-bub); color: var(--ca-bub-t); border-radius: 12px 12px 12px 4px; box-shadow: 0 1px 1.5px rgba(0, 0, 0, .22); animation: caIn .35s ease both; }
+  .ca-msg::before { content: ''; position: absolute; left: -7px; bottom: 0; width: 8px; height: 12px; background: var(--ca-bub); clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+  @keyframes caIn { from { opacity: 0; transform: translateY(8px); } }
+  @media (prefers-reduced-motion: reduce) { .ca-msg { animation: none; } }
+  .ca-media { border-radius: 12px 12px 0 0; overflow: hidden; background: rgba(0, 0, 0, .2); }
+  .ca-media img { display: block; width: 100%; height: auto; max-height: 300px; object-fit: cover; object-position: top; }
+  .ca-media.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+  .ca-media.grid img { aspect-ratio: 1; height: 100%; max-height: 200px; }
+  .ca-vid { position: relative; display: block; }
+  .ca-vid i { position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; display: grid; place-items: center; background: rgba(0, 0, 0, .55); color: #fff; font-style: normal; font-size: 16px; }
+  .ca-from { padding: 7px 11px 0; font-size: 12.5px; font-weight: 700; color: var(--accent); }
+  .ca-fwd { font-weight: 400; font-size: 12px; }
+  .ca-fwd b { font-weight: 700; }
+  .ca-txt { padding: 6px 11px 2px; font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .ca-txt :global(a), .ca-lp :global(a) { color: var(--ca-link); }
+  .ca-txt :global(code) { font-size: 12px; padding: 0 3px; border-radius: 3px; background: rgba(var(--c-overlay-rgb), .08); }
+  .ca-txt.clamp { max-height: 7.9em; overflow: hidden; -webkit-mask: linear-gradient(#000 60%, transparent); mask: linear-gradient(#000 60%, transparent); }
+  .ca-more { margin: 0 11px; font: inherit; font-size: 12px; color: var(--accent); background: none; border: 0; padding: 2px 0; cursor: pointer; }
+  .ca-more .c, .ca-more[aria-expanded="true"] .o { display: none; }
+  .ca-more[aria-expanded="true"] .c { display: inline; }
+
+  /* Link preview / Douban card */
+  .ca-lp { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; margin: 6px 11px 2px; padding: 6px 9px 8px; border-left: 3px solid var(--accent); border-radius: 4px; background: var(--ca-lp); font-size: 12px; line-height: 1.5; color: inherit; text-decoration: none; }
+  .ca-lp .s { font-weight: 700; color: var(--accent); }
+  .ca-lp .t { font-weight: 700; }
+  .ca-lp .d { color: var(--c-text-muted); font-size: 11.5px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+  .ca-lp img { width: 100%; height: auto; border-radius: 6px; margin-top: 6px; display: block; }
+  .ca-lp.side { grid-template-columns: minmax(0, 1fr) 66px; column-gap: 10px; align-content: start; }
+  .ca-lp.side img { grid-column: 2; grid-row: 1 / span 4; margin: 0; width: 66px; object-fit: cover; border-radius: 4px; }
+  .ca-stars { color: #f5a623; letter-spacing: 1px; }
+  .ca-stars .dim { opacity: .28; }
+
+  .ca-meta { display: flex; justify-content: flex-end; align-items: center; gap: 5px; padding: 2px 10px 6px; font-size: 11px; color: var(--ca-meta); }
+  .ca-meta :global(svg) { width: 14px; height: 14px; }
+  .ca-reacts { display: flex; gap: 5px; flex-wrap: wrap; padding: 4px 10px 2px; }
+  .ca-reacts:empty { display: none; }
+  .ca-reacts :global(span) { font-size: 12px; padding: 1px 7px; border-radius: 10px; background: rgba(var(--accent-rgb), .16); color: var(--ca-bub-t); }
+  .ca-reacts :global(span.mine) { background: var(--accent); color: #0d1117; }
+  .ca-tools { position: absolute; top: 6px; right: 6px; display: flex; gap: 2px; padding: 3px; border-radius: 14px; background: rgba(0, 0, 0, .55); opacity: 0; transform: translateY(-4px); transition: .15s; pointer-events: none; }
+  .ca-msg:hover .ca-tools, .ca-msg:focus-within .ca-tools { opacity: 1; transform: none; pointer-events: auto; }
+  .ca-tools button { width: 26px; height: 24px; border: 0; background: none; border-radius: 12px; cursor: pointer; font-size: 14px; line-height: 1; padding: 0; }
+  .ca-tools button:hover { background: rgba(255, 255, 255, .15); transform: scale(1.15); }
+  .ca-share { position: absolute; right: -40px; bottom: 2px; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: rgba(0, 0, 0, .28); color: #fff; opacity: 0; transition: opacity .15s; }
+  .ca-msg:hover .ca-share, .ca-share:focus-visible { opacity: 1; }
+  .ca-share :global(svg) { width: 15px; height: 15px; }
+
+  .ca-foot { display: flex; align-items: center; justify-content: center; gap: 10px; height: 44px; flex: none; background: var(--ca-side); border-top: 1px solid rgba(var(--c-overlay-rgb), .08); }
+  .ca-foot button { font: inherit; font-size: 12px; font-weight: 700; letter-spacing: 1px; color: var(--accent); background: none; border: 0; cursor: pointer; padding: 6px 18px; border-radius: 6px; }
+  .ca-foot button:hover { background: rgba(var(--accent-rgb), .1); }
+  .ca-foot .m-on, .ca-foot [aria-pressed="true"] .m-off { display: none; }
+  .ca-foot [aria-pressed="true"] .m-on { display: inline; }
+  .ca-toast { position: absolute; left: 50%; bottom: 56px; transform: translateX(-50%); padding: 4px 12px; border-radius: 12px; background: rgba(0, 0, 0, .75); color: #fff; font-size: 11px; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; }
+  .ca-toast.on { opacity: 1; }
+
+  .src-line { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 14px; margin-top: 14px; font-size: 11px; color: var(--c-text-dim); line-height: 1.6; }
+  .src-line a { color: var(--c-text-muted); }
+  .src-line a:hover { color: var(--accent); }
+
+  /* Lightbox (a modal <dialog>, so it sits in the top layer above the card's containment) */
+  .ca-lb { max-width: none; max-height: none; width: 100%; height: 100%; margin: 0; padding: 24px; border: 0; background: transparent; display: none; align-items: center; justify-content: center; cursor: zoom-out; }
+  .ca-lb[open] { display: flex; flex-direction: column; gap: 12px; }
+  .ca-lb::backdrop { background: rgba(0, 0, 0, .78); }
+  .ca-lb img { max-width: min(900px, 100%); max-height: calc(100vh - 110px); border-radius: 8px; box-shadow: 0 20px 60px rgba(0, 0, 0, .6); }
+  .ca-lb .cap { text-align: center; color: #e6edf3; font-size: 12px; }
+
+  /* ── Phone: fold the sidebar into a mobile header ── */
+  @container tgcard (max-width: 560px) {
+    .ca-body { grid-template-columns: minmax(0, 1fr); height: 540px; }
+    .ca-side { display: none; }
+    .ca-head { display: flex; }
+    .ca-scroll { padding: 10px 46px 10px 14px; }
+    .ca-bar { display: none; }
+    .ca-share { right: -36px; }
+    .feed-head-total .x2 { display: none; }
+  }
+</style>
+
+<script>
+  const tr = (key: string, zh: string, en: string) => {
+    const w = window as unknown as { t?: (k: string) => string };
+    const v = typeof w.t === 'function' ? w.t(key) : key;
+    if (v && v !== key) return v;
+    return (document.documentElement.lang || '').toLowerCase().startsWith('en') ? en : zh;
+  };
+
+  function initChannel(card: HTMLElement) {
+    const scroll = card.querySelector<HTMLElement>('[data-tg-scroll]');
+    const lb = card.querySelector<HTMLDialogElement>('[data-tg-lb]');
+    const toastEl = card.querySelector<HTMLElement>('[data-tg-toast]');
+    if (!scroll) return;
+
+    const toBottom = () => { scroll.scrollTop = scroll.scrollHeight; };
+    toBottom();
+    requestAnimationFrame(toBottom);
+    window.addEventListener('load', toBottom, { once: true });
+
+    let toastTimer = 0;
+    const toast = (msg: string) => {
+      if (!toastEl) return;
+      toastEl.textContent = msg;
+      toastEl.classList.add('on');
+      clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => toastEl.classList.remove('on'), 1600);
+    };
+
+    // A date chip that repeats the day of the chip above it is hidden.
+    const dedupeDates = () => {
+      let last = '';
+      scroll.querySelectorAll<HTMLElement>('.ca-batch:not([hidden]) .ca-date').forEach((el) => {
+        const k = el.dataset.key || '';
+        el.classList.toggle('dup', k === last);
+        last = k;
+      });
+    };
+
+    const olderBtn = scroll.querySelector<HTMLButtonElement>('[data-tg-older]');
+    const loadOlder = () => {
+      const next = [...scroll.querySelectorAll<HTMLElement>('.ca-batch[hidden]')].pop();
+      if (!next) return;
+      const fromBottom = scroll.scrollHeight - scroll.scrollTop;
+      next.hidden = false;
+      dedupeDates();
+      scroll.scrollTop = scroll.scrollHeight - fromBottom;
+      const left = scroll.querySelectorAll('.ca-batch[hidden] .ca-msg').length;
+      const n = olderBtn?.querySelector('[data-tg-left]');
+      if (n) n.textContent = String(left);
+      if (!left) olderBtn?.remove();
+    };
+
+    // Scrolling up to the top (by the reader, not our own scroll-to-bottom)
+    // loads the next batch as well.
+    let userScrolled = false;
+    const mark = () => { userScrolled = true; };
+    scroll.addEventListener('wheel', mark, { passive: true });
+    scroll.addEventListener('touchmove', mark, { passive: true });
+    scroll.addEventListener('keydown', mark);
+    scroll.addEventListener('scroll', () => {
+      if (userScrolled && scroll.scrollTop < 24 && olderBtn?.isConnected) loadOlder();
+    }, { passive: true });
+
+    const zoom = (src: string, cap: string) => {
+      if (!lb) return;
+      const img = lb.querySelector('img');
+      const c = lb.querySelector('.cap');
+      if (img) img.src = src;
+      if (c) c.textContent = cap;
+      if (typeof lb.showModal === 'function') lb.showModal();
+      else lb.setAttribute('open', '');
+    };
+    lb?.addEventListener('click', () => lb.close ? lb.close() : lb.removeAttribute('open'));
+
+    card.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-tg-older]')) { loadOlder(); return; }
+
+      const z = target.closest<HTMLElement>('[data-zoom]');
+      if (z) {
+        const img = z.querySelector('img');
+        zoom(z.dataset.zoom || img?.src || '', z.dataset.cap || img?.alt || '');
+        return;
+      }
+
+      const more = target.closest<HTMLButtonElement>('[data-tg-more]');
+      if (more) {
+        const txt = more.previousElementSibling;
+        const open = more.getAttribute('aria-expanded') !== 'true';
+        txt?.classList.toggle('clamp', !open);
+        more.setAttribute('aria-expanded', String(open));
+        return;
+      }
+
+      const r = target.closest<HTMLButtonElement>('[data-r]');
+      if (r) {
+        const box = r.closest('.ca-msg')?.querySelector<HTMLElement>('.ca-reacts');
+        if (!box) return;
+        const e1 = r.dataset.r || '';
+        let s = [...box.children].find((x) => (x as HTMLElement).dataset.e === e1) as HTMLElement | undefined;
+        if (!s) {
+          s = document.createElement('span');
+          s.dataset.e = e1;
+          s.dataset.n = '0';
+          box.appendChild(s);
+        }
+        const base = Number.parseInt(s.dataset.n || '0', 10) || 0;
+        const mine = !s.classList.contains('mine');
+        const n = base + (mine ? 1 : -1);
+        s.classList.toggle('mine', mine);
+        s.dataset.n = String(n);
+        if (n <= 0) s.remove();
+        else s.textContent = `${r.textContent} ${n}`;
+        return;
+      }
+
+      const sh = target.closest<HTMLAnchorElement>('[data-tg-share]');
+      if (sh) {
+        e.preventDefault();
+        const url = sh.href;
+        navigator.clipboard?.writeText(url).catch(() => {});
+        toast(`${tr('tg_copied', '已复制', 'Copied')} ${url.replace(/^https?:\/\//, '')}`);
+        return;
+      }
+
+      const mute = target.closest<HTMLButtonElement>('[data-tg-mute]');
+      if (mute) {
+        const on = mute.getAttribute('aria-pressed') !== 'true';
+        mute.setAttribute('aria-pressed', String(on));
+        toast(on ? tr('tg_muted_toast', '已静音，不再提醒', 'Muted — no more alerts') : tr('tg_unmuted_toast', '已恢复通知', 'Notifications back on'));
+      }
+    });
+
+    dedupeDates();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-tg-card]').forEach(initChannel);
+</script>

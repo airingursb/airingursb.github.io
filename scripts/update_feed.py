@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Fetch blog feed + Telegram channel + Last.fm and update index.html."""
+"""Fetch blog feed + Last.fm and update index.html.
+
+The Telegram channel card has its own script, scripts/fetch_telegram.py,
+which writes src/data/telegram.json and downloads the images.
+"""
 
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -24,12 +28,10 @@ FEED_URL = 'https://blog.ursb.me/feed.xml'
 FEED_EN_URL = 'https://ursb.me/en/blog/feed.xml'
 NOTES_FEED_URL = 'https://ursb.me/notes/feed.xml'
 NOTES_EN_FEED_URL = 'https://ursb.me/en/notes/feed.xml'
-TELEGRAM_URL = 'https://t.me/s/airingchannel'
 HTML_FILE = 'index.html'
 ASTRO_FILE = 'src/pages/index.astro'
 MAX_ARTICLES = 6
 MAX_NOTES = 6
-MAX_TELEGRAM = 6
 
 READWISE_TOKEN = os.environ.get('READWISE_TOKEN', '')
 READWISE_BASE = 'https://readwise.io/api/v2'
@@ -94,20 +96,6 @@ def resolve_item_link(a, lang):
     is_immersive = a.get('immersive') or link.startswith('/immersive/')
     target = ' target="_blank" rel="noopener"' if (not link.startswith('/') or is_immersive) else ''
     return link, target
-
-
-def generate_items_html(items, lang=None):
-    lines = []
-    for a in items:
-        title = escape_html(a['title'])
-        link, target = resolve_item_link(a, lang)
-        date = a['date']
-        lang_cls = f' post-item-{lang}' if lang else ''
-        lines.append(f'            <a href="{link}" class="post-item{lang_cls}"{target}>')
-        lines.append(f'              <span class="post-title">{title}</span>')
-        lines.append(f'              <span class="post-date">{date}</span>')
-        lines.append(f'            </a>')
-    return '\n'.join(lines)
 
 
 # ── Homepage writing card (posts + notes) ────────────────────
@@ -263,63 +251,6 @@ def parse_notes_feed(xml_str):
         date_raw = pub_el.text.strip() if pub_el is not None and pub_el.text else ''
         notes.append({'title': title, 'link': link, 'date': format_date(date_raw), 'immersive': is_immersive})
     return notes
-
-
-# ── Telegram Channel ─────────────────────────────────────────
-
-def strip_html_tags(s):
-    """Remove HTML tags, decode entities, normalize whitespace."""
-    s = re.sub(r'<br\s*/?>', ' ', s)
-    s = re.sub(r'<[^>]+>', '', s)
-    s = s.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
-    s = s.replace('&quot;', '"').replace('&#39;', "'").replace('&nbsp;', ' ')
-    return re.sub(r'\s+', ' ', s).strip()
-
-
-def parse_telegram(html_str):
-    # Split by message blocks using data-post attribute
-    msg_pattern = re.compile(
-        r'data-post="([^"]+)".*?'
-        r'tgme_widget_message_text[^"]*"[^>]*>(.*?)</div>.*?'
-        r'<time\s+datetime="([^"]*)"',
-        re.DOTALL
-    )
-
-    raw_messages = msg_pattern.findall(html_str)
-    items = []
-    seen = set()
-
-    for post_id, text_html, dt_str in raw_messages:
-        if post_id in seen:
-            continue
-        seen.add(post_id)
-
-        text = strip_html_tags(text_html)
-        if not text or len(text) < 4:
-            continue
-
-        # Take first sentence/line, clean up
-        first_line = text.split('\n')[0]
-        # Cut at first URL if present
-        url_pos = first_line.find('http')
-        if url_pos > 0:
-            first_line = first_line[:url_pos].rstrip(' -—:：·')
-        # Cut at first sentence break after 20 chars
-        for sep in ['。', '，', '. ', ', ']:
-            pos = first_line.find(sep, 20)
-            if 20 < pos < 45:
-                first_line = first_line[:pos + len(sep)].rstrip()
-                break
-        if len(first_line) > 45:
-            first_line = first_line[:42] + '...'
-
-        date_fmt = format_date(dt_str, '%m.%d')
-        link = f"https://t.me/{post_id}"
-
-        items.append({'title': first_line, 'link': link, 'date': date_fmt})
-
-    # Most recent first (last N, reversed)
-    return items[-MAX_TELEGRAM:][::-1]
 
 
 # ── Last.fm ──────────────────────────────────────────────────
@@ -843,21 +774,6 @@ def main():
     except Exception as e:
         print(f'Notes EN: error - {e}', file=sys.stderr)
 
-    # Telegram channel
-    try:
-        tg_html = fetch_url(TELEGRAM_URL)
-        tg_items = parse_telegram(tg_html)
-        if tg_items:
-            html = generate_items_html(tg_items)
-            content = replace_section(content, '<!-- TELEGRAM_START -->', '<!-- TELEGRAM_END -->', html)
-            sync_to_astro('<!-- TELEGRAM_START -->', '<!-- TELEGRAM_END -->', html, 'Telegram')
-            print(f'Telegram: {len(tg_items)} messages')
-            changed = True
-        else:
-            print('Telegram: no messages found', file=sys.stderr)
-    except Exception as e:
-        print(f'Telegram: error - {e}', file=sys.stderr)
-
     # Readwise
     try:
         rw_data = fetch_readwise_data()
@@ -952,11 +868,6 @@ def main():
     try:
         if articles:
             write_json('articles', articles)
-    except NameError:
-        pass
-    try:
-        if tg_items:
-            write_json('telegram', tg_items)
     except NameError:
         pass
     try:
