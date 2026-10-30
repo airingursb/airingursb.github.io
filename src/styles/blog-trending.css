@@ -1,0 +1,98 @@
+/* /blog Most Popular by window — scheme A ("minimal change") from the v9
+   ranking2 design. Only the page's own tokens, fonts and hairlines.
+   Markup is built by src/scripts/blog-trending.ts; until the API answers,
+   none of this is in the DOM and the build-time Most Popular shows as is. */
+
+.rk { --rk-dn: #f0716a; }
+html[data-mode="light"] .rk { --rk-dn: #cf222e; }
+.rk a { text-decoration: none; color: inherit; }
+
+/* Header: Most Popular · window tabs (like Latest / Top) · auto hint · View all */
+.popular-inner .popular-header.rk-head { justify-content: flex-start; flex-wrap: wrap; gap: 6px 22px; }
+.popular-inner .popular-header.rk-head .popular-viewall { margin-left: auto; }
+.rk-tabs { position: relative; display: inline-flex; gap: 18px; align-self: stretch; align-items: stretch; }
+.rk-tabs button {
+  position: relative; padding: 3px 0 5px; border: 0; background: none; cursor: pointer;
+  font-family: inherit; font-size: 13.5px; font-weight: 600; line-height: 1.4; color: var(--c-text-muted); transition: color .2s;
+}
+.rk-tabs button:hover, .rk-tabs button[aria-selected="true"] { color: var(--c-text); }
+.rk-tabs button:focus-visible { outline: 2px solid rgba(var(--accent-rgb), .6); outline-offset: 2px; border-radius: 2px; }
+/* one underline that slides to the selected tab */
+.rk-ind {
+  position: absolute; left: 0; bottom: 0; height: 2px; width: var(--w, 0); background: var(--c-text);
+  transform: translateX(var(--x, 0)); transition: transform .32s cubic-bezier(.3, .7, .2, 1), width .32s cubic-bezier(.3, .7, .2, 1);
+  pointer-events: none;
+}
+.rk-auto { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; line-height: 1.4; color: var(--c-text-dim); white-space: nowrap; }
+.rk-auto b { font-weight: 500; color: var(--c-text-muted); }
+.rk-auto i { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--c-text-dim); }
+.rk-auto.on i { background: var(--accent); box-shadow: 0 0 0 3px rgba(var(--accent-rgb), .15); animation: rk-pulse 2.4s ease-in-out infinite; }
+@keyframes rk-pulse { 50% { box-shadow: 0 0 0 5px rgba(var(--accent-rgb), 0); } }
+
+/* Rank change mark + status word */
+.rk-mk { font: 600 11px/1 var(--font-mono); font-style: normal; color: var(--c-text-dim); white-space: nowrap; }
+.rk-mk.up { color: var(--accent); }
+.rk-mk.down { color: var(--rk-dn); }
+.rk-mk.new { padding: 1px 3px; border: 1px solid rgba(var(--accent-rgb), .55); border-radius: 3px; color: var(--accent); font-size: 9.5px; letter-spacing: .04em; }
+.rk-st { font-size: 11px; letter-spacing: .08em; color: var(--c-text-dim); white-space: nowrap; }
+.rk-st.up, .rk-st.new { color: var(--accent); }
+.rk-st.down { color: var(--rk-dn); }
+
+/* Window switch: fade out, swap, fade in with numbers rolling up */
+.rk-roll { display: inline-flex; overflow: hidden; vertical-align: bottom; line-height: inherit; }
+.rk-roll > span { display: inline-block; }
+.rk-grid, .rk-sb { transition: opacity .16s ease; }
+.rk-grid.out { opacity: 0; }
+.rk-grid.in, .rk-fresh { animation: rk-fade .35s ease both; }
+.rk-grid.in .rk-roll > span { animation: rk-roll .5s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 45ms); }
+@keyframes rk-roll { from { transform: translateY(85%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes rk-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* Cards: the original 4 columns + 72px thumbnail */
+.rk-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
+.rk-card { display: flex; align-items: flex-start; gap: 12px; min-width: 0; padding-right: 24px; border-right: 1px solid var(--c-border); transition: opacity .15s; }
+.rk-card:last-child { border-right: 0; padding-right: 0; }
+.rk-card:hover { opacity: .8; }
+.rk-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.rk-no { display: flex; align-items: center; gap: 7px; font: 600 11px/1.3 var(--font-mono); color: var(--c-text-muted); }
+.rk-t { font: 700 15px/1.4 var(--font-serif); color: var(--c-text); overflow-wrap: anywhere; }
+.rk-m { font-size: 12px; line-height: 1.5; color: var(--c-text-dim); }
+.rk-m .nw { white-space: nowrap; }
+.rk-th { flex: none; width: 72px; height: 72px; border-radius: 6px; background: rgba(var(--c-overlay-rgb), .04) center / cover no-repeat; }
+.rk .cn-badge {
+  display: inline-block; margin-left: .5em; padding: .1em .4em; border: 1px solid var(--c-border); border-radius: 3px;
+  background: var(--c-bg-alt); color: var(--c-text-muted); font-size: .65em; font-weight: 600; line-height: 1.3; letter-spacing: .05em; vertical-align: middle;
+}
+
+/* Standby old post — same label voice as the sidebar */
+.rk-sb { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; margin-top: 14px; padding: 12px 0 2px; border-top: 1px solid var(--c-border); }
+.rk-sb-k { font: 500 12px/1.5 var(--font-mono); color: var(--c-text-muted); letter-spacing: .04em; white-space: nowrap; }
+.rk-sb-t { min-width: 0; font: 700 14.5px/1.4 var(--font-serif); color: var(--c-text); transition: color .2s; overflow-wrap: anywhere; }
+.rk-sb:hover .rk-sb-t { color: var(--accent); }
+.rk-sb-m { margin-left: auto; font-size: 12px; color: var(--c-text-dim); white-space: nowrap; }
+
+/* Tablet: 2 × 2 keeps the thumbnails and the full meta line readable */
+@media (max-width: 1024px) {
+  .rk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 20px; }
+  .rk-card:nth-child(2n) { border-right: 0; padding-right: 0; }
+}
+
+/* Phone */
+@media (max-width: 720px) {
+  .popular-inner .popular-header.rk-head { row-gap: 8px; }
+  .rk-tabs { order: 3; width: 100%; gap: 0; justify-content: space-between; border-bottom: 1px solid var(--c-border); }
+  .rk-tabs button { flex: 1; padding: 6px 0 8px; font-size: 14px; }
+  .rk-auto { order: 4; width: 100%; white-space: normal; }
+  .rk-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .rk-card, .rk-card:nth-child(2n) { padding: 12px 0; border-right: 0; border-bottom: 1px solid var(--c-border); }
+  .rk-card:first-child { padding-top: 2px; }
+  .rk-card:last-child { border-bottom: 0; padding-bottom: 0; }
+  .rk-th { width: 60px; height: 60px; }
+  .rk-sb { margin-top: 12px; }
+  .rk-sb-m { margin-left: 0; white-space: normal; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rk-ind, .rk-grid, .rk-sb { transition: none; }
+  .rk-grid.in, .rk-fresh, .rk-grid.in .rk-roll > span, .rk-auto.on i { animation: none; }
+}
