@@ -62,8 +62,8 @@ const { title, date, dateModified, tags, description, cover, laterNote, prevPost
 // Sidebar / meta-line labels. The mobile meta line hides labels and shows
 // the unit after each count instead ("48,615 次阅读").
 const L = lang === 'en'
-  ? { date: 'Date', tags: 'Tags', author: 'Author', read: 'Read', min: 'min', views: 'Views', viewsUnit: 'views', likes: 'Likes', likesUnit: 'likes', comments: 'Comments', commentsUnit: 'comments', readers: 'Readers', progress: 'Progress', top: 'Top', topLabel: 'Back to top', toc: 'Contents', related: 'Related', allPosts: 'All posts', home: 'Home', archive: 'Archive', likeBtn: 'likes', meta: 'Article details' }
-  : { date: '日期', tags: '标签', author: '作者', read: '阅读时长', min: '分钟', views: '阅读', viewsUnit: '次阅读', likes: '点赞', likesUnit: '人点赞', comments: '评论', commentsUnit: '条评论', readers: '读者', progress: '进度', top: '顶部', topLabel: '回到顶部', toc: '目录', related: '相关文章', allPosts: '全部文章', home: '首页', archive: '归档', likeBtn: '人喜欢', meta: '文章信息' };
+  ? { date: 'Date', tags: 'Tags', author: 'Author', read: 'Read', min: 'min', views: 'Views', viewsUnit: 'views', likes: 'Likes', likesUnit: 'likes', comments: 'Comments', commentsUnit: 'comments', readers: 'Readers', progress: 'Progress', minLeft: '{n}m left', finished: 'Finished', minCol: 'min', minAria: '{t}, about {n} min', top: 'Top', topLabel: 'Back to top', toc: 'Contents', related: 'Related', allPosts: 'All posts', home: 'Home', archive: 'Archive', likeBtn: 'likes', meta: 'Article details' }
+  : { date: '日期', tags: '标签', author: '作者', read: '阅读时长', min: '分钟', views: '阅读', viewsUnit: '次阅读', likes: '点赞', likesUnit: '人点赞', comments: '评论', commentsUnit: '条评论', readers: '读者', progress: '进度', minLeft: '还剩 {n} 分钟', finished: '已读完', minCol: '分钟', minAria: '{t}，约 {n} 分钟', top: '顶部', topLabel: '回到顶部', toc: '目录', related: '相关文章', allPosts: '全部文章', home: '首页', archive: '归档', likeBtn: '人喜欢', meta: '文章信息' };
 
 const seriesNames: Record<string, Record<string, string>> = {
   zh: { weekly: '月刊', annually: '年报' },
@@ -187,7 +187,17 @@ const jsonLd = {
     )}
 
     <!-- Three-column: sidebar | content | comments -->
-    <div class="content-grid" id="contentGrid">
+    <div
+      class="content-grid"
+      id="contentGrid"
+      data-slug={Astro.params.slug}
+      data-date={date.toISOString()}
+      data-lang={lang}
+      data-minutes={readingTime ?? ''}
+      data-left-label={L.minLeft}
+      data-done-label={L.finished}
+      data-min-label={L.minAria}
+    >
       <aside class="sidebar-left">
         <div class="sb-meta" role="group" aria-label={L.meta}>
           <div class="sb-block sb-date">
@@ -217,6 +227,7 @@ const jsonLd = {
           <div class="sb-block" id="postViewsBlock" style="display:none;">
             <div class="sb-label">{L.views}</div>
             <div class="sb-value"><span id="postViews">-</span><span class="sb-unit"> {L.viewsUnit}</span></div>
+            <div class="sb-trend" id="postTrend" hidden></div>
           </div>
           <div class="sb-block" id="postLikesBlock" style="display:none;">
             <div class="sb-label">{L.likes}</div>
@@ -234,7 +245,7 @@ const jsonLd = {
         </div>
         <div class="sb-divider"></div>
         <div class="sb-block sb-progress" id="readProgress" hidden>
-          <div class="sb-label" id="readProgressLabel">{L.progress}</div>
+          <div class="sb-label sb-label-row"><span id="readProgressLabel">{L.progress}</span><span class="rp-left" id="readProgressLeft" hidden></span></div>
           <div class="rp-track" role="progressbar" aria-labelledby="readProgressLabel" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
             <span class="rp-bar" id="readProgressBar"></span>
           </div>
@@ -244,7 +255,7 @@ const jsonLd = {
           </div>
         </div>
         <div class="sb-block toc-block" id="tocBlock" style="display:none;">
-          <div class="sb-label" id="tocLabel">{L.toc}</div>
+          <div class="sb-label sb-label-row"><span id="tocLabel">{L.toc}</span><span class="toc-colh" id="tocMinCol" aria-hidden="true" hidden>{L.minCol}</span></div>
           <nav class="toc-nav" id="tocNav" aria-labelledby="tocLabel"></nav>
         </div>
 
@@ -342,6 +353,10 @@ const jsonLd = {
   <LikeDelight />
   <span id="article-navigation-ready" hidden></span>
 </BaseLayout>
+
+<script>
+  import '../scripts/post-reading';
+</script>
 
 <script is:inline>
 /* Wrap short text nodes after <img> as styled captions */
@@ -554,11 +569,19 @@ const jsonLd = {
       if (idx === active) link.setAttribute('aria-current', 'location'); else link.removeAttribute('aria-current');
     });
     // Scroll active link into view within TOC nav
+    // Measured inside the nav (link.offsetTop is relative to the sticky
+    // sidebar, which pinned long TOCs to the bottom), and against the part of
+    // the nav that is on screen: on short viewports the sidebar runs past the
+    // bottom edge, so the nav's own box is not all visible.
     if (active !== null && tocLinks[active]) {
       var link = tocLinks[active];
       var nav = tocNav;
-      if (link.offsetTop < nav.scrollTop || link.offsetTop + link.offsetHeight > nav.scrollTop + nav.clientHeight) {
-        nav.scrollTop = link.offsetTop - nav.clientHeight / 3;
+      var navBox = nav.getBoundingClientRect();
+      var seen = Math.max(link.offsetHeight * 3, Math.min(nav.clientHeight, window.innerHeight - navBox.top));
+      var linkTop = link.getBoundingClientRect().top - navBox.top + nav.scrollTop;
+      var pad = link.offsetHeight;
+      if (linkTop - pad < nav.scrollTop || linkTop + link.offsetHeight + pad > nav.scrollTop + seen) {
+        nav.scrollTop = linkTop - seen / 3;
       }
     }
     ticking = false;
@@ -1315,6 +1338,35 @@ const jsonLd = {
     border-left-color: var(--accent, #4ade80);
   }
 
+  /* Views → windowed line (src/scripts/post-reading.ts); same type as .rp-row */
+  .sb-trend {
+    margin-top: 3px;
+    font: var(--text-xs)/1.5 var(--font-mono); color: var(--c-text-muted);
+    font-variant-numeric: tabular-nums; opacity: 0.78; cursor: default;
+  }
+  .sb-trend[hidden] { display: none; }
+  .sb-trend :global(.sb-trend-up) { font-weight: inherit; color: var(--accent); }
+  /* Progress / Contents labels with a right-hand note: "6 min left", "min" */
+  .sb-label-row { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 8px; }
+  .rp-left, .toc-colh {
+    font: 400 var(--text-xs)/1.5 var(--font-mono);
+    letter-spacing: 0; text-transform: none;
+    color: var(--c-text-muted); font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .rp-left[hidden], .toc-colh[hidden] { display: none; }
+  .toc-colh { opacity: 0.78; }
+  /* TOC minutes column; read rows dim */
+  .toc-nav :global(.toc-link.has-min) { display: flex; align-items: baseline; gap: 6px; text-overflow: clip; }
+  .toc-nav :global(.toc-t) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .toc-nav :global(.toc-min) {
+    flex: none; min-width: 2ch; text-align: right;
+    font: var(--text-xs)/1.4 var(--font-mono); font-variant-numeric: tabular-nums;
+    color: var(--c-text-muted); opacity: 0.78;
+  }
+  .toc-nav :global(.toc-link.active .toc-min) { color: var(--accent, #4ade80); opacity: 1; }
+  .toc-nav :global(.toc-link.is-read) { opacity: 0.45; }
+  .toc-nav :global(.toc-link.is-read:hover), .toc-nav :global(.toc-link.is-read:focus-visible) { opacity: 1; }
+
   /* ===== Content ===== */
   .post-reading-column { min-width: 0; }
   .post-later-note { position: relative; margin-bottom: 32px; border-bottom: 1px solid var(--c-border); }
@@ -1763,6 +1815,7 @@ const jsonLd = {
     .sb-meta .sb-tags { flex-direction: row; gap: 8px; }
     .sb-meta .sb-author { display: none; }
     .sb-unit { display: inline; }
+    .sb-trend { display: none !important; }
     .sb-block { margin-bottom: 0; }
     .sb-divider { display: none; }
     .toc-block, .sb-progress { display: none !important; }

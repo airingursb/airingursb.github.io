@@ -73,6 +73,8 @@ const labels = en
 </div>
 
 <script>
+  import { minuteLabel, readingState, sectionMinutes } from '../lib/post-sections';
+
   const root = document.getElementById('mobileToc');
   const content = root && document.querySelector<HTMLElement>(root.dataset.content || '');
   if (root && content) init(root, content);
@@ -114,19 +116,22 @@ const labels = en
       return c;
     });
 
-    // Minutes per chapter: the article's reading time split by text length.
-    const lengths = chapters.map((ch, i) => {
-      const r = document.createRange();
-      r.setStartBefore(ch);
-      if (chapters[i + 1]) r.setEndBefore(chapters[i + 1]); else r.setEndAfter(content.lastElementChild || content);
-      return r.toString().replace(/\s+/g, '').length;
-    });
-    const totalLen = lengths.reduce((a, b) => a + b, 0) || 1;
-    const totalMin = Number(root.dataset.minutes) || Math.max(1, Math.round(totalLen / (root.dataset.lang === 'en' ? 1100 : 400)));
-    // Keep fractions for sums ("time left" must never exceed the total);
-    // round only for the per-chapter label.
-    const share = lengths.map((n) => (n / totalLen) * totalMin);
-    const mins = share.map((m) => Math.max(1, Math.round(m)));
+    // Minutes per chapter: the same split as the desktop sidebar TOC
+    // (lib/post-sections — words per section at the site's reading speed,
+    // scaled so they add up to the article's reading time). Counted lazily,
+    // the first time the sheet opens.
+    const totalMin = Number(root.dataset.minutes) || 1;
+    let perHeading: number[] | null = null;
+    let mins: string[] = [];
+    function minutes() {
+      if (perHeading) return perHeading;
+      const m = sectionMinutes(content, headings, totalMin);
+      perHeading = m.share;
+      const whole = chapters.map(() => 0);
+      headings.forEach((_, i) => { if (chapterOf[i] >= 0) whole[chapterOf[i]] += m.whole[i]; else whole[0] += m.whole[i]; });
+      mins = whole.map(minuteLabel);
+      return perHeading;
+    }
 
     // Build rows once; state classes are refreshed on open / scroll.
     const rows = headings.map((h, i) => {
@@ -185,8 +190,7 @@ const labels = en
 
     function paintRows() {
       const ci = active >= 0 ? chapterOf[active] : -1;
-      let left = 0;
-      chapters.forEach((_, i) => { if (i > ci) left += share[i]; else if (i === ci) left += share[i] * 0.5; });
+      const { left } = readingState(content, headings, minutes());
       summary.textContent = fmt(L.summary, { c: chapters.length, t: totalMin, l: Math.min(totalMin, Math.max(1, Math.round(left))) });
       rows.forEach((row, i) => {
         const c = chapterOf[i];

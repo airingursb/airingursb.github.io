@@ -58,9 +58,19 @@ export function countWords(body: string): number {
     .replace(/\]\([^)]*\)/g, ']')
     .replace(/<[^>]+>/g, ' ')
     .replace(/https?:\/\/\S+/g, ' ');
-  const cjk = (text.match(CJK) || []).length;
-  const latin = (text.replace(CJK, ' ').match(/[A-Za-z0-9][A-Za-z0-9'’\-.]*/g) || []).length;
+  const { cjk, latin } = textCounts(text);
   return cjk + latin;
+}
+
+/**
+ * CJK characters and Latin words in already-plain text (the counting half of
+ * countWords). The article page counts its sections from the DOM with it.
+ */
+export function textCounts(text: string): { cjk: number; latin: number } {
+  const t = String(text || '');
+  const cjk = (t.match(CJK) || []).length;
+  const latin = (t.replace(CJK, ' ').match(/[A-Za-z0-9][A-Za-z0-9'’\-.]*/g) || []).length;
+  return { cjk, latin };
 }
 
 /** `月刊（第36期）：伊始` → 36; anything else → null. */
