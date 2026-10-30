@@ -1666,10 +1666,13 @@ RSS <span data-sub-copy="realtimeLabel">实时</span> </button> </div> <section 
   function normalize(email) { return String(email || '').trim().toLowerCase(); }
   function isAuthor(email) { return AUTHOR_EMAILS.indexOf(normalize(email)) !== -1; }
   function gravatarFromHash(hash) { return 'https://gravatar.com/avatar/' + hash + '?d=robohash&s=80'; }
-  // avatar_key is not an email hash, so it never matches a real Gravatar
-  // account; f=y forces the robohash default either way.
-  function avatarFromKey(key) {
-    return /^[0-9a-f]{16,64}$/.test(String(key || '')) ? 'https://gravatar.com/avatar/' + key + '?d=robohash&s=80&f=y' : GRAVATAR_DEFAULT;
+  // avatar_key goes through the blog API's avatar proxy: it returns the real
+  // Gravatar bytes when the commenter has one (fetched server-side, so no
+  // email hash reaches the browser) and otherwise 302s to the same robohash
+  // the site always showed.
+  var AVATAR_PROXY = 'https://chat.ursb.me/api/avatar/';
+  function avatarFromKey(key, size) {
+    return /^[0-9a-f]{32}$/.test(String(key || '')) ? AVATAR_PROXY + key + '?s=' + (size || 80) : GRAVATAR_DEFAULT;
   }
   // Server-provided identity first (is_author / avatar_key), else the email.
   function hasServerIdentity(c) { return !!c && (typeof c.is_author === 'boolean' || 'avatar_key' in c); }
