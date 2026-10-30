@@ -637,8 +637,9 @@ function getSiteStatus(f: { availability: string }): 'ok' | 'error' | 'unknown' 
     var s = size || 80;
     if (c && (typeof c.is_author === 'boolean' || 'avatar_key' in c) && !c.email) {
       if (c.is_author) { imgEl.src = '/images/airing-avatar-48.webp'; return; }
-      imgEl.src = /^[0-9a-f]{16,64}$/.test(String(c.avatar_key || ''))
-        ? 'https://gravatar.com/avatar/' + c.avatar_key + '?d=robohash&f=y&s=' + s
+      // Avatar proxy: real Gravatar if the commenter has one, else robohash.
+      imgEl.src = /^[0-9a-f]{32}$/.test(String(c.avatar_key || ''))
+        ? 'https://chat.ursb.me/api/avatar/' + c.avatar_key + '?s=' + s
         : _placeholderGravatar(s);
       return;
     }

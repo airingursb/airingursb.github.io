@@ -64,11 +64,14 @@ test('emailsOf walks nested replies', () => {
 });
 
 // 2026-10: the API sends avatar_key + is_author instead of other people's emails.
-test('server identity: is_author wins and avatar_key becomes a forced robohash', () => {
+test('server identity: is_author wins and avatar_key goes through the avatar proxy', () => {
   const CA = load();
   const key = '99c2cb5f9c7b0405bce5bde47496f31b';
   assert.equal(CA.imgAttrs({ is_author: true, avatar_key: key }), `src="${attr(GH)}"`);
-  assert.equal(CA.imgAttrs({ is_author: false, avatar_key: key }), `src="${attr(`https://gravatar.com/avatar/${key}?d=robohash&s=80&f=y`)}"`);
+  assert.equal(CA.imgAttrs({ is_author: false, avatar_key: key }), `src="${attr(`https://chat.ursb.me/api/avatar/${key}?s=80`)}"`);
+  assert.equal(CA.avatarFromKey(key, 48), `https://chat.ursb.me/api/avatar/${key}?s=48`);
+  // Only the 32-hex keys the server issues are proxied.
+  assert.equal(CA.avatarFromKey(key.slice(0, 16)), 'https://gravatar.com/avatar/?d=robohash&s=80');
   assert.equal(CA.imgAttrs({ is_author: false, avatar_key: null }), `src="${attr('https://gravatar.com/avatar/?d=robohash&s=80')}"`);
   // A key that is not hex never reaches the URL.
   assert.equal(CA.avatarFromKey('"><script>'), 'https://gravatar.com/avatar/?d=robohash&s=80');
