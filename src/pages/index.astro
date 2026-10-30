@@ -26,6 +26,7 @@ import { cities as footprintCities } from '../data/footprints';
 import IslandWidget from '../components/IslandWidget.astro';
 import LiveCursors from '../components/LiveCursors.tsx';
 import BearHomeVisit from '../components/BearHomeVisit.astro';
+import IntroCard from '../components/IntroCard.astro';
 import BearGardenFooter from '../components/BearGardenFooter.astro';
 import GardenScene from '../components/bear-stories/garden/GardenScene.astro';
 import { getCollection } from 'astro:content';
@@ -257,17 +258,9 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
     body.fx-rgb { will-change: transform, filter; }
 
     /* RGB chromatic aberration. JS sets --rx / --cx / --c-r / --c-c per frame. */
-    body.fx-rgb .greeting,
-    body.fx-rgb .name,
-    body.fx-rgb .role,
-    body.fx-rgb .chat-prompt,
-    body.fx-rgb .chat-input,
-    body.fx-rgb .fake-cursor,
-    body.fx-rgb .chat-suggestion-chip,
-    body.fx-rgb .chat-area,
-    body.fx-rgb .chat-error,
-    body.fx-rgb .links a,
-    body.fx-rgb .sep,
+    body.fx-rgb .card-intro .fx-t,
+    body.fx-rgb .card-intro .inp,
+    body.fx-rgb .card-intro .chatlog,
     body.fx-rgb .section-title,
     body.fx-rgb .bd-name,
     body.fx-rgb .bd-login,
@@ -279,10 +272,6 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
     body.fx-rgb .post-title,
     body.fx-rgb .post-date,
     body.fx-rgb .weather-line,
-    body.fx-rgb .np-corner-track,
-    body.fx-rgb .np-corner-artist,
-    body.fx-rgb .np-corner-now,
-    body.fx-rgb .np-corner-label,
     body.fx-rgb .online-line {
       text-shadow:
         var(--rx, 0) 0 var(--c-r, transparent),
@@ -389,7 +378,7 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
           var d = el.getAttribute('data-date-' + localLang) || el.getAttribute('data-date-zh') || '';
           val = val.replace('{date}', d);
         }
-        if (key === 'letter_paid_desc' || key === 'chat_limit') {
+        if (key === 'letter_paid_desc') {
           el.innerHTML = val;
         } else {
           el.textContent = val;
@@ -401,9 +390,6 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         var val = t(key);
         if (val !== key) el.setAttribute('alt', val);
       });
-
-      var chatInput = document.getElementById('chatInput');
-      if (chatInput) chatInput.placeholder = t('chat_placeholder');
 
       // Guestbook placeholders are set by src/scripts/guestbook.ts (langchange).
 
@@ -581,6 +567,7 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         if (t >= 1) {
           el.textContent = text;
           el.__scrambleId = 0;
+          if (opts.done) opts.done();
           return;
         }
         var r = (t / K) | 0;
@@ -664,10 +651,32 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
 
     function getEls() {
       return {
-        greeting: document.querySelector('.card-intro .greeting'),
-        name: document.querySelector('.card-intro .name'),
-        role: document.querySelector('.card-intro .role')
+        greeting: document.querySelector('.card-intro .greet'),
+        fig: document.querySelector('.card-intro .fig'),
+        role: document.querySelector('.card-intro .motd .role')
       };
+    }
+
+    // Scramble an element that has child markup (data-i18n spans, the
+    // figlet's <b> runs) and put the markup back when it settles.
+    function scrambleHTML(el, opts) {
+      if (!el || reduce) return;
+      var text = el.textContent;
+      if (!text || !text.trim()) return;
+      if (el.__scrambleHTML == null) el.__scrambleHTML = el.innerHTML;
+      var html = el.__scrambleHTML;
+      var o = {};
+      for (var k in opts) o[k] = opts[k];
+      o.done = function() { el.innerHTML = html; el.__scrambleHTML = null; };
+      scramble(el, text, o);
+    }
+
+    // The figlet AIRING decodes row by row from the middle out.
+    function scrambleFig(fig, duration) {
+      if (!fig || reduce) return;
+      fig.querySelectorAll('.row').forEach(function(row) {
+        scrambleHTML(row, { from: 'center', duration: duration });
+      });
     }
 
     // Match the reference page's "DECRYPT" payload tempo:
@@ -676,9 +685,9 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
     //   bottom → from:right,  duration:760
     function playIntro() {
       var els = getEls();
-      if (els.greeting) scramble(els.greeting, txt(els.greeting), { from: 'left',   duration: 680 });
-      if (els.name)     scramble(els.name,     txt(els.name),     { from: 'center', duration: 900 });
-      if (els.role)     scramble(els.role,     txt(els.role),     { from: 'right',  duration: 760 });
+      scrambleHTML(els.greeting, { from: 'left',  duration: 680 });
+      scrambleFig(els.fig, 900);
+      scrambleHTML(els.role,     { from: 'right', duration: 760 });
     }
 
     function playBearMeta() {
@@ -695,13 +704,13 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
     }
 
     function initHover() {
-      var name = document.querySelector('.card-intro .name');
-      if (!name || reduce) return;
+      var fig = document.querySelector('.card-intro .fig');
+      if (!fig || reduce) return;
       var locked = false;
-      name.addEventListener('mouseenter', function() {
+      fig.addEventListener('mouseenter', function() {
         if (locked) return;
         locked = true;
-        scramble(name, txt(name), { from: 'center', duration: 560 });
+        scrambleFig(fig, 560);
         setTimeout(function() { locked = false; }, 700);
       });
     }
@@ -724,8 +733,8 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
       window.addEventListener('langchange', function() {
         requestAnimationFrame(function() {
           var els = getEls();
-          if (els.greeting) scramble(els.greeting, txt(els.greeting), { from: 'left',  duration: 680 });
-          if (els.role)     scramble(els.role,     txt(els.role),     { from: 'right', duration: 760 });
+          scrambleHTML(els.greeting, { from: 'left',  duration: 680 });
+          scrambleHTML(els.role,     { from: 'right', duration: 760 });
         });
       });
     }
@@ -738,6 +747,7 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
 
     // Expose for cyber-glitch effect E (spec: 2026-05-06-cyber-glitch-effects-design.md)
     window.__heroScramble = scramble;
+    window.__heroScrambleHTML = scrambleHTML;
   })();
   </script>
 
@@ -891,6 +901,25 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
       }
     }
 
+    // slice / full: one or two figlet rows slip sideways with the band.
+    function figSlice(durMs) {
+      var rows = document.querySelectorAll('.card-intro .fig .row');
+      if (!rows.length) return;
+      var k = randInt(1, 2);
+      for (var i = 0; i < k; i++) {
+        var r = rows[randInt(0, rows.length - 1)];
+        var dx = randInt(3, 9) * randSign();
+        try {
+          r.animate([
+            { transform: 'translateX(0)' },
+            { transform: 'translateX(' + dx + 'px)', offset: 0.2 },
+            { transform: 'translateX(' + (-dx / 2) + 'px)', offset: 0.6 },
+            { transform: 'translateX(0)' }
+          ], { duration: durMs, easing: 'steps(4, end)' });
+        } catch (e) { /* WAAPI not supported */ }
+      }
+    }
+
     var glitchActive = false;
 
     function fireGlitch(forceFlavor) {
@@ -902,7 +931,7 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
       if (flavor.scene > 0) sceneShake(flavor.scene, dur);
       if (flavor.rgb > 0)   rgbShift(flavor.rgb, dur);
       if (flavor.hue > 0)   hueShift(flavor.hue, dur);
-      if (flavor.band > 0)  sliceBand(dur);
+      if (flavor.band > 0)  { sliceBand(dur); figSlice(dur); }
       if (flavor.scan > 0)  scanPulse(dur);
     }
 
@@ -911,9 +940,10 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
      * ========================================================== */
 
     var SCRAMBLE_SELECTORS = [
-      '.greeting',
-      '.role',
-      '.links a',
+      '.card-intro .greet',
+      '.card-intro .motd .role',
+      '.card-intro a.tab',
+      '.card-intro .qr button',
       '.section-title',
       '.bd-name',
       '.as-desc',
@@ -949,6 +979,10 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
       var t = (el.textContent || '').trim();
       if (!t) return;
       flash(el);
+      if (el.children.length && typeof window.__heroScrambleHTML === 'function') {
+        window.__heroScrambleHTML(el, opts || { duration: 600 });
+        return;
+      }
       window.__heroScramble(el, t, opts || { duration: 600 });
     }
 
@@ -1057,7 +1091,7 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
     /* --- Hover trigger (existing initHover scramble still fires too) --- */
     var lastHoverFire = 0;
     function bindHover() {
-      var name = document.querySelector('.card-intro .name');
+      var name = document.querySelector('.card-intro .fig');
       if (!name) return;
       name.addEventListener('mouseenter', function() {
         var now = performance.now();
@@ -1113,69 +1147,8 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
     </div>
 
     <div class="cards-grid">
-      <!-- Intro -->
-      <div class="card card-intro" id="intro">
-        <a class="np-corner" id="npCorner" href="#" target="_blank" rel="noopener">
-          <div class="np-corner-vinyl" id="npCornerVinyl">
-            <div class="np-corner-hole" id="npCornerHole"></div>
-          </div>
-          <div class="np-corner-meta">
-            <div class="np-corner-label">
-              <span class="np-corner-dot"></span>
-              <span class="np-corner-now">NOW PLAYING</span>
-            </div>
-            <div class="np-corner-track" id="npCornerTrack"></div>
-            <div class="np-corner-artist" id="npCornerArtist"></div>
-          </div>
-        </a>
-        <div class="greeting" data-i18n="greeting">Hi, folks. I'm</div>
-        <div>
-          <span class="name">Airing</span><span class="cursor">_</span>
-        </div>
-        <div class="role" data-i18n="role">Software Engineer @ Singapore</div>
-        <!-- AI Chat -->
-        <hr class="chat-divider">
-        <div class="chat-area" id="chatArea"></div>
-        <div class="chat-suggestions" id="chatSuggestions">
-          <button class="chat-suggestion-chip" type="button" data-i18n="chat_sug_1">这个网站是怎么做的？</button>
-          <button class="chat-suggestion-chip" type="button" data-i18n="chat_sug_2">最近在做什么项目？</button>
-          <button class="chat-suggestion-chip" type="button" data-i18n="chat_sug_3">推荐篇文章</button>
-        </div>
-        <div class="chat-input-row">
-          <span class="chat-prompt" id="chatPrompt">&gt;<span class="fake-cursor">_</span></span>
-          <input type="text" class="chat-input" id="chatInput"
-                 placeholder="和 Airing 聊点什么..."
-                 maxlength="200" autocomplete="off">
-        </div>
-        <div class="chat-meta">
-          <span class="chat-error" id="chatError"></span>
-          <span id="chatRounds"></span>
-        </div>
-        <hr class="chat-divider">
-        <div class="links">
-          <a href="./blog" data-i18n="link_blog" data-href-zh="./blog" data-href-en="./en/blog">Blog</a>
-          <span class="sep">/</span>
-          <a href="https://t.me/s/airingchannel" target="_blank" data-i18n="link_channel">Channel</a>
-          <span class="sep">/</span>
-          <a href="#guestbook" data-i18n="link_message">Message</a>
-          <span class="sep">/</span>
-          <a href="./notes" data-i18n="link_notes" data-href-zh="./notes" data-href-en="./en/notes">Notes</a>
-        </div>
-        <div class="social">
-          <a href="https://github.com/airingursb" target="_blank" title="GitHub">
-            <img src="assets/svg/github.svg" alt="GitHub">
-          </a>
-          <a href="https://t.me/s/airingchannel" target="_blank" title="Telegram">
-            <img src="assets/svg/telegram.svg" alt="Telegram">
-          </a>
-          <a href="https://x.com/airingursb" target="_blank" title="X">
-            <img src="assets/svg/x.svg" alt="X">
-          </a>
-          <a href="https://www.zhihu.com/people/airing" target="_blank" title="Zhihu">
-            <img src="assets/svg/zhihu.svg" alt="Zhihu">
-          </a>
-        </div>
-      </div>
+      <!-- Intro: an IRC channel with Airing(Bot) -->
+      <IntroCard />
 
       <!-- GitHub badge + Projects (MoFlow, MoneyWise) -->
       <GitHubCard />
@@ -3186,12 +3159,6 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
       var npStateEl = document.getElementById('npState');
       var npTrackEl = document.getElementById('npTrack');
       var npArtistEl = document.getElementById('npArtist');
-      // Corner widget (intro card)
-      var cornerEl = document.getElementById('npCorner');
-      var cornerVinyl = document.getElementById('npCornerVinyl');
-      var cornerHole = document.getElementById('npCornerHole');
-      var cornerTrack = document.getElementById('npCornerTrack');
-      var cornerArtist = document.getElementById('npCornerArtist');
       if (!listEl) return;
 
       function timeAgo(uts) {
@@ -3208,22 +3175,6 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         var d = document.createElement('div');
         d.textContent = s;
         return d.innerHTML;
-      }
-
-      function setVinylImage(vinylContainer, holeEl, imageUrl, alt) {
-        var existing = vinylContainer.querySelector('img');
-        if (imageUrl) {
-          if (!existing) {
-            existing = document.createElement('img');
-            vinylContainer.appendChild(existing);
-          }
-          existing.src = imageUrl;
-          existing.alt = alt || '';
-          if (holeEl) holeEl.style.display = 'none';
-        } else {
-          if (existing) existing.remove();
-          if (holeEl) holeEl.style.display = '';
-        }
       }
 
       function renderTracks(tracks) {
@@ -3255,17 +3206,6 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
           }
         } else if (heroEl) {
           heroEl.classList.add('np-hidden');
-        }
-
-        // Corner widget in intro card
-        if (nowTrack && cornerEl) {
-          cornerEl.classList.add('visible');
-          cornerEl.href = nowTrack.url || '#';
-          cornerTrack.textContent = nowTrack.name;
-          cornerArtist.textContent = nowTrack.artist;
-          setVinylImage(cornerVinyl, cornerHole, nowTrack.image, nowTrack.album);
-        } else if (cornerEl) {
-          cornerEl.classList.remove('visible');
         }
 
         // Track list
@@ -3313,6 +3253,21 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         });
       }
 
+      // The Intro card's member list shows what is playing right now. It reads
+      // this poll instead of starting its own: window.__lastfmNowPlaying plus a
+      // `lastfm-nowplaying` event whenever the track changes. Only live
+      // results count; the prebuilt list is hours old.
+      var sharedNow = '';
+      function shareNowPlaying(tracks) {
+        var t = tracks.filter(function (x) { return x.nowplaying; })[0];
+        var now = t ? { name: t.name, artist: t.artist, image: t.image, url: t.url } : null;
+        var key = JSON.stringify(now);
+        if (key === sharedNow) return;
+        sharedNow = key;
+        window.__lastfmNowPlaying = now;
+        window.dispatchEvent(new CustomEvent('lastfm-nowplaying', { detail: now }));
+      }
+
       function fetchAndRender() {
         var url = 'https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks' +
           '&user=' + LASTFM_USER + '&api_key=' + LASTFM_KEY +
@@ -3320,6 +3275,7 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         fetch(url).then(function (r) { return r.json(); }).then(function (data) {
           var tracks = parseTracks(data);
           if (tracks.length) renderTracks(tracks);
+          shareNowPlaying(tracks);
         }).catch(function () {});
       }
 
@@ -3362,323 +3318,6 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
 
       update();
       setInterval(update, 1000);
-    })();
-
-    // ── AI Chat ──
-    (function () {
-      var CHAT_API_BASE = 'https://chat.ursb.me';
-
-      var chatArea = document.getElementById('chatArea');
-      var chatInput = document.getElementById('chatInput');
-      var chatError = document.getElementById('chatError');
-      var chatRounds = document.getElementById('chatRounds');
-      var chatPrompt = document.getElementById('chatPrompt');
-      var chatSuggestions = document.getElementById('chatSuggestions');
-
-      // ── Fake cursor & Airing_ cursor coordination ──
-      var nameCursor = document.querySelector('.cursor');
-      var chatActivated = false;
-
-      function updateNameCursor() {
-        // Show Airing_ if user has interacted with chat or chat is no longer usable
-        nameCursor.style.display = chatActivated ? '' : 'none';
-      }
-
-      chatInput.addEventListener('focus', function () {
-        chatPrompt.classList.add('hide-cursor');
-        chatActivated = true;
-        updateNameCursor();
-      });
-      chatInput.addEventListener('blur', function () {
-        if (!chatInput.value) {
-          chatPrompt.classList.remove('hide-cursor');
-        }
-      });
-
-      // Initially hide Airing_ since chat input cursor is visible
-      updateNameCursor();
-
-      // ── Suggestion chips ──
-      chatSuggestions.addEventListener('click', function (e) {
-        var chip = e.target.closest('.chat-suggestion-chip');
-        if (!chip) return;
-        if (typeof umami !== 'undefined') umami.track('chat-suggestion', { text: chip.textContent });
-        submitChat(chip.textContent);
-      });
-
-      function hideSuggestions() {
-        chatSuggestions.style.display = 'none';
-      }
-
-      var TOKEN_KEY = 'chat_visitor_token';
-      var MAX_ROUNDS = 10;
-      var roundCount = 0;
-
-      // ── Token management ──
-      function getToken() {
-        return localStorage.getItem(TOKEN_KEY);
-      }
-
-      function setToken(token) {
-        localStorage.setItem(TOKEN_KEY, token);
-      }
-
-      function ensureToken() {
-        var existing = getToken();
-        if (existing) return Promise.resolve(existing);
-        return fetch(CHAT_API_BASE + '/api/chat/init', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
-        })
-          .then(function (r) {
-            if (!r.ok) throw new Error('init_failed');
-            return r.json();
-          })
-          .then(function (data) {
-            setToken(data.token);
-            return data.token;
-          });
-      }
-
-      // ── History ──
-      function loadHistory() {
-        var token = getToken();
-        if (!token) return;
-        fetch(CHAT_API_BASE + '/api/chat/history', {
-          headers: { 'X-Visitor-Token': token }
-        })
-          .then(function (r) {
-            if (!r.ok) return;
-            return r.json();
-          })
-          .then(function (data) {
-            if (!data || !data.messages) return;
-            data.messages.forEach(function (msg) {
-              appendMessage(msg.role, msg.content, false);
-            });
-            if (data.messages.length > 0) hideSuggestions();
-            roundCount = data.rounds || 0;
-            if (data.maxRounds) MAX_ROUNDS = data.maxRounds;
-            updateRoundsDisplay();
-            if (roundCount >= MAX_ROUNDS) {
-              showLimitReached();
-            }
-          })
-          .catch(function () { /* silently ignore history load errors */ });
-      }
-
-      // ── Render markdown (lightweight inline only) ──
-      function escapeHtml(str) {
-        return str
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;');
-      }
-
-      function renderMarkdown(text) {
-        var escaped = escapeHtml(text);
-        // inline code: `code`
-        escaped = escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
-        // bold: **text**
-        escaped = escaped.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-        // italic: *text*
-        escaped = escaped.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-        // links: [text](url)
-        escaped = escaped.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
-          '<a href="$2" target="_blank" rel="noopener">$1</a>');
-        // unordered list items: "- item" at line start
-        escaped = escaped.replace(/^- (.+)$/gm, '<li>$1</li>');
-        escaped = escaped.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
-        // headings (unlikely but handle): ### heading
-        escaped = escaped.replace(/^### (.+)$/gm, '<strong>$1</strong>');
-        escaped = escaped.replace(/^## (.+)$/gm, '<strong>$1</strong>');
-        // strip newlines inside <ul> blocks to prevent extra <br> between list items
-        escaped = escaped.replace(/<ul>([\s\S]*?)<\/ul>/g, function(match, inner) {
-          return '<ul>' + inner.replace(/\n/g, '') + '</ul>';
-        });
-        // double newline = paragraph break, single newline = line break
-        escaped = escaped.replace(/\n\n/g, '<br><br>');
-        escaped = escaped.replace(/\n/g, '<br>');
-        return escaped;
-      }
-
-      // ── Append message ──
-      function appendMessage(role, content, animate) {
-        var msg = document.createElement('div');
-        msg.className = 'chat-msg';
-
-        var roleSpan = document.createElement('span');
-        roleSpan.className = role === 'user' ? 'chat-role-user' : 'chat-role-ai';
-        roleSpan.textContent = role === 'user' ? t('chat_role_user') : t('chat_role_ai');
-
-        var contentSpan = document.createElement('span');
-        contentSpan.className = 'chat-content';
-        if (animate) {
-          contentSpan.className += ' chat-typing';
-          contentSpan.innerHTML = '';
-        } else {
-          contentSpan.innerHTML = renderMarkdown(content);
-        }
-
-        msg.appendChild(roleSpan);
-        msg.appendChild(contentSpan);
-        chatArea.appendChild(msg);
-
-        if (!chatArea.classList.contains('active')) {
-          chatArea.classList.add('active');
-        }
-
-        chatArea.scrollTop = chatArea.scrollHeight;
-        return contentSpan;
-      }
-
-      // ── Rounds display ──
-      function updateRoundsDisplay() {
-        if (roundCount > 0) {
-          chatRounds.textContent = roundCount + '/' + MAX_ROUNDS;
-        } else {
-          chatRounds.textContent = '';
-        }
-      }
-
-      // ── Show limit reached ──
-      function showLimitReached() {
-        chatInput.disabled = true;
-        chatInput.style.display = 'none';
-        document.querySelector('.chat-prompt').style.display = 'none';
-        chatActivated = true;
-        updateNameCursor();
-        var limitMsg = document.createElement('div');
-        limitMsg.className = 'chat-limit-msg';
-        limitMsg.innerHTML = t('chat_limit');
-        chatInput.parentNode.appendChild(limitMsg);
-      }
-
-      // ── Send message ──
-      function sendMessage(message) {
-        chatError.textContent = '';
-        chatInput.disabled = true;
-
-        var contentEl = appendMessage('ai', '', true);
-
-        ensureToken()
-          .then(function (token) {
-            var controller = new AbortController();
-            var timeoutId = setTimeout(function () { controller.abort(); }, 30000);
-
-            return fetch(CHAT_API_BASE + '/api/chat', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Visitor-Token': token
-              },
-              body: JSON.stringify({ message: message }),
-              signal: controller.signal
-            })
-              .then(function (r) {
-                clearTimeout(timeoutId);
-                if (!r.ok) {
-                  return r.json().then(function (err) {
-                    throw err;
-                  });
-                }
-
-                var reader = r.body.getReader();
-                var decoder = new TextDecoder();
-                var buffer = '';
-                var accumulated = '';
-
-                function pump() {
-                  return reader.read().then(function (result) {
-                    if (result.done) {
-                      contentEl.classList.remove('chat-typing');
-                      contentEl.innerHTML = renderMarkdown(accumulated);
-                      chatArea.scrollTop = chatArea.scrollHeight;
-                      updateRoundsDisplay();
-                      if (roundCount >= MAX_ROUNDS) {
-                        showLimitReached();
-                      } else {
-                        chatInput.disabled = false;
-                        chatInput.focus();
-                      }
-                      return;
-                    }
-
-                    buffer += decoder.decode(result.value, { stream: true });
-                    var lines = buffer.split('\n');
-                    buffer = lines.pop();
-
-                    lines.forEach(function (line) {
-                      if (!line.startsWith('data:')) return;
-                      var data = line.slice(5).trim();
-                      if (!data) return;
-                      try {
-                        var evt = JSON.parse(data);
-                        if (evt.type === 'delta' && evt.text) {
-                          accumulated += evt.text;
-                          contentEl.innerHTML = renderMarkdown(accumulated) + '<span class="chat-typing"></span>';
-                          chatArea.scrollTop = chatArea.scrollHeight;
-                        } else if (evt.type === 'done') {
-                          if (evt.round) roundCount = evt.round;
-                          if (evt.maxRounds) MAX_ROUNDS = evt.maxRounds;
-                        } else if (evt.type === 'error') {
-                          throw { code: evt.code || 'STREAM_ERROR', message: evt.message };
-                        }
-                      } catch (e) {
-                        if (e.code) throw e;
-                      }
-                    });
-
-                    return pump();
-                  });
-                }
-
-                return pump();
-              });
-          })
-          .catch(function (err) {
-            contentEl.classList.remove('chat-typing');
-            if (contentEl.textContent === '') {
-              contentEl.parentNode.remove();
-            }
-
-            var code = err && err.code;
-            if (code === 'RATE_LIMITED') {
-              chatError.textContent = t('chat_err_rate');
-            } else if (code === 'LIMIT_REACHED') {
-              showLimitReached();
-            } else if (code === 'INVALID_TOKEN') {
-              localStorage.removeItem(TOKEN_KEY);
-              chatError.textContent = t('chat_err_expired');
-            } else if (err && err.name === 'AbortError') {
-              chatError.textContent = t('chat_err_timeout');
-            } else {
-              chatError.textContent = t('chat_err_fail');
-            }
-
-            chatInput.disabled = false;
-            chatInput.focus();
-          });
-      }
-
-      // ── Submit chat message ──
-      function submitChat(text) {
-        var message = text.trim();
-        if (!message) return;
-        chatInput.value = '';
-        hideSuggestions();
-        appendMessage('user', message, false);
-        sendMessage(message);
-      }
-
-      chatInput.addEventListener('keydown', function (e) {
-        if (e.key !== 'Enter') return;
-        submitChat(chatInput.value);
-      });
-
-      // ── Init ──
-      loadHistory();
     })();
   </script>
 
