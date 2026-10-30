@@ -142,6 +142,7 @@
       });
     }
     function failMessage(err) {
+      if (err && err.code === 'RESERVED_NAME') return T.reservedName;
       var detail = err && typeof (err.error || err.message) === 'string' ? (err.error || err.message) : '';
       return T.sendFail + (detail && detail.length < 120 ? ' (' + detail + ')' : '');
     }
@@ -200,10 +201,16 @@
     function apiGet(path) {
       return fetch(API + path, { headers: { 'Origin': location.origin } }).then(handleResponse);
     }
+    // The owner's name/emails are reserved server-side; the owner's browser
+    // proves who it is with the token saved by /admin (same origin).
+    function adminHeaders(h) {
+      try { var t = localStorage.getItem('admin-token'); if (t) h.Authorization = 'Bearer ' + t; } catch (e) {}
+      return h;
+    }
     function apiPost(path, body) {
       return fetch(API + path, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: adminHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(body)
       }).then(handleResponse);
     }

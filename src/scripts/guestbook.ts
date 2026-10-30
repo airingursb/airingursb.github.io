@@ -448,9 +448,12 @@ export function initGuestbook(): void {
     submitBtn.disabled = true;
     submitBtn.textContent = '…';
     setStatus(tr('gb_sending'));
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    // The owner's name is reserved server-side; /admin's token proves it's him.
+    try { const t = localStorage.getItem('admin-token'); if (t) headers.Authorization = 'Bearer ' + t; } catch { /* ignore */ }
     fetch(API + '/api/comments', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ post_slug: GUESTBOOK_SLUG, nickname, email: email || undefined, content: text }),
     })
       .then((r) => r.json().catch(() => ({})).then((data) => {
@@ -482,9 +485,12 @@ export function initGuestbook(): void {
       })
       .catch((err: Error & { status?: number; data?: { code?: string } }) => {
         // Keep the draft in the input and say what happened.
-        const spam = err && err.status === 403 && err.data && err.data.code === 'SPAM_DETECTED';
-        setStatus(spam ? tr('gb_rejected') : err && err.status === 429 ? tr('gb_too_many') : tr('gb_send_fail'), true);
-        trackEvent('guestbook-submit', { status: spam ? 'spam' : 'error' });
+        const code = err && err.data && err.data.code;
+        const spam = err && err.status === 403 && code === 'SPAM_DETECTED';
+        const reserved = code === 'RESERVED_NAME';
+        if (reserved) { setInvalid(nameInput, true); nameInput.focus(); }
+        setStatus(reserved ? tr('gb_reserved_name') : spam ? tr('gb_rejected') : err && err.status === 429 ? tr('gb_too_many') : tr('gb_send_fail'), true);
+        trackEvent('guestbook-submit', { status: reserved ? 'reserved' : spam ? 'spam' : 'error' });
       })
       .finally(() => {
         submitBtn.disabled = false;
