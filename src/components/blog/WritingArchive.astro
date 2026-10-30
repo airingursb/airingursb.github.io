@@ -1,0 +1,86 @@
+---
+// Sidebar "writing archive" (terminal style): month heat map since 2015
+// (click a cell for that month's posts), `wc -w` totals, busiest year,
+// longest post, and `shuf -n 1` for a random one. All numbers come from the
+// posts collection at build time; interactions: src/scripts/blog-archive.ts.
+import '../../styles/blog-archive.css';
+import {
+  archiveStats, heatGrid, heatLevel, fmtInt, dateEn, TAG_LABEL, thumbHTML,
+  type ArchivePost, type BlogLang,
+} from '../../lib/blog-archive';
+interface Props { posts: ArchivePost[]; lang: BlogLang; since?: number; now?: Date }
+const { posts, lang, since = 2015, now = new Date() } = Astro.props;
+const en = lang === 'en';
+const s = archiveStats(posts);
+const rows = heatGrid(posts, since, now);
+const pad = (v: string, n = 7) => v.padStart(n);
+const T = en
+  ? {
+      title: 'Writing archive', meta: `<b>${s.posts}</b> posts · since ${since}`,
+      grid: (y: number, m: number, c: number) => `${y}-${String(m).padStart(2, '0')}: ${c} ${c === 1 ? 'post' : 'posts'}`,
+      sumHead: 'n', less: 'less', more: 'more', monthly: 'monthly',
+      wc: [
+        [fmtInt(s.posts), 'posts'],
+        [fmtInt(s.words), `words <em>≈ ${Math.round(s.words / 1000)}k</em>`],
+        [fmtInt(s.avg), 'words/post'],
+        [String(s.issues), 'monthly issues'],
+      ],
+      busiest: 'busiest', busiestV: `${s.busiest.year} · ${s.busiest.count} posts`,
+      longest: 'longest', words: (n: number) => `${fmtInt(n)} words`, again: '↻ again', againAria: 'Pick another random post',
+    }
+  : {
+      title: '写作档案', meta: `<b>${s.posts}</b> 篇 · since ${since}`,
+      grid: (y: number, m: number, c: number) => `${y} 年 ${m} 月：${c} 篇`,
+      sumHead: '篇', less: '少', more: '多', monthly: '含月刊',
+      wc: [
+        [fmtInt(s.posts), '篇文章'],
+        [fmtInt(s.words), `字 <em>≈ ${(s.words / 10000).toFixed(1)} 万</em>`],
+        [fmtInt(s.avg), '字/篇'],
+        [String(s.issues), '期月刊'],
+      ],
+      busiest: '最勤', busiestV: `${s.busiest.year} 年 · ${s.busiest.count} 篇`,
+      longest: '最长', words: (n: number) => `${fmtInt(n)} 字`, again: '↻ 再抽', againAria: '再抽一篇',
+    };
+// Server pick for `shuf` (re-rolled in the browser on load).
+const pick = posts[(now.getUTCDate() * 7) % posts.length];
+const label = TAG_LABEL[lang];
+---
+<section class="wa" data-writing-archive aria-label={T.title}>
+  <header class="wa-h"><span class="t">{T.title}</span><span class="r" set:html={T.meta}></span></header>
+  <div class="wa-cmd"><i>$</i> git log --since={since} | cal --heat</div>
+  <div class="wa-hm" role="group" aria-label={T.title}>
+    <div class="wa-row wa-head" aria-hidden="true"><span class="y"></span>{Array.from({ length: 12 }, (_, i) => <span class="mh">{i + 1}</span>)}<span class="sum">{T.sumHead}</span></div>
+    {rows.map((r) => (
+      <div class="wa-row">
+        <span class="y">{r.year}</span>
+        {r.cells.map((c) => (
+          <button
+            type="button"
+            class:list={['c', `l${heatLevel(c.count)}`, { mon: c.monthly, fut: c.future, now: c.now }]}
+            data-y={c.year}
+            data-m={c.month}
+            aria-label={T.grid(c.year, c.month, c.count)}
+            disabled={c.future}
+          ></button>
+        ))}
+        <span class="sum">{r.total || '·'}</span>
+      </div>
+    ))}
+  </div>
+  <div class="wa-lg" aria-hidden="true"><span>{T.less}</span><i class="c l0"></i><i class="c l1"></i><i class="c l2"></i><i class="c l3"></i><i class="c l4"></i><span>{T.more}</span><i class="c l2 mon"></i><span>{T.monthly}</span></div>
+  <div class="wa-cmd"><i>$</i> wc -w ~/blog/*.md</div>
+  <pre class="wa-wc" set:html={T.wc.map(([n, l]) => `<span><b>${pad(n)}</b>  ${l}</span>`).join('\n')}></pre>
+  <div class="wa-facts">
+    <div><span class="k">{T.busiest}</span>{T.busiestV}</div>
+    <div><span class="k">{T.longest}</span><a href={s.longest.href}>{s.longest.title}</a> · {T.words(s.longest.words)}</div>
+  </div>
+  <div class="wa-cmd wa-shuf-cmd"><i>$</i> shuf -n 1 ~/blog <button type="button" class="wa-reroll" aria-label={T.againAria}>{T.again}</button></div>
+  <a class="wa-shuf" href={pick.href} aria-live="polite">
+    <Fragment set:html={thumbHTML(pick, 'wa-st')} />
+    <span class="sb"><span class="stt">{pick.title}</span><span class="sm">{dateEn(pick)} · {label[pick.tag]} · {T.words(pick.words)}</span></span>
+  </a>
+  <div class="wa-tip" aria-live="polite" hidden></div>
+</section>
+<script>
+  import '../../scripts/blog-archive.ts';
+</script>

@@ -1,5 +1,40 @@
 # Airing's Blog Design System
 
+## Blog list page in the terminal language · October 31
+
+`/blog/` and `/en/blog/` borrow the homepage's terminal shell (monospace,
+`$` commands) for structure and data; post titles stay in the blog serif.
+The hero grid and Most Popular are unchanged.
+
+- **One terminal window.** The homepage navigator and the blog search share
+  `src/components/TermWindow.astro` (`src/styles/term-window.css`,
+  `src/scripts/term-window.ts`): bottom prompt, ⌘K / Ctrl+K / `/`, ↑↓ ↵ esc.
+  Its macOS title bar is 32px with 12px traffic lights 8px apart, 12px from the
+  left, a 12px centred title (the longest variant that fits; never clipped), a
+  soft top highlight and a bottom rule, in both modes. Every band of the window
+  is `flex: none`; only the list scrolls.
+- **Search (⌘K).** `ls -la ~/blog | grep` over every post's title, tags, year and
+  summary; `tag:` (Chinese or English tag names), years and `shuf`; ↵ opens the
+  post. The entry replaces the tab bar's magnifier, and the sidebar magnifier
+  opens the same window. The bottom prompt's path follows the year being read.
+  Views and likes in the preview come from the post page's own endpoints, only
+  for the selected row, cached for the session.
+- **Latest = `tree ~/blog`.** One `<details>` folder per year with 12 monthly
+  bars; the two newest years start open; files hang off connector lines; the
+  tree ends with `N directories, M files`. Posts without artwork get a text
+  cover whose pattern follows the tag (tech blueprint, monthly newsprint, annual
+  rings, essay manuscript grid); the phrase shrinks to fit, never truncated.
+  Top still shows the ranked list.
+- **Sidebar writing archive.** Compact author row (52px avatar, name and bio to
+  the right, icons below), then the archive card: 2015–now monthly heat map
+  (click a month for its posts), `wc -w` totals, busiest year, longest post and
+  `shuf -n 1`, then subscribe on one row. The sidebar is sticky; when taller than
+  the viewport it scrolls until its bottom is visible. This supersedes the
+  centred author profile of October 16.
+- **Numbers.** Word counts (CJK characters + Latin words, without code blocks,
+  images and link targets), the heat map, tags and monthly-issue counts are
+  computed from the posts collection at build time (`src/lib/blog-archive.ts`).
+
 ## AI Weekly 005 · October 26
 
 Issue 005 uses the A4 cover, red frame, printed paper and type scale established

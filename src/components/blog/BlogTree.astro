@@ -1,0 +1,59 @@
+---
+// Latest list as `tree ~/blog`: one folder per year (12-month mini bars),
+// files hung off connector lines, `N directories, M files` at the end.
+// Posts without artwork get a text cover (pattern by tag). Folders are
+// <details>, so they open without JS; the "expand all" button needs JS.
+import '../../styles/blog-archive.css';
+import { yearFolders, fmtInt, fmtWords, TAG_LABEL, thumbHTML, type ArchivePost, type BlogLang } from '../../lib/blog-archive';
+interface Props { posts: ArchivePost[]; lang: BlogLang; openYears?: number }
+const { posts, lang, openYears = 2 } = Astro.props;
+const folders = yearFolders(posts);
+const total = posts.reduce((a, p) => a + p.words, 0);
+const en = lang === 'en';
+const T = {
+  all: en ? 'Expand all' : '展开全部',
+  less: en ? 'Collapse older' : '收起旧年份',
+  count: (n: number) => (en ? `${n} ${n === 1 ? 'post' : 'posts'}` : `${n} 篇`),
+  sum: en ? `${folders.length} directories, ${posts.length} files · ${fmtInt(total)} words` : `${folders.length} directories, ${posts.length} files · ${fmtInt(total)} 字`,
+  words: (n: number) => (en ? `${fmtInt(n)} words` : `${fmtInt(n)} 字`),
+};
+const spark = (months: number[]) => {
+  const mx = Math.max(1, ...months);
+  return months.map((c) => `<i${c ? '' : ' class="z"'} style="--h:${c ? Math.round(25 + (75 * c) / mx) : 6}%"></i>`).join('');
+};
+---
+<div class="bt" data-blog-tree data-open-default={openYears} data-label-all={T.all} data-label-less={T.less}>
+  <div class="bt-cmd">
+    <span><i>$</i> tree ~/blog -L 2 --sort=date -r</span>
+    <button type="button" class="bt-all" hidden>{T.all}</button>
+  </div>
+  <div class="bt-root">~/blog</div>
+  <div class="bt-tr">
+    {folders.map((f, i) => (
+      <details class="bt-dir" data-year={f.year} open={i < openYears}>
+        <summary class="bt-dh">
+          <span class="bt-br" aria-hidden="true"></span>
+          <span class="bt-fold" aria-hidden="true"></span>
+          <span class="bt-dn">{f.year}/</span>
+          <span class="bt-dc">{T.count(f.posts.length)} · {fmtWords(f.words, lang)}</span>
+          <span class="bt-spark" aria-hidden="true" set:html={spark(f.months)}></span>
+          <span class="bt-stack" aria-hidden="true" set:html={f.posts.slice(0, 4).map((p) => thumbHTML(p, 'bt-sk')).join('')}></span>
+          <span class="bt-tg" aria-hidden="true"></span>
+        </summary>
+        <div class="bt-files">
+          {f.posts.map((p) => (
+            <a class="bt-f" href={p.href} data-article-card data-slug={p.slug} data-year={p.year}>
+              <span class="bt-br" aria-hidden="true"></span>
+              <Fragment set:html={thumbHTML(p, 'bt-th', 'data-article-cover')} />
+              <span class="bt-fb">
+                <span class="bt-ft" data-article-title>{p.title}{p.cn && <span class="cn-badge">CN</span>}</span>
+                <span class="bt-fm"><span>{p.date}</span><span>{TAG_LABEL[lang][p.tag]}</span><span>{T.words(p.words)}</span></span>
+              </span>
+            </a>
+          ))}
+        </div>
+      </details>
+    ))}
+  </div>
+  <div class="bt-sum">{T.sum}</div>
+</div>

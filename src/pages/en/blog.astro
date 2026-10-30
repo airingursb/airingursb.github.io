@@ -4,6 +4,11 @@ import LivingCover from '../../components/photo-motion/LivingCover.astro';
 import ArchiveBookcart from '../../components/editorial/ArchiveBookcart.astro';
 import FooterTide from '../../components/footer-tide/FooterTide.astro';
 import SiteHeader from "../../components/SiteHeader.astro";
+import BlogTree from "../../components/blog/BlogTree.astro";
+import WritingArchive from "../../components/blog/WritingArchive.astro";
+import BlogSearch from "../../components/blog/BlogSearch.astro";
+import BlogIndex from "../../components/blog/BlogIndex.astro";
+import { toArchivePosts } from "../../lib/blog-archive";
 /**
  * Blog — Magazine-style Substack-inspired listing page (English)
  */
@@ -99,6 +104,16 @@ function displayDesc(postId: string, zhDesc?: string) {
 function postLink(postId: string) {
   return hasEn.has(postId) ? `/en/posts/${postId}/` : `/posts/${postId}/`;
 }
+
+// tree ~/blog, writing archive, ⌘K search: computed from the collection at build time
+// (word counts come from the Chinese original, which every post has)
+const archivePosts = toArchivePosts(posts, {
+  lang: 'en',
+  title: (p) => displayTitle(p.id, p.data.title),
+  desc: (p) => displayDesc(p.id, p.data.description),
+  href: (p) => postLink(p.id),
+  cn: (p) => !hasEn.has(p.id),
+});
 ---
 
 <BaseLayout title="Blog | Airing" description="Essays by Airing on software development, AI, products, and everyday life, alongside monthly journals and annual reflections." lang="en" hreflang={{ zh: 'https://ursb.me/blog/', en: 'https://ursb.me/en/blog/' }}>
@@ -253,23 +268,19 @@ function postLink(postId: string) {
         <div class="article-list">
           <div class="list-tabs">
             <div class="tab-bar">
-              <button class="list-tab active">{strings.latest}</button>
-              <button class="list-tab">Top</button>
+              <button class="list-tab active" data-tab="latest">{strings.latest}</button>
+              <button class="list-tab" data-tab="top">Top</button>
             </div>
-            <a href="/search" class="list-search-icon" aria-label="Search posts">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
-            </a>
+            <BlogSearch lang="en" count={posts.length} />
           </div>
+          <BlogTree posts={archivePosts} lang="en" />
 
           {listPosts.map(post => {
             const pv = ranking.views[post.id] || 0;
             const likes = ranking.likes[post.id] || 0;
             const comments = ranking.comments[post.id] || 0;
             return (
-            <a href={postLink(post.id)} class="post-item" data-article-card data-slug={post.id} data-date={post.data.date.toISOString()} data-rank={rankIndex.get(post.id) ?? 9999}>
+            <a href={postLink(post.id)} class="post-item" data-article-card data-slug={post.id} data-year={post.data.date.getUTCFullYear()} data-date={post.data.date.toISOString()} data-rank={rankIndex.get(post.id) ?? 9999}>
               <div class="pi-body">
                 <h3 class="pi-title" data-article-title>{displayTitle(post.id, post.data.title)}{!hasEn.has(post.id) && <span class="cn-badge">CN</span>}</h3>
                 {post.data.description && (
@@ -342,6 +353,7 @@ function postLink(postId: string) {
                 </a>
               </div>
             </div>
+            <WritingArchive posts={archivePosts} lang="en" />
             <div class="subscribe-card">
               <p class="subscribe-desc">Choose email or RSS, then follow only what matters</p>
               <button type="button" class="subscribe-btn" data-subscribe-open data-subscribe-context="blog">
@@ -383,6 +395,7 @@ function postLink(postId: string) {
   };
 </script>
 <script is:inline src="/assets/online-presence.js" defer></script>
+  <BlogIndex posts={archivePosts} lang="en" />
   <span id="article-navigation-ready" hidden></span>
 </BaseLayout>
 
@@ -775,17 +788,6 @@ function postLink(postId: string) {
   }
   .list-tab:hover { color: var(--c-text); }
   .list-tab.active { color: var(--c-text); border-bottom-color: var(--c-text); }
-  .list-search-icon {
-    color: var(--c-text-muted);
-    padding: 8px;
-    border-radius: 6px;
-    transition: all 0.15s;
-    display: flex; align-items: center;
-  }
-  .list-search-icon:hover {
-    color: var(--c-text);
-    background: rgba(var(--c-overlay-rgb),0.06);
-  }
 
   /* Post items */
   .post-item {
@@ -897,21 +899,28 @@ function postLink(postId: string) {
   }
 
   /* ── Author Sidebar ────────────────────────────────── */
-  .author-sidebar { }
+  /* Stretch to the grid row so the sticky panel can travel with the list;
+     src/scripts/blog-archive.ts lowers `top` when the panel is taller than
+     the viewport, so its bottom (subscribe) is always reachable. */
+  .author-sidebar { align-self: stretch; }
   .author-sidebar .sidebar-sticky {
-    position: sticky; top: 80px;
+    position: sticky; top: 20px;
+    width: 100%;
   }
+  /* Compact author row: avatar left, name + bio right, icons below. */
   .author-card {
-    text-align: center;
-    padding: 24px 0 20px;
+    display: grid; grid-template-columns: 52px 1fr; column-gap: 12px;
+    align-items: center; text-align: left;
+    padding: 0 0 12px;
   }
   .author-avatar {
-    width: 48px; height: 48px; border-radius: 50%;
-    object-fit: cover; margin-bottom: 10px;
+    display: block; grid-row: 1 / 3;
+    width: 52px; height: 52px; border-radius: 50%;
+    object-fit: cover; margin: 0;
   }
   .author-name {
-    font-size: 16px; font-weight: 700; color: var(--c-text);
-    margin: 0 0 4px;
+    font-size: 16px; line-height: 1.3; font-weight: 700; color: var(--c-text);
+    margin: 0; align-self: end;
   }
   .author-name a {
     color: inherit; text-decoration: none;
@@ -920,17 +929,24 @@ function postLink(postId: string) {
     color: var(--accent, #4ade80);
   }
   .author-links {
-    display: flex; gap: 10px; justify-content: center;
+    grid-column: 1 / -1;
+    display: flex; gap: 4px; justify-content: space-between;
     flex-wrap: wrap;
     margin-top: 10px;
   }
   .author-link-icon {
-    color: var(--c-text-dim); transition: color 0.2s;
-    display: flex; align-items: center;
+    color: var(--c-text-muted); transition: color 0.2s;
+    display: flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px;
     background: none; border: none; padding: 0; cursor: pointer;
     font-size: inherit;
   }
+  .author-link-icon svg { width: 16px; height: 16px; }
   .author-link-icon:hover { color: var(--c-text); }
+  .author-link-icon:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+    border-radius: 4px;
+  }
 
   /* WeChat tooltip */
   .wechat-wrap { position: relative; display: inline-flex; }
@@ -953,19 +969,22 @@ function postLink(postId: string) {
   .wechat-tooltip.active { display: block; }
   .wechat-qr { width: 280px; height: auto; display: block; border-radius: 4px; }
   .author-bio {
-    font-size: 13px; color: var(--c-text-dim); margin: 0;
-    line-height: 1.4;
+    font-size: 13px; color: var(--c-text-muted);
+    margin: 2px 0 0; align-self: start;
+    line-height: 1.5;
   }
 
-  /* Subscribe */
+  /* Subscribe: one row under the archive */
   .subscribe-card {
+    display: flex; align-items: center; gap: 10px;
     border-top: 1px solid var(--c-border);
-    padding-top: 16px;
-    margin-top: 16px;
+    padding-top: 12px;
+    margin-top: 14px;
   }
   .subscribe-desc {
-    font-size: 12px; color: var(--c-text-dim); margin: 0 0 10px;
-    line-height: 1.4; text-align: center;
+    flex: 1; min-width: 0;
+    font-size: 12px; color: var(--c-text-muted); margin: 0;
+    line-height: 1.45; text-align: left;
   }
   .subscribe-form {
     display: flex; flex-direction: column; gap: 8px;
@@ -988,7 +1007,8 @@ function postLink(postId: string) {
     color: var(--c-text-dim);
   }
   .subscribe-btn {
-    width: 100%; padding: 9px 14px;
+    flex: none; width: auto; padding: 9px 14px;
+    min-height: 44px;
     font-size: 13px; font-weight: 500; font-family: inherit;
     color: var(--c-text);
     background: rgba(var(--c-overlay-rgb),0.06);
@@ -1061,6 +1081,7 @@ function postLink(postId: string) {
     }
     .author-sidebar .sidebar-sticky {
       position: static;
+      max-width: 420px; margin-inline: auto;
     }
 
     .pi-thumb {

@@ -1,0 +1,22 @@
+---
+// Blog ⌘K search: the entry in the list's tab bar plus the shared terminal
+// window (TermWindow, same as the homepage navigator). Searches every post's
+// title, tags, year and summary; supports `tag:` and `shuf`; ↵ opens the post.
+// Logic: src/scripts/blog-search.ts · data: BlogIndex.
+import '../../styles/blog-archive.css';
+import TermWindow from '../TermWindow.astro';
+import type { BlogLang } from '../../lib/blog-archive';
+interface Props { lang: BlogLang; count: number }
+const { lang, count } = Astro.props;
+const en = lang === 'en';
+const isMacHint = '⌘';
+---
+<TermWindow />
+<a href={en ? '/en/search' : '/search'} class="bs-entry" data-blog-search aria-label={en ? 'Search posts (⌘K)' : '搜索文章（⌘K）'}>
+  <span class="u">~/blog</span><span class="d">$</span><span class="c">grep</span>
+  <span class="ph"><span class="lg">{en ? `search ${count} posts: title · tag · year · summary` : `搜 ${count} 篇：标题 · 标签 · 年份 · 摘要`}</span><span class="sm">{en ? `search ${count} posts` : `搜 ${count} 篇`}</span></span>
+  <span class="kb" aria-hidden="true"><kbd data-mod>{isMacHint}</kbd><kbd>K</kbd></span>
+</a>
+<script>
+  import '../../scripts/blog-search.ts';
+</script>
