@@ -1,0 +1,110 @@
+---
+// A chapter heading in the homepage card grid, drawn as a binder index tab:
+//   02 $ cd ~/building   # 作品 · 上架的 App……        drwxr-xr-x 7 张卡片
+// Text comes from src/data/home-chapters.ts; zh/en switch through data-i18n
+// (keys ch_<id>_name / ch_<id>_desc / ch_cards / ch_card in public/i18n).
+import { HOME_CHAPTERS } from '../data/home-chapters';
+
+interface Props { id: string }
+const { id } = Astro.props;
+const index = HOME_CHAPTERS.findIndex((c) => c.id === id);
+const ch = HOME_CHAPTERS[index];
+if (!ch) throw new Error(`ChapterHead: unknown chapter "${id}"`);
+const n = ch.cards.length;
+const no = String(index).padStart(2, '0');
+---
+<header class="ch-head" id={`ch-${ch.id}`} data-ch={ch.id}>
+  <div class="ch-row">
+    <span class="ch-tab"><span class="ch-no">{no}</span><span class="ch-ps">$</span><span class="ch-cmd">cd</span><b class="ch-path">{ch.path}</b></span>
+    <span class="ch-desc"><i>#</i> <span data-i18n={`ch_${ch.id}_name`}>{ch.zh}</span> · <span data-i18n={`ch_${ch.id}_desc`}>{ch.desc.zh}</span></span>
+    <span class="ch-cnt"><i>drwxr-xr-x</i> {n} <span data-i18n={n > 1 ? 'ch_cards' : 'ch_card'}>张卡片</span></span>
+  </div>
+  <p class="ch-desc2"><i>#</i> <span data-i18n={`ch_${ch.id}_name`}>{ch.zh}</span> · <span data-i18n={`ch_${ch.id}_desc`}>{ch.desc.zh}</span></p>
+</header>
+
+<style is:global>
+  /* ── 章节标题：活页夹索引签 + 终端命令 ── */
+  .ch-head {
+    grid-column: 1 / -1;
+    margin: 30px 0 -4px;
+    font-family: var(--font-mono);
+    scroll-margin-top: 24px;
+    --ch-paper: color-mix(in srgb, var(--c-bg) 93%, var(--c-text));
+  }
+  html[data-mode="light"] .ch-head { --ch-paper: color-mix(in srgb, var(--c-bg) 96%, var(--c-text)); }
+  .ch-row {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    gap: 14px;
+    min-width: 0;
+  }
+  .ch-row::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(var(--c-overlay-rgb), .14), rgba(var(--c-overlay-rgb), .07) 70%, rgba(var(--c-overlay-rgb), 0));
+  }
+  .ch-tab {
+    position: relative;
+    z-index: 1;
+    flex: none;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 7px;
+    padding: 6px 13px 6px 10px;
+    border: 1px solid rgba(var(--c-overlay-rgb), .12);
+    border-bottom: 1px solid var(--ch-paper);
+    border-radius: 7px 7px 0 0;
+    background: var(--ch-paper);
+    box-shadow: inset 0 1px 0 rgba(var(--c-overlay-rgb), .05), 0 -6px 14px -10px rgba(0, 0, 0, .45);
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--c-text);
+    white-space: nowrap;
+  }
+  html[data-mode="light"] .ch-tab { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 -4px 10px -8px rgba(0, 0, 0, .25); }
+  .ch-tab::before { /* 索引签左侧的细色条，像活页夹分隔页 */
+    content: '';
+    position: absolute;
+    left: -1px; top: 7px; bottom: 7px;
+    width: 2px;
+    border-radius: 2px;
+    background: var(--accent);
+    opacity: .85;
+  }
+  .ch-no { font-size: 10px; color: var(--c-text-dim); letter-spacing: .5px; margin-right: 1px; }
+  .ch-ps { color: var(--accent); font-weight: 700; }
+  .ch-cmd { color: var(--c-text-muted); }
+  .ch-path { color: var(--c-text); font-weight: 700; }
+  .ch-desc {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-bottom: 7px;
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--c-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ch-desc i, .ch-desc2 i { font-style: normal; color: var(--c-text-dim); }
+  .ch-cnt {
+    flex: none;
+    padding-bottom: 7px;
+    font-size: 11px;
+    line-height: 16px;
+    color: var(--c-text-muted);
+    white-space: nowrap;
+  }
+  .ch-cnt i { font-style: normal; color: var(--c-text-dim); margin-right: 4px; }
+  .ch-desc2 { display: none; margin: 8px 0 0; font-size: 12px; line-height: 1.55; color: var(--c-text-muted); }
+  @media (max-width: 640px) {
+    .ch-head { margin-top: 26px; }
+    .ch-desc { display: none; }
+    .ch-row { justify-content: space-between; }
+    .ch-cnt i { display: none; }
+    .ch-desc2 { display: block; }
+  }
+</style>
