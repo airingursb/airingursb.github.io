@@ -346,6 +346,21 @@ def lastfm_api(method, **kwargs):
 
 
 MAX_NAMED_ARTISTS = 7  # top N get unique colors, rest merged into "Others"
+MAX_ALBUMS = 9  # the Music Log collage: #1 takes 2x2, then eight tiles
+LASTFM_BLANK_COVER = '2a96cbd8b46e442fc41c2b86b821562f'  # Last.fm's grey star placeholder
+
+
+def slim_album(a):
+    image = next((i.get('#text', '') for i in a.get('image', []) if i.get('size') == 'extralarge'), '')
+    if LASTFM_BLANK_COVER in image:
+        image = ''
+    return {
+        'name': a.get('name', ''),
+        'artist': (a.get('artist') or {}).get('name', ''),
+        'plays': int(a.get('playcount') or 0),
+        'image': image,
+        'url': a.get('url', ''),
+    }
 
 
 def fetch_lastfm_data():
@@ -365,11 +380,13 @@ def fetch_lastfm_data():
     for period_key, period_label in LASTFM_PERIODS:
         artists_resp = lastfm_api('user.gettopartists', period=period_key, limit='10')
         tracks_resp = lastfm_api('user.gettoptracks', period=period_key, limit='10')
+        albums_resp = lastfm_api('user.gettopalbums', period=period_key, limit=str(MAX_ALBUMS))
         raw_periods.append({
             'key': period_key,
             'label': period_label,
             'raw_artists': artists_resp.get('topartists', {}).get('artist', []),
             'raw_tracks': tracks_resp.get('toptracks', {}).get('track', []),
+            'raw_albums': albums_resp.get('topalbums', {}),
         })
 
     # Determine top N artists from "overall" period (last entry)
@@ -421,6 +438,9 @@ def fetch_lastfm_data():
             'total': total_plays,
             'artists': named,
             'tracks': tracks,
+            # distinct albums played in the period, and the most played ones
+            'albumTotal': int(rp['raw_albums'].get('@attr', {}).get('total') or 0),
+            'albums': [slim_album(a) for a in rp['raw_albums'].get('album', [])[:MAX_ALBUMS]],
         })
 
     return {
