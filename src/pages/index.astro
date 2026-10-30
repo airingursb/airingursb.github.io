@@ -18,7 +18,8 @@ import DoubanShelves from '../components/DoubanShelves.astro';
 import { FIXED_DATES, FLOATING_DATES } from '../lib/easter-egg-themes';
 import { fetchComics, comicDate } from '../lib/comics';
 import { loadHomeWorkouts } from '../lib/home-workouts';
-import { fetchReadingItems } from '../lib/reading';
+import { fetchReadingItems, fetchReadingStats, readingSourceLabel } from '../lib/reading';
+import { aiWeeklyIssues } from '../data/ai-weekly';
 import { loadReadingCover, readingCoverLabel } from '../lib/reading-cover';
 import { cities as footprintCities } from '../data/footprints';
 import IslandWidget from '../components/IslandWidget.astro';
@@ -99,18 +100,76 @@ const photoView = recentPhotos.map((p: any) => {
 });
 const openPhoto = photoView[0];
 const recentReading = await fetchReadingItems(8);
-const recentReadingCards = await Promise.all(recentReading.map(async (item) => {
+const readingStats = await fetchReadingStats();
+// Reading Stream as a newspaper front page: the latest item is the lead,
+// the next three run in the side column, the four after that below the fold.
+// Covers are the 16:9 hand-drawn cards (the lead larger), never cropped.
+const SH_TZ = 'Asia/Shanghai';
+const shDay = (v: string) => new Intl.DateTimeFormat('en-CA', { timeZone: SH_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(v));
+const shMD = (v: string) => shDay(v).slice(5).replace('-', '/');
+const shHM = (v: string) => new Intl.DateTimeFormat('en-GB', { timeZone: SH_TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(v));
+// "…（@handle）" at the end of a title repeats the author; drop it on the page.
+const readingTitle = (title: string, author: string | null) => {
+  const m = title.match(/[（(](@[\w.]+)[）)]$/);
+  return m && author && author.includes(m[1]) ? title.slice(0, m.index).trim() : title;
+};
+const firstPoint = (summary: string | null) => (summary || '').split(/\n+/).map((l) => l.replace(/^\s*[-*•]\s*/, '').trim()).find(Boolean) ?? '';
+const recentReadingCards = await Promise.all(recentReading.map(async (item, index) => {
   const coverEnSource = item.cover_url_en || item.cover_url;
+  const [w, h] = index === 0 ? [960, 540] : [640, 360];
   const [coverZh, coverEn] = await Promise.all([
     loadReadingCover(readingCoverLabel(item), item.cover_url, () => (
-      getImage({ src: item.cover_url, width: 720, height: 480, format: 'webp', quality: 75 })
+      getImage({ src: item.cover_url, width: w, height: h, format: 'webp', quality: 75 })
     )),
     loadReadingCover(readingCoverLabel(item, 'en'), coverEnSource, () => (
-      getImage({ src: coverEnSource, width: 720, height: 480, format: 'webp', quality: 75 })
+      getImage({ src: coverEnSource, width: w, height: h, format: 'webp', quality: 75 })
     )),
   ]);
-  return { item, coverZh: coverZh?.src ?? '', coverEn: coverEn?.src ?? '' };
+  const dekZh = firstPoint(item.summary);
+  return {
+    item,
+    coverZh: coverZh?.src ?? '',
+    coverEn: coverEn?.src ?? '',
+    w, h,
+    titleZh: readingTitle(item.title, item.author),
+    titleEn: readingTitle(item.title_en || item.title, item.author),
+    dekZh,
+    dekEn: firstPoint(item.summary_en) || dekZh,
+    day: shDay(item.saved_at),
+    md: shMD(item.saved_at),
+    hm: shHM(item.saved_at),
+    sourceEn: readingSourceLabel(item.source, 'en'),
+  };
 }));
+const rsLead = recentReadingCards[0];
+const rsSide = recentReadingCards.slice(1, 4);
+const rsFold = recentReadingCards.slice(4, 8);
+const rsPaper = (() => {
+  if (!rsLead) return null;
+  const leadDate = new Date(rsLead.item.saved_at);
+  const day = rsLead.day;
+  const dayMs = Date.parse(`${day}T00:00:00+08:00`);
+  const prevDay = shDay(new Date(dayMs - 12 * 3600e3).toISOString());
+  // ears: the 7 days up to the paper's date, and that calendar month
+  const week = readingStats.savedAt.filter((v) => { const d = shDay(v); return d <= day && Date.parse(`${d}T00:00:00+08:00`) > dayMs - 7 * 86400e3; }).length;
+  const month = readingStats.savedAt.filter((v) => shDay(v).slice(0, 7) === day.slice(0, 7)).length;
+  const sideSameDay = rsSide.length > 0 && rsSide.every((c) => c.day === day);
+  const foldDays = [...new Set(rsFold.map((c) => c.day))];
+  const foldDay = foldDays.length === 1 ? foldDays[0] : '';
+  return {
+    day,
+    total: readingStats.total || recentReading.length,
+    week,
+    month,
+    sources: readingStats.sources.slice(0, 3),
+    dateZh: `${new Intl.DateTimeFormat('zh-CN', { timeZone: SH_TZ, year: 'numeric', month: 'long', day: 'numeric' }).format(leadDate).replace(/(\d+)年(\d+)月(\d+)日/, '$1 年 $2 月 $3 日')} · ${new Intl.DateTimeFormat('zh-CN', { timeZone: SH_TZ, weekday: 'long' }).format(leadDate)}`,
+    dateEn: new Intl.DateTimeFormat('en-US', { timeZone: SH_TZ, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).format(leadDate),
+    sideMD: sideSameDay ? rsLead.md : '',
+    foldMD: foldDay ? foldDay.slice(5).replace('-', '/') : '',
+    foldPrev: foldDay === prevDay,
+  };
+})();
+const rsWeekly = aiWeeklyIssues[0];
 const formatComicDate = (s: string, locale: 'zh' | 'en') =>
   new Date(s).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', {
     year: 'numeric', month: 'long', day: 'numeric',
@@ -384,15 +443,11 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         });
       }
 
+      // Reading Stream titles / summaries switch by CSS on html[lang]
+      // (.rs-zh / .rs-en); only the cover images are swapped here.
       var readingCard = document.getElementById('reading-stream-card');
       if (readingCard) {
-        readingCard.querySelectorAll('.reading-home-title-zh').forEach(function(el) {
-          el.style.display = currentLang === 'zh' ? '' : 'none';
-        });
-        readingCard.querySelectorAll('.reading-home-title-en').forEach(function(el) {
-          el.style.display = currentLang === 'en' ? '' : 'none';
-        });
-        readingCard.querySelectorAll('.reading-home-thumb img').forEach(function(img) {
+        readingCard.querySelectorAll('img[data-src-zh]').forEach(function(img) {
           var src = img.getAttribute(currentLang === 'en' ? 'data-src-en' : 'data-src-zh');
           var alt = img.getAttribute(currentLang === 'en' ? 'data-alt-en' : 'data-alt-zh');
           if (src) img.setAttribute('src', src);
@@ -1341,64 +1396,134 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
 
       <WeeklyHomeEntry />
 
-      <!-- Reading Stream -->
-      {recentReading.length > 0 && (
+      <!-- Reading Stream: a newspaper front page -->
+      {rsLead && rsPaper && (
         <div class="card card-reading-stream" id="reading-stream-card">
           <div class="section-title-row">
             <span class="section-title" data-i18n="sec_reading_stream">阅读流</span>
             <div class="reading-strip-actions">
               <button class="reading-strip-rss" type="button" data-subscribe-open data-subscribe-context="reading" data-subscribe-tab="rss" data-subscribe-surface="home-header">RSS</button>
-              <a class="photos-strip-more" href="/reading/" data-i18n="rdg_view_all" data-umami-event="reading-list-open" data-umami-event-surface="home">查看全部 →</a>
+              <a class="photos-strip-more" href="/reading/" data-href-zh="/reading/" data-href-en="/en/reading/" data-i18n="rdg_view_all" data-umami-event="reading-list-open" data-umami-event-surface="home">查看全部 →</a>
             </div>
           </div>
-          <div class="reading-home-strip" role="list">
-            {recentReadingCards.map(({ item, coverZh, coverEn }, index) => (
-              <a
-                class="reading-home-item"
-                role="listitem"
-                href={`/reading/${item.slug}/`}
-                data-href-zh={`/reading/${item.slug}/`}
-                data-href-en={`/en/reading/${item.slug}/`}
-                data-umami-event="reading-card-open"
-                data-umami-event-slug={item.slug}
-                data-umami-event-source={item.source}
-                data-umami-event-surface="home"
-                data-umami-event-position={index + 1}
-              >
-                {(coverZh || coverEn) ? (
-                  <div class="reading-home-thumb">
-                    <img
-                      src={coverZh || coverEn}
-                      alt={item.title}
-                      data-src-zh={coverZh}
-                      data-src-en={coverEn}
-                      data-alt-zh={item.title}
-                      data-alt-en={item.title_en || item.title}
-                      loading="lazy"
-                      decoding="async"
-                      width="720"
-                      height="480"
-                    />
-                    {index === 0 && <span class="reading-home-new">NEW</span>}
-                  </div>
-                ) : (
-                  index === 0 && <span class="reading-home-new">NEW</span>
-                )}
-                <div class="reading-home-meta">
-                  <span>{item.source}</span>
-                  <span>{new Date(item.saved_at).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', timeZone: 'Asia/Shanghai' })}</span>
-                  {item.author && <span>{item.author}</span>}
-                </div>
-                <div class="reading-home-title reading-home-title-zh">{item.title}</div>
-                <div class="reading-home-title reading-home-title-en">{item.title_en || item.title}</div>
-              </a>
-            ))}
+          <div class="feed-head">
+            <span class="feed-head-cmd"><span class="prompt">$</span> reading front-page --date {rsPaper.day}</span>
+            <span class="feed-head-total"><strong>{rsPaper.total}</strong>{' '}<span data-i18n="np_reads">篇</span></span>
           </div>
-          <div class="reading-home-follow">
-            <span><b>$</b> follow reading --weekly</span>
-            <div>
-              <button type="button" data-subscribe-open data-subscribe-context="reading" data-subscribe-tab="rss" data-subscribe-surface="home-footer">实时 RSS</button>
-              <button class="primary" type="button" data-subscribe-open data-subscribe-context="reading" data-subscribe-surface="home-footer">订阅每周邮件 →</button>
+          <div class="np">
+            <div class="np-mast">
+              <div class="np-ear"><span data-i18n="np_week">近 7 天</span><b>{rsPaper.week}</b><span data-i18n="np_reads">篇</span></div>
+              <div class="np-name"><span data-i18n="np_mast">阅读流日报</span><small data-i18n="np_mast_sub">READING STREAM DAILY</small></div>
+              <div class="np-ear r"><span data-i18n="np_month">本月</span><b>{rsPaper.month}</b><span data-i18n="np_reads">篇</span></div>
+            </div>
+            <div class="np-date">
+              <span><span class="rs-zh">第 {rsPaper.total} 号</span><span class="rs-en">No. {rsPaper.total}</span></span>
+              <span><span class="rs-zh">{rsPaper.dateZh}</span><span class="rs-en">{rsPaper.dateEn}</span></span>
+              {rsPaper.sources.length > 0 && (
+                <span class="opt">{rsPaper.sources.map(([src, n], i) => (
+                  <>{i > 0 && ' · '}<span class="rs-zh">{src}</span><span class="rs-en">{readingSourceLabel(src, 'en')}</span> {n}</>
+                ))}</span>
+              )}
+            </div>
+            <div class:list={['np-body', { 'np-body--solo': rsSide.length === 0 }]}>
+              {[rsLead].map((c) => (
+                <a
+                  class="np-lead"
+                  href={`/reading/${c.item.slug}/`}
+                  data-href-zh={`/reading/${c.item.slug}/`}
+                  data-href-en={`/en/reading/${c.item.slug}/`}
+                  data-umami-event="reading-card-open"
+                  data-umami-event-slug={c.item.slug}
+                  data-umami-event-source={c.item.source}
+                  data-umami-event-surface="home"
+                  data-umami-event-position={1}
+                >
+                  <div class="np-kick"><span class="new">NEW</span><span data-i18n="np_lead">头条</span> · <span class="rs-zh">{c.item.source}</span><span class="rs-en">{c.sourceEn}</span></div>
+                  {(c.coverZh || c.coverEn) ? (
+                    <figure class="np-fig reading-home-thumb">
+                      <img src={c.coverZh || c.coverEn} alt={c.titleZh} data-src-zh={c.coverZh || c.coverEn} data-src-en={c.coverEn || c.coverZh} data-alt-zh={c.titleZh} data-alt-en={c.titleEn} width={c.w} height={c.h} loading="lazy" decoding="async" />
+                      <figcaption data-i18n="np_fig">图 · Agent 生成的阅读卡片</figcaption>
+                    </figure>
+                  ) : null}
+                  <h3 class="np-h np-h1"><span class="rs-zh">{c.titleZh}</span><span class="rs-en">{c.titleEn}</span></h3>
+                  {c.dekZh && <p class="np-dek"><span class="rs-zh">{c.dekZh}</span><span class="rs-en">{c.dekEn}</span></p>}
+                  <div class="np-by"><span data-i18n="np_by">文 /</span> {c.item.author && <>{c.item.author} · </>}{c.md} {c.hm}</div>
+                </a>
+              ))}
+              {rsSide.length > 0 && (
+                <div class="np-side">
+                  <div class="np-sh"><span data-i18n="np_also">要闻</span>{rsPaper.sideMD && <> · {rsPaper.sideMD}</>}</div>
+                  {rsSide.map((c, i) => (
+                    <a
+                      class:list={[{ 'np-brief': i > 0, 'np-second': i === 0 }]}
+                      href={`/reading/${c.item.slug}/`}
+                      data-href-zh={`/reading/${c.item.slug}/`}
+                      data-href-en={`/en/reading/${c.item.slug}/`}
+                      data-umami-event="reading-card-open"
+                      data-umami-event-slug={c.item.slug}
+                      data-umami-event-source={c.item.source}
+                      data-umami-event-surface="home"
+                      data-umami-event-position={i + 2}
+                    >
+                      {(c.coverZh || c.coverEn) ? (
+                        <figure class="np-fig reading-home-thumb">
+                          <img src={c.coverZh || c.coverEn} alt={c.titleZh} data-src-zh={c.coverZh || c.coverEn} data-src-en={c.coverEn || c.coverZh} data-alt-zh={c.titleZh} data-alt-en={c.titleEn} width={c.w} height={c.h} loading="lazy" decoding="async" />
+                        </figure>
+                      ) : null}
+                      <div class="np-txt">
+                        <h4 class:list={['np-h', i === 0 ? 'np-h2' : 'np-h3']}><span class="rs-zh">{c.titleZh}</span><span class="rs-en">{c.titleEn}</span></h4>
+                        <div class="np-meta"><span class="src-tag"><span class="rs-zh">{c.item.source}</span><span class="rs-en">{c.sourceEn}</span></span><span>{c.md}{i === 0 && ` ${c.hm}`}</span>{i === 0 && c.item.author && <span>{c.item.author}</span>}</div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+            {rsFold.length > 0 && (
+              <div class="np-fold">
+                <div class="np-fold-h">
+                  <span>{rsPaper.foldMD ? <>{rsPaper.foldMD}{rsPaper.foldPrev && <> · <span data-i18n="np_prev_day">前一天</span></>}</> : <span data-i18n="np_earlier">更早</span>}</span>
+                  <span>{rsFold.length}{' '}<span data-i18n="np_reads">篇</span></span>
+                </div>
+                <div class="np-row">
+                  {rsFold.map((c, i) => (
+                    <a
+                      href={`/reading/${c.item.slug}/`}
+                      data-href-zh={`/reading/${c.item.slug}/`}
+                      data-href-en={`/en/reading/${c.item.slug}/`}
+                      data-umami-event="reading-card-open"
+                      data-umami-event-slug={c.item.slug}
+                      data-umami-event-source={c.item.source}
+                      data-umami-event-surface="home"
+                      data-umami-event-position={i + 5}
+                    >
+                      {(c.coverZh || c.coverEn) ? (
+                        <figure class="np-fig reading-home-thumb">
+                          <img src={c.coverZh || c.coverEn} alt={c.titleZh} data-src-zh={c.coverZh || c.coverEn} data-src-en={c.coverEn || c.coverZh} data-alt-zh={c.titleZh} data-alt-en={c.titleEn} width={c.w} height={c.h} loading="lazy" decoding="async" />
+                        </figure>
+                      ) : null}
+                      <h4 class="np-h np-h3"><span class="rs-zh">{c.titleZh}</span><span class="rs-en">{c.titleEn}</span></h4>
+                      <div class="np-meta"><span class="src-tag"><span class="rs-zh">{c.item.source}</span><span class="rs-en">{c.sourceEn}</span></span><span>{rsPaper.foldMD ? c.hm : c.md}</span></div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div class="np-coupon">
+              <span class="np-scissor" aria-hidden="true">✂</span>
+              <div>
+                <div class="np-coupon-cmd"><b>$</b> follow reading --weekly</div>
+                {rsWeekly && (
+                  <div class="np-coupon-t">
+                    <span class="rs-zh">《AI 趋势周刊》每周一出刊 · 上期 No.{rsWeekly.number}「<i>{rsWeekly.title.zh.join('')}</i>」</span>
+                    <span class="rs-en">AI Trends Weekly, every Monday · last issue No.{rsWeekly.number} “<i>{rsWeekly.title.en.join(' ')}</i>”</span>
+                  </div>
+                )}
+              </div>
+              <div class="np-coupon-b">
+                <button class="np-btn" type="button" data-subscribe-open data-subscribe-context="reading" data-subscribe-tab="rss" data-subscribe-surface="home-footer" data-i18n="np_rss">实时 RSS</button>
+                <button class="np-btn primary" type="button" data-subscribe-open data-subscribe-context="reading" data-subscribe-surface="home-footer" data-i18n="np_mail">订阅每周邮件 →</button>
+              </div>
             </div>
           </div>
         </div>

@@ -87,7 +87,7 @@ test('detail templates only render poster, caption, zoom label and lightbox when
 
 test('list, home, weekly and share frames are omitted without a resolved cover', () => {
   assert.match(files.card, /\{cover && \([\s\S]*reading-card-cover/);
-  assert.match(files.home, /\{\(coverZh \|\| coverEn\) \? \([\s\S]*reading-home-thumb/);
+  assert.match(files.home, /\{\((?:c\.)?coverZh \|\| (?:c\.)?coverEn\) \? \([\s\S]*reading-home-thumb/);
   assert.match(files.weeklyStory, /\{cover && \([\s\S]*weekly-story-cover/);
   assert.match(files.weeklyEdition, /cover \? \([\s\S]*ReadingCover/);
   assert.match(files.share, /\{cover && \([\s\S]*share-image/);

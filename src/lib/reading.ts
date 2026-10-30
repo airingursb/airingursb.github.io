@@ -69,6 +69,40 @@ export async function fetchReadingItems(limit = 1000): Promise<ReadingItem[]> {
   }
 }
 
+export interface ReadingStats {
+  total: number;
+  sources: [string, number][];
+  savedAt: string[];
+}
+
+/** Every visible item's source + saved time, for counts (total, per source,
+ *  per period). One light request instead of the full rows. */
+export async function fetchReadingStats(): Promise<ReadingStats> {
+  const empty: ReadingStats = { total: 0, sources: [], savedAt: [] };
+  if (!SUPABASE_URL || !SUPABASE_KEY) return empty;
+  const params = new URLSearchParams({ select: 'source,saved_at', is_visible: 'eq.true', limit: '10000' });
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/reading_items?${params}`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    });
+    if (!response.ok) {
+      console.error('[reading] Supabase stats fetch failed:', response.status, await response.text());
+      return empty;
+    }
+    const rows: { source: string; saved_at: string }[] = await response.json();
+    const counts = new Map<string, number>();
+    for (const row of rows) counts.set(row.source, (counts.get(row.source) ?? 0) + 1);
+    return {
+      total: rows.length,
+      sources: [...counts.entries()].sort((a, b) => b[1] - a[1]),
+      savedAt: rows.map((row) => row.saved_at),
+    };
+  } catch (error) {
+    console.error('[reading] Supabase stats fetch threw:', error);
+    return empty;
+  }
+}
+
 export function readingDate(value: string, locale = 'zh-CN') {
   return new Date(value).toLocaleDateString(locale, {
     year: 'numeric',
