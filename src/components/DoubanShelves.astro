@@ -1,0 +1,507 @@
+---
+// src/components/DoubanShelves.astro
+//
+// Homepage "Reading" and "Movies" cards as two shelves. Reading is a row of
+// upright books: the one being read stands cover-out at the front, then the
+// most recently finished ones. Movies is the same shelf of Blu-ray cases:
+// what's being watched, then the latest watched. Clicking a spine (or the
+// arrow keys) turns it cover-out and puts the previous one back; the line
+// under the plank names the book / film that is facing out.
+//
+// Spine width is real: page count for books, total runtime for films and
+// series (episodes × minutes). Spine colour is the cover's main colour.
+// Data is data/douban.json, written by scripts/fetch_douban.py, which also
+// self-hosts the covers under public/images/douban/.
+import douban from '../../data/douban.json';
+
+type Book = { id: string; title: string; rating: number; date: string; author?: string; pages?: number | null; cover?: string; ar?: number; spine?: string; ink?: string };
+type Movie = { id: string; title: string; rating: number; date: string; year?: number | null; kind?: string; minutes?: number | null; episodes?: number | null; cover?: string; ar?: number; spine?: string; ink?: string };
+
+const EST_PAGES = 260;   // Douban has no page count for a few books
+const EST_MINUTES = 120;
+
+const ym = (d: string) => (d || '').slice(0, 7).replace('-', '.');
+const hasCover = (it: { cover?: string }) => Boolean(it.cover);
+
+// Seasons read better as S1, S2 on the caption; the spine keeps the name only.
+const SEASON: Record<string, number> = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
+function splitSeason(title: string): [string, string] {
+  const m = title.match(/^(.*?)\s*第([一二三四五六七八九十]|\d+)季$/);
+  if (!m) return [title, ''];
+  return [m[1], 'S' + (SEASON[m[2]] ?? m[2])];
+}
+
+const books = douban.books as { read: { total: number; items: Book[] }; reading: { total: number; items: Book[] }; wish: { total: number } };
+const movies = douban.movies as { watched: { total: number; items: Movie[] }; watching: { total: number; items: Movie[] }; wish: { total: number } };
+
+type Slot = {
+  id: string; now: boolean; title: string; season: string; spineSub: string; rating: number; date: string;
+  url: string; cover: string; sp: string; ink: string; u: number; ar: number; fit: boolean; sub: 'book' | 'movie'; it: Book | Movie;
+};
+
+// Books: one cover-out (the latest one being read), then the last 12 read.
+const bookSlots: Slot[] = [
+  ...books.reading.items.slice(0, 1).map((b) => ({ b, now: true })),
+  ...books.read.items.slice(0, 12).map((b) => ({ b, now: false })),
+].filter(({ b }) => hasCover(b)).map(({ b, now }) => {
+  const raw = b.ar ?? 0.7;
+  return {
+    id: b.id, now, title: b.title, season: '', spineSub: b.author ?? '', rating: b.rating, date: b.date,
+    url: `https://book.douban.com/subject/${b.id}/`, cover: b.cover!, sp: b.spine ?? '#555', ink: b.ink ?? '#faf8f3',
+    // design units on a 200-unit-tall book: GEB (1053 pp) ≈ 31, 300 pp ≈ 17
+    u: 12 + (b.pages || EST_PAGES) * 0.018,
+    ar: Math.min(0.78, Math.max(0.62, raw)), fit: raw > 0.8, sub: 'book' as const, it: b,
+  };
+});
+
+// Blu-ray cases: what's being watched, then the last 10 watched. Every case
+// is 0.74 wide; the spine grows with total runtime (capped at 15 hours).
+const movieSlots: Slot[] = [
+  ...movies.watching.items.slice(0, 1).map((m) => ({ m, now: true })),
+  ...movies.watched.items.slice(0, 10).map((m) => ({ m, now: false })),
+].filter(({ m }) => hasCover(m)).map(({ m, now }) => {
+  const [title, season] = splitSeason(m.title);
+  const total = (m.minutes || EST_MINUTES) * (m.episodes || 1);
+  return {
+    id: m.id, now, title, season, spineSub: m.episodes ? `${m.episodes}EP` : String(m.year ?? ''), rating: m.rating, date: m.date,
+    url: `https://movie.douban.com/subject/${m.id}/`, cover: m.cover!, sp: m.spine ?? '#333', ink: m.ink ?? '#faf8f3',
+    u: 13 + Math.min(total, 900) / 600 * 12, ar: 0.74, fit: false, sub: 'movie' as const, it: m,
+  };
+});
+
+const cards = [
+  {
+    id: 'reading', cls: 'card-reading', kind: 'book', titleKey: 'sec_reading', title: 'Reading',
+    cmd: `douban books --shelf --recent ${bookSlots.length - (bookSlots[0]?.now ? 1 : 0)}`,
+    count: bookSlots.length, unitKey: 'shelf_unit_books', unit: '本', label: 'Books', tag: 'READING', slots: bookSlots,
+    stats: [[books.read.total, 'db_read', '读过'], [books.reading.total, 'db_reading', '在读'], [books.wish.total, 'db_want_read', '想读']],
+    src: 'https://book.douban.com/people/82387673/', srcKey: 'db_src_books', srcText: '豆瓣读书',
+    nowKey: 'db_reading_now', nowText: '在读', doneKey: 'shelf_read_on', doneText: '读完',
+  },
+  {
+    id: 'movies', cls: 'card-movies', kind: 'movie', titleKey: 'sec_movies', title: 'Movies',
+    cmd: 'douban movies --shelf --bluray',
+    count: movieSlots.length, unitKey: 'shelf_unit_movies', unit: '部', label: 'Movies', tag: 'WATCHING', slots: movieSlots,
+    stats: [[movies.watched.total, 'db_watched', '看过'], [movies.watching.total, 'db_watching', '在看'], [movies.wish.total, 'db_want_watch', '想看']],
+    src: 'https://movie.douban.com/people/82387673/', srcKey: 'db_src_movies', srcText: '豆瓣电影',
+    nowKey: 'db_watching_now', nowText: '在看', doneKey: 'shelf_watched_on', doneText: '看完',
+  },
+] as const;
+
+const stars = (r: number) => r > 0 ? ['★'.repeat(r), '★'.repeat(5 - r)] : null;
+---
+{cards.map((c) => (
+  <div class={`card shelf-card ${c.cls}`} id={c.id}>
+    <div class="section-title" data-i18n={c.titleKey}>{c.title}</div>
+    <div class="feed-head">
+      <span class="feed-head-cmd"><span class="prompt">$</span>{' '}{c.cmd}</span>
+      <span class="feed-head-total"><strong>{c.count}</strong>{' '}<span data-i18n={c.unitKey}>{c.unit}</span></span>
+    </div>
+    <div class="shelf" data-shelf={c.kind}>
+      <span class="shelf-hint" aria-hidden="true" data-i18n="shelf_hint">⇠ 左右滑动 ⇢</span>
+      <div class="shelf-vp">
+        <ul class="shelf-track" role="listbox" aria-label={c.label}>
+          {c.slots.map((s, i) => (
+            <li
+              class:list={['bk', { case: c.kind === 'movie', now: s.now, on: i === 0, fit: s.fit }]}
+              style={`--sp:${s.sp};--ink:${s.ink};--u:${s.u.toFixed(2)};--ar:${s.ar}`}
+              data-n={s.title.length}
+              data-m={s.spineSub.length}
+            >
+              <span class="bk-shadow" aria-hidden="true"></span>
+              <button type="button" class="bk-btn" role="option" aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1} aria-label={`${s.title}${s.season ? ' ' + s.season : ''}${s.spineSub && c.kind === 'book' ? ' · ' + s.spineSub : ''}`}>
+                <span class="bk-lean"><span class="bk-lift"><span class="bk-3d">
+                  <span class="bk-cover">
+                    {s.now && <span class="bk-tag">{c.tag}</span>}
+                    <img src={s.cover} alt="" width="360" height={Math.round(360 / (s.it.ar ?? s.ar))} loading="lazy" decoding="async" draggable="false">
+                  </span>
+                  <span class="bk-spine"><b>{s.title}</b><i>{s.spineSub}</i></span>
+                </span></span></span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div class="plank" aria-hidden="true"></div>
+      <div class="shelf-caps" aria-live="polite">
+        {c.slots.map((s, i) => {
+          const st = stars(s.rating);
+          const m = s.it as Movie;
+          const b = s.it as Book;
+          return (
+            <p class="shelf-cap" hidden={i !== 0}>
+              <a href={s.url} target="_blank" rel="noopener">
+                <span class="t">{s.title}{s.season && ` ${s.season}`}</span>
+                {st && <span class="stars">{st[0]}<span class="off">{st[1]}</span></span>}
+                {s.now
+                  ? <span>· <span class="now" data-i18n={c.nowKey}>{c.nowText}</span> · since {ym(s.date)}</span>
+                  : <span>· <span data-i18n={c.doneKey} data-date-zh={ym(s.date)} data-date-en={ym(s.date)}>{ym(s.date)} {c.doneText}</span></span>}
+                <span class="arr" aria-hidden="true">↗</span>
+              </a>
+              {s.sub === 'book'
+                ? <span class="sub">{b.author}{b.pages && <> · {b.pages}{' '}<span data-i18n="shelf_pages">页</span></>}</span>
+                : <span class="sub">
+                    <span data-i18n={m.kind === 'tv' ? 'shelf_kind_tv' : 'shelf_kind_movie'}>{m.kind === 'tv' ? '剧集' : '电影'}</span>
+                    {m.year && <> · {m.year}</>}
+                    {m.minutes && (m.episodes
+                      ? <> · {m.episodes}{' '}<span data-i18n="shelf_eps">集</span> × {m.minutes}{' '}<span data-i18n="shelf_min">分钟</span></>
+                      : <> · {m.minutes}{' '}<span data-i18n="shelf_min">分钟</span></>)}
+                  </span>}
+            </p>
+          );
+        })}
+      </div>
+    </div>
+    <div class="shelf-foot">
+      {c.stats.map(([n, key, text]) => <span><strong>{n}</strong>{' '}<span data-i18n={key}>{text}</span></span>)}
+      <a class="src" href={c.src} target="_blank" rel="noopener"><span class="lb" data-i18n="db_data_from">数据来自</span>{' '}<span data-i18n={c.srcKey}>{c.srcText}</span>{' '}↗</a>
+    </div>
+  </div>
+))}
+
+<script>
+  import { initShelves } from '../scripts/shelf';
+
+  initShelves(document.querySelectorAll<HTMLElement>('.shelf-card .shelf'));
+</script>
+
+<style>
+  .shelf-card {
+    --wood-ft: #5d4635; --wood-fb: #3a2b20; --wood-tf: #6b5241; --wood-tb: #4c3a2d;
+    --wood-grain: rgba(0, 0, 0, 0.2); --shelf-sh: 0, 0, 0; --case: 38, 110, 214;
+    display: flex;
+    flex-direction: column;
+  }
+  :global([data-mode='light']) .shelf-card {
+    --wood-ft: #d4b892; --wood-fb: #a7855f; --wood-tf: #e6d3b6; --wood-tb: #ccb08b;
+    --wood-grain: rgba(92, 58, 24, 0.09); --shelf-sh: 40, 28, 18;
+  }
+
+  /* ── Shelf ── */
+  .shelf {
+    --s: 0.8;
+    --H: calc(200px * var(--s));
+    position: relative;
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-width: 0;
+  }
+  .shelf-vp {
+    position: relative;
+    z-index: 2;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding: 30px 6px 6px;
+    margin: 0 -6px -3px;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--ml, 0px), #000 calc(100% - var(--mr, 0px)), transparent 100%);
+            mask-image: linear-gradient(90deg, transparent 0, #000 var(--ml, 0px), #000 calc(100% - var(--mr, 0px)), transparent 100%);
+  }
+  .shelf-vp::-webkit-scrollbar { display: none; }
+  .shelf-track {
+    display: flex;
+    align-items: flex-end;
+    gap: 1px;
+    width: max-content;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .shelf-hint {
+    position: absolute;
+    top: -2px;
+    right: 0;
+    z-index: 3;
+    display: none;
+    font-size: 9.5px;
+    letter-spacing: 0.5px;
+    color: var(--c-text-dim);
+    pointer-events: none;
+  }
+  .shelf.ov .shelf-hint { display: block; }
+
+  /* One book. Without JS it stands spine-out at the default scale; the
+     script then sets width / lean / turn per frame. */
+  .bk {
+    --sw: calc(var(--u) * var(--s) * 1px);
+    --cw: calc(var(--H) * var(--ar));
+    position: relative;
+    flex: none;
+    width: var(--sw);
+    height: var(--H);
+  }
+  .bk.on { width: var(--cw); }
+  .bk-btn {
+    position: absolute;
+    inset: 0;
+    display: block;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* fatter tap target on thin spines */
+  .bk-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: max(100%, 30px);
+    transform: translateX(-50%);
+  }
+  .bk-btn:focus-visible { outline: none; }
+  .bk-btn:focus-visible .bk-lift { outline: 1px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+  .bk-lean { position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; }
+  .bk-lift { position: absolute; inset: 0; perspective: 1100px; transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  @media (hover: hover) and (pointer: fine) {
+    .bk:not(.on) .bk-btn:hover .bk-lift { transform: translateY(-5px); }
+  }
+  .bk-3d {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: var(--cw);
+    height: 100%;
+    transform: rotateY(90deg);
+    transform-style: preserve-3d;
+    transform-origin: 0 50%;
+    pointer-events: none;
+  }
+  .bk.on .bk-3d { transform: none; }
+  .bk-cover {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border-radius: 1px 3px 3px 1px;
+    background: var(--sp);
+    transform: translateZ(var(--sw));
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.18), 1px 2px 3px -1px rgba(var(--shelf-sh), 0.35), 5px 10px 18px -9px rgba(var(--shelf-sh), 0.55);
+  }
+  .bk-cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .bk.fit .bk-cover img { object-fit: contain; }
+  .bk-cover::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg, rgba(0, 0, 0, 0.28) 0, rgba(255, 255, 255, 0.2) 2.2%, rgba(0, 0, 0, 0.1) 4.5%, transparent 8%),
+      linear-gradient(120deg, rgba(255, 255, 255, 0.16) 0%, transparent 34%);
+  }
+  .bk-spine {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: calc(5px * var(--s));
+    width: var(--sw);
+    height: 100%;
+    padding: calc(12px * var(--s)) 0 calc(9px * var(--s));
+    overflow: hidden;
+    border-radius: 2px;
+    color: var(--ink);
+    background: linear-gradient(90deg, rgba(0, 0, 0, 0.16), transparent 30%, rgba(255, 255, 255, 0.13) 72%, rgba(0, 0, 0, 0.12)), var(--sp);
+    box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.14);
+    transform: rotateY(-90deg);
+    transform-origin: 0 50%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .bk-spine b, .bk-spine i {
+    overflow: hidden;
+    color: inherit;
+    font-family: var(--font-serif);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    writing-mode: vertical-rl;
+  }
+  .bk-spine b { flex: 1 1 0; min-height: 0; font-size: var(--fs, 10px); font-weight: 600; line-height: 1.1; letter-spacing: 0.07em; }
+  .bk-spine i { flex: none; max-height: 38%; font-size: calc(var(--fs, 10px) * 0.74); font-style: normal; line-height: 1.1; letter-spacing: 0.04em; opacity: 0.78; }
+  .bk-shadow {
+    position: absolute;
+    bottom: -3px;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    border-radius: 50%;
+    pointer-events: none;
+    background: radial-gradient(closest-side, rgba(var(--shelf-sh), 0.42), rgba(var(--shelf-sh), 0.14) 55%, transparent);
+  }
+  :global([data-mode='light']) .bk-shadow { background: radial-gradient(closest-side, rgba(var(--shelf-sh), 0.3), rgba(var(--shelf-sh), 0.1) 55%, transparent); }
+  /* READING / WATCHING mark on the cover, a green cap on the spine */
+  .bk-tag {
+    position: absolute;
+    top: 5%;
+    left: 7%;
+    z-index: 2;
+    padding: 2px 5px 1px;
+    border-radius: 2px;
+    background: var(--accent);
+    color: #052e14;
+    font-size: calc(9px * var(--s) + 1px);
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    line-height: 1.3;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  }
+  .bk.now .bk-spine::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: calc(6px * var(--s));
+    background: var(--accent);
+  }
+
+  /* Blu-ray case: blue header band, plastic rim, BD on the spine */
+  .case .bk-cover {
+    border-radius: 4px;
+    background: #0d2340;
+    box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.12), 1px 2px 3px -1px rgba(var(--shelf-sh), 0.35), 5px 10px 18px -9px rgba(var(--shelf-sh), 0.6);
+  }
+  .case .bk-cover::before {
+    content: 'BLU-RAY DISC™';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    height: 9%;
+    padding-left: 7%;
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-size: calc(8px * var(--s) + 1px);
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: #fff;
+    background: linear-gradient(180deg, #2d7fe0, #1559b5 60%, #0f478f);
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+  }
+  .case .bk-cover img { position: absolute; top: 9%; left: 4%; width: 92%; height: 88.5%; object-fit: cover; }
+  .case .bk-cover::after {
+    background:
+      linear-gradient(90deg, rgba(var(--case), 0.9) 0, rgba(var(--case), 0.9) 4%, transparent 4%, transparent 96%, rgba(var(--case), 0.9) 96%),
+      linear-gradient(180deg, transparent 97.5%, rgba(var(--case), 0.9) 97.5%),
+      linear-gradient(118deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.04) 30%, transparent 31%, transparent 100%);
+  }
+  .case .bk-spine {
+    padding-top: calc(28px * var(--s));
+    border-radius: 3px;
+    background: linear-gradient(90deg, rgba(var(--case), 0.95) 0 2px, rgba(0, 0, 0, 0.18) 2px, transparent 32%, rgba(255, 255, 255, 0.12) 70%, rgba(0, 0, 0, 0.14) calc(100% - 2px), rgba(var(--case), 0.95) calc(100% - 2px)), var(--sp);
+  }
+  .case .bk-spine::after {
+    content: 'BD';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: calc(20px * var(--s));
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-size: calc(7px * var(--s) + 1px);
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: #fff;
+    background: linear-gradient(180deg, #2d7fe0, #1559b5);
+  }
+  .case.now .bk-spine::before { top: calc(20px * var(--s)); z-index: 1; height: calc(4px * var(--s)); }
+  .case .bk-spine b { font-family: -apple-system, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; font-weight: 700; letter-spacing: 0.1em; }
+  .case .bk-spine i { font-family: var(--font-mono); font-size: calc(var(--fs, 10px) * 0.72); letter-spacing: 0.5px; opacity: 0.7; }
+  .case .bk-tag { top: 12%; }
+
+  /* ── Plank ── */
+  .plank {
+    position: relative;
+    z-index: 1;
+    height: 11px;
+    margin: 0 -8px;
+    border-radius: 1px 1px 2px 2px;
+    background:
+      radial-gradient(ellipse 24% 40% at 18% 30%, transparent 0 91%, var(--wood-grain) 92% 95%, transparent 96%),
+      radial-gradient(ellipse 30% 46% at 72% 64%, transparent 0 92%, var(--wood-grain) 93% 96%, transparent 97%),
+      linear-gradient(91deg, transparent 0 10%, var(--wood-grain) 16%, transparent 24% 50%, var(--wood-grain) 58%, transparent 70% 84%, var(--wood-grain) 90%, transparent 96%),
+      linear-gradient(180deg, var(--wood-ft), var(--wood-fb));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.45), 1px 3px 3px -2px rgba(var(--shelf-sh), 0.5), 3px 10px 16px -8px rgba(var(--shelf-sh), 0.6), 6px 22px 30px -18px rgba(var(--shelf-sh), 0.5);
+  }
+  :global([data-mode='light']) .plank {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -1px 0 rgba(70, 40, 14, 0.2), 1px 3px 3px -2px rgba(var(--shelf-sh), 0.22), 3px 10px 16px -8px rgba(var(--shelf-sh), 0.3), 6px 22px 30px -18px rgba(var(--shelf-sh), 0.26);
+  }
+  .plank::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 0;
+    right: 0;
+    height: 6px;
+    clip-path: polygon(1% 0, 99% 0, 100% 100%, 0 100%);
+    background: linear-gradient(90deg, transparent 0 20%, var(--wood-grain) 28%, transparent 36% 64%, var(--wood-grain) 73%, transparent 82%), linear-gradient(180deg, var(--wood-tb), var(--wood-tf));
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+  }
+  .plank::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    border-radius: 0 0 2px 2px;
+    background: linear-gradient(180deg, rgba(var(--shelf-sh), 0.35), rgba(var(--shelf-sh), 0.08));
+  }
+
+  /* ── Caption under the plank ── */
+  .shelf-caps { position: relative; z-index: 2; padding-top: 13px; }
+  .shelf-cap { margin: 0; text-align: center; font-size: 12px; line-height: 1.6; color: var(--c-text-muted); }
+  .shelf-cap[hidden] { display: none; }
+  .shelf-cap > a { display: flex; justify-content: center; align-items: baseline; gap: 0 5px; white-space: nowrap; color: inherit; text-decoration: none; }
+  .shelf-cap > a > * { flex: none; }
+  .shelf-cap > a > .t { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--c-text); font-weight: 600; }
+  .shelf-cap .sub { display: block; overflow: hidden; font-size: 10.5px; line-height: 1.5; color: var(--c-text-dim); text-overflow: ellipsis; white-space: nowrap; }
+  .shelf-cap .stars { font-size: 11px; color: #f5b301; }
+  .shelf-cap .stars .off { color: rgba(var(--c-overlay-rgb), 0.2); }
+  .shelf-cap .now { color: var(--accent); font-weight: 700; }
+  .shelf-cap .arr { color: var(--c-text-dim); transition: color 0.15s; }
+  .shelf-cap a:hover .arr, .shelf-cap a:hover .t { color: var(--accent); }
+  /* One card per row on phones: nothing to line up with, so a long title
+     keeps its words and the date wraps under it instead. */
+  @media (max-width: 767px) {
+    .shelf-cap > a { flex-wrap: wrap; }
+  }
+
+  /* ── Stats + source ── */
+  .shelf-foot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(var(--c-overlay-rgb), 0.06);
+    font-size: 11px;
+    color: var(--c-text-muted);
+  }
+  .shelf-foot strong { color: var(--c-text); font-weight: 600; }
+  .shelf-foot .src { margin-left: auto; color: var(--c-text-dim); text-decoration: none; white-space: nowrap; }
+  .shelf-foot .src .lb { color: var(--c-text-muted); }
+  .shelf-foot .src:hover { color: var(--accent); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bk-lift, .shelf-cap .arr { transition: none; }
+    .bk .bk-btn:hover .bk-lift { transform: none; }
+  }
+</style>
