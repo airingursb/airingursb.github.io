@@ -44,6 +44,15 @@ jobs:
           RAINDROP_TOKEN: ${{ secrets.RAINDROP_TOKEN }}
         run: python3 scripts/update_feed.py
 
+      - name: Fetch Douban shelves
+        # Reading / movie shelves on the homepage. Douban may refuse runner
+        # IPs; the script then keeps the previous data/douban.json, and the
+        # deploy goes on either way.
+        continue-on-error: true
+        run: |
+          python3 -m pip install --quiet Pillow || python3 -m pip install --quiet --break-system-packages Pillow
+          python3 scripts/fetch_douban.py
+
       - name: Reconcile public Reading Stream
         continue-on-error: true
         env:
@@ -90,7 +99,7 @@ jobs:
           # is built from index.astro — NOT from the root index.html template.
           # Omitting it froze those inline modules (e.g. the GitHub card) at the
           # last hand-commit while src/data/*.json kept updating.
-          git add src/data/ index.html src/pages/index.astro
+          git add src/data/ data/douban.json public/images/douban/ index.html src/pages/index.astro
           if git diff --staged --quiet; then
             echo "No feed changes to commit, skipping."
             exit 0

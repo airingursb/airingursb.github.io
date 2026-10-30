@@ -293,6 +293,12 @@ def main():
             prev = {}
     data = fetch_douban_data(prev)
     prune_covers(data)
+    # Keep the old timestamp when nothing changed, so the daily CI run does
+    # not commit a new data/douban.json every day.
+    strip = lambda d: {k: v for k, v in d.items() if k != 'updated_at'}
+    if prev.get('updated_at') and strip(data) == strip(prev):
+        data['updated_at'] = prev['updated_at']
+        print('No changes since last fetch')
 
     OUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(OUT_FILE, 'w', encoding='utf-8') as f:
