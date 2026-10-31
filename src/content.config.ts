@@ -11,6 +11,8 @@ const postSchema = z.object({
   featured: z.boolean().default(false),
   draft: z.boolean().default(false),
   laterNote: laterNoteSchema.optional(),
+  /** Figure index (胶片 C) in the comment rail and the lightbox. Off unless set. */
+  filmstrip: z.boolean().optional(),
 });
 
 const posts = defineCollection({
