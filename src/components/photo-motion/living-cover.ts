@@ -11,7 +11,9 @@ class LivingCover extends HTMLElement {
       ? navigator.connection : null;
     const savesData = () => connection !== null && 'saveData' in connection && connection.saveData === true;
     for (const card of cards) {
-      const art = article ? card : card.querySelector<HTMLElement>('[data-article-cover]');
+      // Only the hero-card art has the absolute-fill video styles (LivingCover.astro);
+      // other cards sharing the slug (tree ~/blog rows, trending) would get a raw 800×600 video.
+      const art = article ? card : card.querySelector<HTMLElement>('.article-card-art[data-article-cover]');
       if (!art) continue;
       const video = document.createElement('video');
       video.className = 'living-cover-video';
