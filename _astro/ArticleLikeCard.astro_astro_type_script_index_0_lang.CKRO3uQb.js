@@ -1,0 +1,1 @@
+import{m as r}from"./article-like-card.zrELJPC_.js";const t=()=>{const e=document.querySelector("[data-article-like]");if(!e||e.dataset.ready)return;e.dataset.ready="true";const o=r(e);document.addEventListener("astro:before-swap",o,{once:!0})};t();document.addEventListener("astro:page-load",t);
