@@ -1,0 +1,200 @@
+---
+/**
+ * Reading ticket (票根 B) at the article foot: information only. The fields
+ * are filled in the browser from the visit and the live APIs, and hidden when
+ * there is no data (lib/reading-ticket). The whole stub is the share entry
+ * ("tear off · share"); there is no other share control around the ticket.
+ */
+interface Props {
+  lang?: 'zh' | 'en';
+  title: string;
+  slug: string;
+  url: string;
+  minutes?: number;
+}
+const { lang = 'zh', title, slug, url, minutes } = Astro.props;
+
+const t = lang === 'en'
+  ? {
+      brand: 'URSB.ME · READING TICKET', stub: 'STUB', cells: { date: 'Date', time: 'Time', read: 'Read', seat: 'Seat', from: 'From', online: 'Now' },
+      nobar: 'UNCHECKED', cta: 'Tear off · share', aria: 'Share this reading ticket',
+      panel: 'Share', close: 'Close', copy: 'Copy link', copied: 'Copied ✓', copyFailed: 'Copy failed, copy it by hand',
+      save: 'Save ticket image', saveNote: 'PNG · with stub', saved: 'Saved ✓', saveFailed: 'Could not create it', x: 'Share on X', xNote: 'new window ↗',
+    }
+  : {
+      brand: 'URSB.ME · 阅读票', stub: '存根', cells: { date: '日期', time: '用时', read: '已读', seat: '座位', from: '来自', online: '此刻' },
+      nobar: '待检票', cta: '撕下存根 · 分享', aria: '分享这张阅读票',
+      panel: '分享', close: '关闭', copy: '复制链接', copied: '已复制 ✓', copyFailed: '复制失败，请手动复制',
+      save: '保存票根图片', saveNote: 'PNG · 带存根', saved: '已保存 ✓', saveFailed: '生成失败', x: '分享到 X', xNote: '新窗口 ↗',
+    };
+const strings = JSON.stringify({
+  brand: t.brand, stub: t.stub, cells: t.cells, panel: t.panel, close: t.close, copy: t.copy, copied: t.copied, copyFailed: t.copyFailed,
+  save: t.save, saveNote: t.saveNote, saved: t.saved, saveFailed: t.saveFailed, x: t.x, xNote: t.xNote,
+});
+const cells = [['date', t.cells.date], ['time', t.cells.time], ['read', t.cells.read], ['seat', t.cells.seat], ['from', t.cells.from], ['online', t.cells.online]] as const;
+---
+
+<div class="reading-ticket" data-reading-ticket data-lang={lang} data-slug={slug} data-title={title} data-url={url} data-minutes={minutes ?? ''} data-strings={strings} data-pagefind-ignore>
+  <div class="tk">
+    <div class="tk-main">
+      <div class="tk-top"><span>{t.brand}</span><span data-f="admit">ADMIT ONE</span></div>
+      <div class="tk-title">{title}</div>
+      <div class="tk-grid">
+        {cells.map(([key, label]) => (
+          <div class="tk-cell" data-cell={key} hidden={key === 'seat' || key === 'from' || key === 'online'}>
+            <span>{label}</span><b data-f={key}></b>
+          </div>
+        ))}
+      </div>
+      <div class="tk-fine" data-f="fine" hidden></div>
+    </div>
+    <div class="tk-perf" aria-hidden="true"></div>
+    <div class="tk-stub" data-ticket-stub role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="false" aria-label={t.aria}>
+      <div class="tk-top"><span>{t.stub}</span><span data-f="no"></span></div>
+      <div class="tk-sum">
+        <b><span data-f="sumBig"></span><i data-f="sumSmall"></i></b>
+        <span data-f="sumState"></span>
+        <em data-f="sumTime"></em>
+      </div>
+      <span class="tk-echo" data-f="echo" aria-hidden="true" hidden><span data-f="echoLikes"></span><small data-f="echoDate"></small></span>
+      <div class="tk-bc" data-f="barcode" aria-hidden="true"></div>
+      <div class="tk-nobar" data-f="nobar" hidden>{t.nobar}</div>
+      <span class="tk-cta" aria-hidden="true">{t.cta} <i>✂</i></span>
+    </div>
+  </div>
+  <!-- online-presence.js only polls the counts when a [data-online] element exists; the ticket reads them from its `online-counts` event. -->
+  <span data-online="page" data-online-template="" data-online-min="1000000000" hidden></span>
+</div>
+
+<style>
+  /* Paper and ink borrowed from the newspaper corner (NewspaperSubscription). */
+  .reading-ticket {
+    --tk-paper: #1c1b18; --tk-ink: #ece7db; --tk-mute: #a29c8e;
+    --tk-rule: rgba(236, 231, 219, .34); --tk-rule2: rgba(236, 231, 219, .13);
+    --tk-red: #e5484d; --tk-shadow: rgba(0, 0, 0, .55);
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    font-family: var(--font-mono);
+  }
+  :global([data-mode="light"]) .reading-ticket {
+    --tk-paper: #f6f1e4; --tk-ink: #201e19; --tk-mute: #6c6555;
+    --tk-rule: rgba(32, 30, 25, .62); --tk-rule2: rgba(32, 30, 25, .18);
+    --tk-red: #d4342c; --tk-shadow: rgba(31, 35, 40, .22);
+  }
+  .tk { display: grid; grid-template-columns: minmax(0, 1fr) 12px 172px; color: var(--tk-ink); filter: drop-shadow(0 12px 16px var(--tk-shadow)); }
+  .tk-main, .tk-stub, .tk-perf { background: var(--tk-paper); }
+  .tk-main {
+    padding: 16px 20px 14px; border-radius: 6px 0 0 6px;
+    -webkit-mask: radial-gradient(circle 8px at 100% 0, #0000 98%, #000) top / 100% 51% no-repeat, radial-gradient(circle 8px at 100% 100%, #0000 98%, #000) bottom / 100% 51% no-repeat;
+            mask: radial-gradient(circle 8px at 100% 0, #0000 98%, #000) top / 100% 51% no-repeat, radial-gradient(circle 8px at 100% 100%, #0000 98%, #000) bottom / 100% 51% no-repeat;
+  }
+  .tk-perf { margin: 8px 0; background: var(--tk-paper) linear-gradient(var(--tk-rule) 50%, transparent 0) center / 1.5px 7px repeat-y; transition: background-image .2s; }
+  .tk-stub {
+    position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; padding: 16px 14px 12px; border-radius: 0 6px 6px 0;
+    transform-origin: 0 50%; transition: transform .45s cubic-bezier(.3, .9, .3, 1); outline: none; -webkit-tap-highlight-color: transparent;
+    -webkit-mask: radial-gradient(circle 8px at 0 0, #0000 98%, #000) top / 100% 51% no-repeat, radial-gradient(circle 8px at 0 100%, #0000 98%, #000) bottom / 100% 51% no-repeat;
+            mask: radial-gradient(circle 8px at 0 0, #0000 98%, #000) top / 100% 51% no-repeat, radial-gradient(circle 8px at 0 100%, #0000 98%, #000) bottom / 100% 51% no-repeat;
+  }
+  /* !important: global.css sets a custom cursor on * with !important. */
+  .tk-stub, .tk-stub * { cursor: pointer !important; }
+  .tk-top { display: flex; justify-content: space-between; gap: 10px; width: 100%; padding-bottom: 8px; border-bottom: 1px solid var(--tk-rule2); font-size: 10.5px; letter-spacing: .14em; color: var(--tk-mute); font-weight: 600; white-space: nowrap; }
+  .tk-title { margin: 12px 0 14px; font: 700 21px/1.3 'Noto Serif SC', var(--font-serif); letter-spacing: .01em; }
+  .tk-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 14px; padding: 10px 0; border-top: 1px dashed var(--tk-rule2); border-bottom: 1px dashed var(--tk-rule2); }
+  .tk-cell { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .tk-cell[hidden] { display: none; }
+  .tk-cell span { font-size: 10.5px; letter-spacing: .12em; color: var(--tk-mute); }
+  .tk-cell b { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tk-cell b :global(img.c-flag) { width: 14px; height: auto; margin: 0; vertical-align: -1px; border-radius: 1px; }
+  .tk-fine { margin-top: 10px; font-size: 11px; color: var(--tk-mute); }
+  .tk-fine[hidden] { display: none; }
+  .reading-ticket.is-skim .tk-fine { color: var(--tk-red); }
+  .tk-sum { display: flex; flex-direction: column; align-items: center; margin: 16px 0 12px; color: var(--tk-ink); }
+  .tk-sum b { font: 700 40px/1 'Noto Serif SC', var(--font-serif); letter-spacing: -.01em; }
+  .tk-sum b i { font-style: normal; font-size: 20px; color: var(--tk-mute); }
+  .tk-sum > span { margin-top: 6px; font-size: 10.5px; letter-spacing: .14em; color: var(--tk-mute); }
+  .tk-sum em { margin-top: 2px; font-size: 11px; font-style: normal; color: var(--tk-mute); }
+  .tk-bc { display: flex; gap: 1px; width: 128px; height: 26px; margin-top: auto; }
+  .tk-bc :global(i) { background: var(--tk-ink); }
+  .tk-bc :global(i.gap) { background: transparent; }
+  .tk-bc[hidden], .tk-nobar[hidden], .tk-echo[hidden] { display: none; }
+  .tk-nobar { margin-top: auto; padding: 5px 10px; border: 1px dashed var(--tk-rule); font-size: 10.5px; letter-spacing: .14em; color: var(--tk-mute); }
+  /* The share line: same type as "存根 / No.", no button chrome. */
+  .tk-cta { margin-top: 8px; font: 600 10.5px var(--font-mono); letter-spacing: .1em; color: var(--tk-mute); white-space: nowrap; transition: color .2s; }
+  .tk-cta i { display: inline-block; font-style: normal; transition: transform .25s; }
+  /* Hover / keyboard focus / panel open: the stub shifts along the perforation. */
+  .tk-stub:hover, .tk-stub:focus-visible, .reading-ticket.is-sharing .tk-stub { transform: translate(4px, 1px) rotate(1.5deg); }
+  .tk-stub:hover .tk-cta, .tk-stub:focus-visible .tk-cta, .reading-ticket.is-sharing .tk-cta { color: var(--accent); }
+  .tk-stub:hover .tk-cta i, .tk-stub:focus-visible .tk-cta i { transform: translateX(2px) rotate(-12deg); }
+  .tk-stub:focus-visible .tk-top { color: var(--tk-ink); }
+  .tk-stub:focus-visible::after { content: ''; position: absolute; inset: 4px 4px 4px 6px; border: 1px dashed rgba(var(--accent-rgb), .6); border-radius: 3px; pointer-events: none; }
+  .tk:has(.tk-stub:hover) .tk-perf, .tk:has(.tk-stub:focus-visible) .tk-perf, .reading-ticket.is-sharing .tk-perf { background-image: linear-gradient(rgba(var(--accent-rgb), .75) 50%, transparent 0); }
+  /* Echo of a like: above-right of the section count, tilted and faint; never over digits or barcode. */
+  .tk-echo {
+    position: absolute; top: 40px; right: 8px; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--tk-red); color: var(--tk-red); line-height: 1.1;
+    transform: rotate(-14deg); opacity: .6; pointer-events: none; animation: tk-thud .38s cubic-bezier(.3, 1.6, .5, 1) both;
+    -webkit-mask: repeating-radial-gradient(circle at 70% 30%, #000 0 1.2px, rgba(0, 0, 0, .78) 1.3px 2.2px);
+            mask: repeating-radial-gradient(circle at 70% 30%, #000 0 1.2px, rgba(0, 0, 0, .78) 1.3px 2.2px);
+  }
+  .tk-echo span { font-size: 11px; font-weight: 700; }
+  .tk-echo small { font-size: 7px; letter-spacing: .06em; }
+  @keyframes tk-thud { from { transform: rotate(-14deg) scale(1.5); opacity: 0; } to { transform: rotate(-14deg) scale(1); opacity: .6; } }
+  /* Share panel: anchored on the stub, in the ticket's paper and type. */
+  .reading-ticket :global(.tk-share) { position: absolute; z-index: 30; width: 232px; padding: 0 0 6px; border-radius: 6px; background: var(--tk-paper); color: var(--tk-ink); box-shadow: 0 0 0 1px var(--tk-rule2), 0 14px 26px -14px var(--tk-shadow); font-family: var(--font-mono); animation: tk-pop .16s ease-out both; }
+  @keyframes tk-pop { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+  .reading-ticket :global(.tk-sp-head) { display: flex; align-items: center; justify-content: space-between; margin: 0 12px; padding: 11px 0 8px; border-bottom: 1px dashed var(--tk-rule2); font-size: 10.5px; font-weight: 600; letter-spacing: .14em; color: var(--tk-mute); white-space: nowrap; }
+  .reading-ticket :global(.tk-sp-x) { width: 20px; height: 20px; margin-right: -4px; padding: 0; border: 0; border-radius: 3px; background: none; color: var(--tk-mute); font: 15px/1 var(--font-mono); cursor: pointer !important; }
+  .reading-ticket :global(.tk-sp-x:hover) { color: var(--tk-ink); }
+  .reading-ticket :global(.tk-sp-row) { display: grid; grid-template-columns: 24px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 9px; align-items: center; width: calc(100% - 12px); margin: 4px 6px 0; padding: 6px; border: 0; border-radius: 4px; background: none; color: var(--tk-ink); font: inherit; font-size: 12.5px; text-align: left; text-decoration: none; cursor: pointer !important; }
+  .reading-ticket :global(.tk-sp-row:first-of-type) { margin-top: 6px; }
+  .reading-ticket :global(.tk-sp-row:hover), .reading-ticket :global(.tk-sp-row:focus-visible) { background: var(--tk-rule2); outline: none; }
+  .reading-ticket :global(.tk-sp-k) { grid-row: 1 / 3; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 3px; border: 1px dashed var(--tk-rule); color: var(--tk-ink); font-size: 12px; }
+  .reading-ticket :global(.tk-sp-t) { font-weight: 600; letter-spacing: .02em; }
+  .reading-ticket :global(.tk-sp-row small) { font-size: 10px; letter-spacing: .04em; color: var(--tk-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .reading-ticket :global(.tk-sp-row.is-ok .tk-sp-t) { color: var(--accent); }
+  .reading-ticket :global(.tk-sp-row.is-err .tk-sp-t) { color: var(--tk-red); }
+
+  /* Narrow: the stub moves below the ticket, perforated across. */
+  @media (max-width: 1100px) {
+    .tk { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 12px auto; }
+    .tk-main {
+      border-radius: 6px 6px 0 0; padding: 14px 16px 12px;
+      -webkit-mask: radial-gradient(circle 8px at 0 100%, #0000 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle 8px at 100% 100%, #0000 98%, #000) right / 51% 100% no-repeat;
+              mask: radial-gradient(circle 8px at 0 100%, #0000 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle 8px at 100% 100%, #0000 98%, #000) right / 51% 100% no-repeat;
+    }
+    .tk-perf { margin: 0 8px; background: var(--tk-paper) linear-gradient(90deg, var(--tk-rule) 50%, transparent 0) center / 7px 1.5px repeat-x; }
+    .tk-stub {
+      display: grid; grid-template-columns: 1fr auto; grid-template-areas: "top top" "bc st" "cta st"; column-gap: 12px; align-items: end;
+      border-radius: 0 0 6px 6px; padding: 12px 16px 14px; transform-origin: 50% 0;
+      -webkit-mask: radial-gradient(circle 8px at 0 0, #0000 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle 8px at 100% 0, #0000 98%, #000) right / 51% 100% no-repeat;
+              mask: radial-gradient(circle 8px at 0 0, #0000 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle 8px at 100% 0, #0000 98%, #000) right / 51% 100% no-repeat;
+    }
+    .tk-stub .tk-top { grid-area: top; }
+    .tk-sum { grid-area: st; margin: 8px 18px 0 0; }
+    .tk-bc, .tk-nobar { grid-area: bc; margin-top: 12px; }
+    .tk-cta { grid-area: cta; justify-self: start; margin-top: 10px; }
+    .tk-title { font-size: 19px; }
+    .tk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .tk-echo { top: 34px; right: 104px; }
+    .tk-stub:hover, .tk-stub:focus-visible, .reading-ticket.is-sharing .tk-stub { transform: translate(1px, 3px) rotate(-1deg); }
+    .tk:has(.tk-stub:hover) .tk-perf, .tk:has(.tk-stub:focus-visible) .tk-perf, .reading-ticket.is-sharing .tk-perf { background-image: linear-gradient(90deg, rgba(var(--accent-rgb), .75) 50%, transparent 0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tk-stub, .tk-cta i { transition: none; }
+    .tk-echo, .reading-ticket :global(.tk-share) { animation: none; }
+  }
+</style>
+
+<script>
+  import { mountReadingTicket } from '../../lib/reading-ticket-controller';
+  const mount = () => {
+    const root = document.querySelector<HTMLElement>('[data-reading-ticket]');
+    if (!root || root.dataset.mounted) return;
+    root.dataset.mounted = 'true';
+    const dispose = mountReadingTicket(root);
+    document.addEventListener('astro:before-swap', dispose, { once: true });
+  };
+  mount();
+  document.addEventListener('astro:page-load', mount);
+</script>

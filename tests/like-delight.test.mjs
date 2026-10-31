@@ -10,32 +10,35 @@ const handler = layout.slice(layout.indexOf("  articleLikeBtn.addEventListener('
 
 function likeFixture({ liked = false, response, reject = false } = {}) {
   const events = [];
+  const painted = [];
   let click;
   let resolve;
   const pending = new Promise(done => { resolve = done; });
-  const count = { textContent: liked ? '1' : '0' };
   const button = {
     addEventListener: (_, callback) => { click = callback; },
-    classList: { toggle() {} },
-    querySelector: () => ({ setAttribute() {} }),
     dispatchEvent: event => events.push(event.type),
   };
-  vm.runInNewContext(handler, {
-    articleLiked: liked, articleLikeBtn: button, articleLikeCount: count, POST_SLUG: 'fixture',
+  const context = {
+    articleLiked: liked, likeTotal: liked ? 1 : 0, articleLikeBtn: button, POST_SLUG: 'fixture',
+    // paintLike lives above the handler slice; record what the card would paint.
+    paintLike: (on, count, animate) => { context.articleLiked = on; context.likeTotal = count; painted.push({ on, count, animate }); },
     apiPost: () => pending.then(() => { if (reject) throw new Error('offline'); return response; }),
     document: { getElementById: () => null }, CustomEvent,
     localStorage: { getItem: () => '[]', setItem() {} },
-  });
-  return { events, count, click: () => click(), finish: async () => { resolve(); for (let i = 0; i < 5; i++) await Promise.resolve(); } };
+  };
+  vm.runInNewContext(handler, context);
+  return { events, painted, state: () => ({ liked: context.articleLiked, count: context.likeTotal }), click: () => click(), finish: async () => { resolve(); for (let i = 0; i < 5; i++) await Promise.resolve(); } };
 }
 
-test('optimistic like waits for real acknowledgement before the panda receives it', async () => {
+test('optimistic like paints at once and reports the like only after the server confirms it', async () => {
   const f = likeFixture({ response: { liked: true, count: 1 } });
   f.click();
-  assert.equal(Number(f.count.textContent), 1);
+  assert.deepEqual(f.state(), { liked: true, count: 1 });
+  assert.equal(f.painted[0].animate, true);
   assert.deepEqual(f.events, []);
   await f.finish();
   assert.deepEqual(f.events, ['article:liked']);
+  assert.deepEqual(f.painted.at(-1), { on: true, count: 1, animate: false });
 });
 
 test('unlike, server-declined like and failed request never celebrate', async () => {
@@ -45,6 +48,13 @@ test('unlike, server-declined like and failed request never celebrate', async ()
     await f.finish();
     assert.deepEqual(f.events, []);
   }
+});
+
+test('a failed request rolls the card back to the previous state', async () => {
+  const f = likeFixture({ reject: true });
+  f.click();
+  await f.finish();
+  assert.deepEqual(f.state(), { liked: false, count: 0 });
 });
 
 test('heart path preserves both endpoints and targets only fully visible recipients', () => {

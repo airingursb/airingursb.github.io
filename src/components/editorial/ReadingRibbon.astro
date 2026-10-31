@@ -1,0 +1,95 @@
+---
+/**
+ * Ribbon bookmark (丝带书签 A): hangs from the headline rule into the left
+ * column when the reader has an unfinished visit saved (lib/reading-ribbon).
+ * Narrow screens show it as a two-line note under the headline.
+ */
+interface Props { lang?: 'zh' | 'en'; slug: string; minutes?: number; }
+const { lang = 'zh', slug, minutes } = Astro.props;
+const t = lang === 'en'
+  ? { last: 'Last read', chapter: 'Section {n}', percent: '{n}% in', left: '{n} min left →', here: 'Continue here', mobile: 'Last {n}%' }
+  : { last: '上次读到', chapter: '第 {n} 节', percent: '读到 {n}%', left: '还剩 {n} 分钟 →', here: '从这里继续', mobile: '上次 {n}%' };
+---
+
+<a class="reading-ribbon" href="#resume" data-reading-ribbon data-slug={slug} data-lang={lang} data-minutes={minutes ?? ''} data-strings={JSON.stringify(t)} hidden>
+  <span class="rr-band" aria-hidden="true"></span>
+  <span class="rr-label">
+    <span class="rr-k" data-f="when"></span>
+    <span class="rr-c" data-f="chapter"></span>
+    <b class="rr-t" data-f="title"></b>
+    <span class="rr-go" data-f="left"></span>
+  </span>
+</a>
+
+<style>
+  .reading-ribbon {
+    --rr-1: #14532d; --rr-2: #16a34a; --rr-3: #4ade80;
+    position: absolute; left: 54px; top: 100%; z-index: 3;
+    display: block; color: inherit; text-decoration: none; font-family: var(--font-mono);
+  }
+  :global([data-mode="light"]) .reading-ribbon { --rr-2: #15803d; --rr-3: #22c55e; }
+  .reading-ribbon[hidden] { display: none; }
+  .rr-band {
+    position: absolute; left: 0; top: -1px; width: 24px; height: 156px; transform-origin: 50% 0;
+    transition: height .55s cubic-bezier(.4, 0, .2, 1), transform .4s;
+    background: repeating-linear-gradient(180deg, rgba(0, 0, 0, .09) 0 1px, transparent 1px 3px), linear-gradient(90deg, var(--rr-1), var(--rr-2) 28%, var(--rr-3) 47%, var(--rr-2) 63%, var(--rr-1));
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 10px), 0 100%);
+    filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .4));
+  }
+  .reading-ribbon::before { content: ''; position: absolute; left: -4px; top: -1px; z-index: 1; width: 28px; height: 5px; background: linear-gradient(rgba(0, 0, 0, .45), transparent); pointer-events: none; }
+  .reading-ribbon:hover .rr-band { animation: rr-sway 1.4s ease-in-out; }
+  @keyframes rr-sway { 25% { transform: rotate(2.2deg); } 60% { transform: rotate(-1.4deg); } 85% { transform: rotate(.5deg); } }
+  .rr-label { position: absolute; left: 38px; top: 22px; width: 150px; display: flex; flex-direction: column; gap: 3px; font-size: 12px; line-height: 1.45; color: var(--c-text-muted); transition: opacity .3s; }
+  .rr-k { font-size: 11px; letter-spacing: .08em; color: var(--c-text-dim); }
+  .rr-t { font-weight: 600; font-size: 13px; color: var(--c-text); }
+  .rr-t[hidden] { display: none; }
+  .rr-go { color: var(--accent); white-space: nowrap; }
+  .reading-ribbon:hover .rr-t { color: var(--accent); }
+  .reading-ribbon:focus-visible { outline: none; }
+  .reading-ribbon:focus-visible .rr-label { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 2px; }
+  /* Clicked: the ribbon rolls back up. Read to the end: it fades. */
+  .reading-ribbon.is-resumed .rr-band { height: 0; }
+  .reading-ribbon.is-resumed .rr-label { opacity: 0; pointer-events: none; }
+  .reading-ribbon.is-done { opacity: 0; pointer-events: none; transition: opacity .5s; }
+  @media (min-width: 1360px) { .rr-label { width: 200px; } }
+
+  /* "Continue here" above the paragraph the reader came back to. */
+  :global(.post-content .has-ribbon-here) { position: relative; }
+  :global(.reading-ribbon-here) { position: absolute; left: 0; top: -26px; display: inline-flex; align-items: center; gap: 7px; font: 12px/1 var(--font-mono); color: var(--accent); transition: opacity .6s; animation: rr-in .5s ease-out both; pointer-events: none; }
+  :global(.reading-ribbon-here.is-gone) { opacity: 0; }
+  :global(.reading-ribbon-here i) { display: inline-block; width: 9px; height: 15px; background: linear-gradient(90deg, #16a34a, #4ade80, #16a34a); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%); }
+  @keyframes rr-in { from { opacity: 0; transform: translateY(4px); } }
+
+  /* Mobile: a ribbon tail on the contents pill, the row tagged in its sheet. */
+  :global(#mtocPill:has(.reading-ribbon-tail)) { overflow: visible; }
+  :global(.reading-ribbon-tail) { position: absolute; top: -10px; right: 12px; width: 9px; height: 16px; pointer-events: none; background: linear-gradient(90deg, #16a34a, #4ade80, #16a34a); clip-path: polygon(0 0, 50% 6px, 100% 0, 100% 100%, 0 100%); transition: opacity .5s; }
+  :global(.reading-ribbon-tail.is-done) { opacity: 0; }
+  :global(.reading-ribbon-row) { flex: none; margin-left: 8px; padding: 1px 12px 1px 6px; font: 600 10.5px/16px var(--font-mono); color: #08130c; background: var(--accent); white-space: nowrap; clip-path: polygon(0 0, 100% 0, calc(100% - 6px) 50%, 100% 100%, 0 100%); }
+  :global([data-mode="light"] .reading-ribbon-row) { color: #fff; }
+
+  @media (max-width: 1100px) {
+    .reading-ribbon { position: relative; top: auto; left: auto !important; margin: 14px 0 -4px; min-height: 64px; }
+    .rr-band { left: auto; right: 6px; top: -15px; height: 92px; }
+    .reading-ribbon::before { left: auto; right: 2px; top: -15px; }
+    .rr-label { position: static; width: auto; padding-right: 44px; flex-direction: row; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; }
+    .rr-k { flex-basis: 100%; }
+    .reading-ribbon.is-resumed { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rr-band { transition: none; }
+    .reading-ribbon:hover .rr-band, :global(.reading-ribbon-here) { animation: none; }
+  }
+</style>
+
+<script>
+  import { mountReadingRibbon } from '../../lib/reading-ribbon';
+  const mount = () => {
+    const ribbon = document.querySelector<HTMLAnchorElement>('[data-reading-ribbon]');
+    if (!ribbon || ribbon.dataset.mounted) return;
+    ribbon.dataset.mounted = 'true';
+    const dispose = mountReadingRibbon(ribbon);
+    document.addEventListener('astro:before-swap', dispose, { once: true });
+  };
+  mount();
+  document.addEventListener('astro:page-load', mount);
+</script>

@@ -1,0 +1,154 @@
+---
+/**
+ * L3 like card, right under the closing date. One card is one button: heart
+ * on the left, prompt / thanks in the middle, the count once on the right.
+ * Regions of the likes sit below as flags. State and API: PostLayout's inline
+ * like script (ids articleLikeBtn / alRegions); painting: lib/article-like-card.
+ * On narrow screens the IP panda (ArticleReadingDock) sits on the card.
+ */
+import ArticleReadingDock from './ArticleReadingDock.astro';
+
+interface Props { lang?: 'zh' | 'en'; }
+const { lang = 'zh' } = Astro.props;
+
+const t = lang === 'en'
+  ? { ask: 'Like this piece?', done: 'You liked this', hint: 'Tap to let the author know', thanks: 'Thanks — the author got it ✓', like: 'Like this piece, {n} likes', unlike: 'Unlike, {n} likes', unit: 'likes', regions: 'from {n} regions' }
+  : { ask: '喜欢这篇？', done: '你喜欢了这篇', hint: '点一下，让作者知道', thanks: '谢谢，作者收到了 ✓', like: '喜欢这篇，{n} 人喜欢', unlike: '取消喜欢，{n} 人喜欢', unit: '人喜欢', regions: '来自 {n} 个地区' };
+const strings = JSON.stringify({ ask: t.ask, done: t.done, hint: t.hint, thanks: t.thanks, like: t.like, unlike: t.unlike });
+---
+
+<div class="article-like" data-article-like data-strings={strings} data-pagefind-ignore>
+  <div class="alk">
+    <ArticleReadingDock lang={lang} />
+    <button type="button" class="alk-card" id="articleLikeBtn" data-like-card aria-pressed="false" aria-label={t.like.replace('{n}', '0')}>
+      <span class="alk-ic" aria-hidden="true">
+        <svg class="alk-heart" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /></svg>
+        <span class="alk-burst">{Array.from({ length: 8 }, (_, i) => <i style={`--a:${i * 45}deg`}></i>)}</span>
+      </span>
+      <span class="alk-mid">
+        <b data-like-title>{t.ask}</b>
+        <small data-like-hint>{t.hint}</small>
+      </span>
+      <span class="alk-num">
+        <span class="alk-count" data-like-count><span class="alk-od"><span class="alk-od-col"><i></i><i>0</i></span></span></span>
+        <small>{t.unit}</small>
+      </span>
+    </button>
+    <div class="alk-regions" id="alRegions" data-label={t.regions} hidden>
+      <span class="alk-flags" id="alRegionsFlags"></span>
+      <span class="alk-regions-label" id="alRegionsLabel"></span>
+    </div>
+  </div>
+</div>
+
+<style>
+  .article-like {
+    --lk: #ef4444;
+    --lk-rgb: 239, 68, 68;
+    display: flex;
+    justify-content: center;
+    margin: 6px 0 10px;
+    font-family: var(--font-mono);
+  }
+  .alk {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: min(460px, 100%);
+  }
+  .alk-card {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+    margin: 0;
+    padding: 14px 18px 14px 14px;
+    border: 1px solid var(--c-border);
+    border-radius: 10px;
+    background: var(--c-bg-alt);
+    color: var(--c-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color .2s, background .2s, transform .12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .alk-card:hover { border-color: rgba(var(--lk-rgb), .55); background: rgba(var(--lk-rgb), .07); }
+  .alk-card:active { transform: scale(.98); }
+  .alk-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .alk-card.is-on { border-color: var(--lk); background: rgba(var(--lk-rgb), .1); }
+  .alk-ic {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 1.5px solid currentColor;
+    color: var(--c-text-muted);
+    transition: color .2s, background .2s;
+  }
+  .alk-card:hover .alk-ic, .alk-card.is-on .alk-ic { color: var(--lk); background: rgba(var(--lk-rgb), .08); }
+  .alk-heart { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; overflow: visible; transition: transform .2s, fill .15s; }
+  .alk-card:hover .alk-heart { transform: scale(1.1); }
+  .alk-card.is-on .alk-heart { fill: currentColor; }
+  .alk-card.is-pop .alk-heart { animation: alk-heart .5s cubic-bezier(.3, 1.7, .5, 1) both; }
+  @keyframes alk-heart { 0% { transform: scale(.55); } 60% { transform: scale(1.22); } 100% { transform: scale(1); } }
+  .alk-burst { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
+  .alk-burst i { position: absolute; left: -2.5px; top: -2.5px; width: 5px; height: 5px; border-radius: 50%; background: var(--lk); opacity: 0; transform: rotate(var(--a)); }
+  .alk-burst i:nth-child(even) { width: 4px; height: 4px; background: rgba(var(--lk-rgb), .6); }
+  .alk-card.is-pop .alk-burst i { animation: alk-burst .55s ease-out both; }
+  @keyframes alk-burst { 0% { opacity: 0; transform: rotate(var(--a)) translateY(-10px) scale(.4); } 30% { opacity: 1; } 100% { opacity: 0; transform: rotate(var(--a)) translateY(-38px) scale(1); } }
+  .alk-card.is-pop::after { content: ''; position: absolute; inset: -2px; border-radius: inherit; border: 2px solid var(--lk); animation: alk-ring .55s ease-out both; pointer-events: none; }
+  @keyframes alk-ring { from { opacity: .7; transform: scale(1); } to { opacity: 0; transform: scale(1.06); } }
+  .alk-mid { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .alk-mid b { font-size: 14px; font-weight: 700; }
+  .alk-mid small { font-size: 12px; color: var(--c-text-muted); }
+  .alk-card.is-on .alk-mid b { color: var(--lk); }
+  .alk-card.is-on .alk-mid small { color: var(--c-text); }
+  .alk-num { display: flex; align-items: baseline; gap: 6px; }
+  .alk-num small { font-size: 11px; color: var(--c-text-dim); }
+  .alk-count { display: inline-flex; }
+  .alk-count :global(.alk-od) { display: inline-block; height: 1.15em; overflow: hidden; font-size: 28px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .alk-count :global(.alk-od-col) { display: flex; flex-direction: column; transform: translateY(-50%); }
+  .alk-count :global(.alk-od-col i) { display: block; height: 1.15em; font-style: normal; }
+  .alk-count :global(.alk-od-col.is-roll) { animation: alk-roll .45s cubic-bezier(.3, 1.3, .5, 1) both; }
+  @keyframes alk-roll { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+  .alk-card.is-on .alk-count { color: var(--lk); }
+  .alk-regions { display: flex; flex-wrap: wrap; align-items: center; gap: 0 2px; padding-left: 4px; font-size: 12px; color: var(--c-text-dim); }
+  .alk-regions[hidden] { display: none; }
+  .alk-flags { display: inline-flex; align-items: center; gap: 0 2px; }
+  .alk-regions-label { margin-left: 6px; white-space: nowrap; }
+  /* Flags live inside .post-content: undo the article image styles (margins,
+     rounding, dark-mode paper backdrop and dimming). */
+  .alk-flags :global(img.c-flag) {
+    display: inline-block; width: 16px !important; height: auto; max-height: none; margin: 0 3px 0 0 !important;
+    border-radius: 2px; background: none !important; filter: none !important; pointer-events: none;
+  }
+  /* Narrow screens: the panda perches on the card's top-right corner. */
+  .alk :global(.article-reading-dock) { position: absolute; right: 10px; top: -74px; z-index: 1; }
+  @media (max-width: 1100px) {
+    .article-like { padding-top: 74px; }
+    .alk-card { gap: 12px; padding: 12px 14px 12px 12px; }
+    .alk-count :global(.alk-od) { font-size: 24px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .alk-card.is-pop .alk-heart, .alk-card.is-pop .alk-burst i, .alk-card.is-pop::after, .alk-count :global(.alk-od-col.is-roll) { animation: none; }
+  }
+</style>
+
+<script>
+  import { mountArticleLikeCard } from '../../lib/article-like-card';
+  const mount = () => {
+    const root = document.querySelector<HTMLElement>('[data-article-like]');
+    if (!root || root.dataset.ready) return;
+    root.dataset.ready = 'true';
+    const dispose = mountArticleLikeCard(root);
+    document.addEventListener('astro:before-swap', dispose, { once: true });
+  };
+  mount();
+  document.addEventListener('astro:page-load', mount);
+</script>
