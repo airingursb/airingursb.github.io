@@ -1,6 +1,6 @@
 /**
  * Reading ticket, DOM half: measures the visit (active time, sections read),
- * collects the live fields (views, the reader's country, readers online,
+ * collects the live fields (views, the reader's country,
  * reader regions, the like state) and keeps the server-rendered ticket in
  * sync. The stub is the share entry: navigator.share with the ticket PNG when
  * available, otherwise a paper panel anchored on the stub.
@@ -22,7 +22,7 @@ const SKIP = "pre, script, style, svg, noscript, template, textarea, button, fig
 export type TicketStrings = {
   readonly brand: string;
   readonly stub: string;
-  readonly cells: Readonly<Record<"date" | "time" | "read" | "seat" | "from" | "online", string>>;
+  readonly cells: Readonly<Record<"date" | "time" | "read" | "seat" | "from", string>>;
   readonly panel: string;
   readonly close: string;
   readonly copy: string;
@@ -36,7 +36,7 @@ export type TicketStrings = {
   readonly xNote: string;
 };
 
-type Live = { views: number | null; country: TicketInput["country"]; online: number | null; regions: number | null; liked: boolean; likes: number };
+type Live = { views: number | null; country: TicketInput["country"]; regions: number | null; liked: boolean; likes: number };
 
 function articleWords(content: HTMLElement) {
   let words = 0;
@@ -86,7 +86,7 @@ export function mountReadingTicket(root: HTMLElement): () => void {
   let lastActivity = Date.now();
   let read = 0;
   let progress = 0;
-  const live: Live = { views: null, country: null, online: null, regions: null, liked: false, likes: 0 };
+  const live: Live = { views: null, country: null, regions: null, liked: false, likes: 0 };
   let view: TicketView | null = null;
   let png: Blob | null = null;
   let pngKey = "";
@@ -118,7 +118,6 @@ export function mountReadingTicket(root: HTMLElement): () => void {
     set("time", next.time);
     set("read", next.readCell);
     set("seat", next.seat ?? "");
-    set("online", next.online ?? "");
     set("fine", next.fine);
     set("no", next.seatNo ?? "");
     set("sumBig", next.sumBig);
@@ -126,7 +125,6 @@ export function mountReadingTicket(root: HTMLElement): () => void {
     set("sumState", next.sumState);
     set("sumTime", next.time);
     cell("seat")!.hidden = next.seat === null;
-    cell("online")!.hidden = next.online === null;
     cell("from")!.hidden = next.from === null;
     if (next.from && next.from.code !== prev?.from?.code) {
       const from = field("from")!;
@@ -184,15 +182,6 @@ export function mountReadingTicket(root: HTMLElement): () => void {
   try { takeCountry(sessionStorage.getItem("vp_country")); } catch { /* storage is optional */ }
   window.addEventListener("visitor-country-ready", (e) => takeCountry((e as CustomEvent<{ country: string }>).detail.country), { signal });
 
-  const takeOnline = (counts: unknown) => {
-    const page = (counts as { page?: unknown } | null)?.page;
-    if (typeof page !== "number" || page < 1) return;
-    live.online = page;
-    render();
-  };
-  takeOnline((window as unknown as { __onlineCounts?: unknown }).__onlineCounts);
-  window.addEventListener("online-counts", (e) => takeOnline((e as CustomEvent).detail), { signal });
-
   const likeButton = document.getElementById("articleLikeBtn");
   const takeLike = (s: LikeStateDetail | null) => {
     if (!s) return;
@@ -231,7 +220,6 @@ export function mountReadingTicket(root: HTMLElement): () => void {
     const cellValues: [string, string][] = [[t.cells.date, view.date], [t.cells.time, view.time], [t.cells.read, view.readCell]];
     if (view.seat) cellValues.push([t.cells.seat, view.seat]);
     if (view.from) cellValues.push([t.cells.from, view.from.name]);
-    if (view.online) cellValues.push([t.cells.online, view.online]);
     try {
       const canvas = drawTicket(view, { title, brand: t.brand, stub: t.stub, cells: cellValues }, url, {
         page: body.backgroundColor || "#0d1117",

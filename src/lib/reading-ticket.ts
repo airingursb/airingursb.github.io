@@ -6,7 +6,6 @@
  *   date, time, sections read, images, words — measured in the page
  *   seat        — GET /api/posts/:slug/views (pv) + 1
  *   from        — the reader's country from POST /api/online/heartbeat
- *   reading now — page count from the same heartbeat
  *   regions     — GET /api/posts/:slug/view-regions (only with a real sample)
  */
 
@@ -30,7 +29,6 @@ export type TicketInput = {
   readonly words: number;
   readonly views: number | null;
   readonly country: { readonly code: string; readonly name: string } | null;
-  readonly online: number | null;
   readonly regions: number | null;
   readonly liked: boolean;
   readonly likes: number;
@@ -45,7 +43,6 @@ export type TicketView = {
   readonly seat: string | null;
   readonly seatNo: string | null;
   readonly from: { readonly code: string; readonly name: string } | null;
-  readonly online: string | null;
   readonly fine: string;
   readonly sumBig: string;
   readonly sumSmall: string;
@@ -62,14 +59,14 @@ export const REGIONS_MIN_COUNT = 3;
 const STRINGS = {
   zh: {
     admit: "ADMIT ONE", half: "半程 · 未检票", sec: "{n} 秒", min: "{n} 分钟", sections: "{r}/{t} 节",
-    seat: "第 {n} 位", alone: "只有你在读", reading: "{n} 人在读", images: "{n} 张配图", words: "{n} 字",
+    seat: "第 {n} 位", images: "{n} 张配图", words: "{n} 字",
     regions: "读者来自 {n} 个地区", skimLine: "跳读到结尾 · 还剩约 {n} 分钟 · 读完回来检票",
     done: "节 · 读完", halfway: "节 · 读到一半", pctDone: "读完", pctHalf: "读到一半",
     share: "我读完了《{t}》", shareTail: "，{r} · {d}", shareSkim: "我在读《{t}》",
   },
   en: {
     admit: "ADMIT ONE", half: "HALFWAY · UNCHECKED", sec: "{n} s", min: "{n} min", sections: "{r}/{t} sections",
-    seat: "No. {n}", alone: "Just you", reading: "{n} reading", images: "{n} images", words: "{n} words",
+    seat: "No. {n}", images: "{n} images", words: "{n} words",
     regions: "readers from {n} regions", skimLine: "Skimmed to the end · about {n} min left · come back to check in",
     done: "sections · done", halfway: "sections · halfway", pctDone: "done", pctHalf: "halfway",
     share: "I read “{t}”", shareTail: " — {r} · {d}", shareSkim: "Reading “{t}”",
@@ -156,7 +153,6 @@ export function buildTicket(input: TicketInput): TicketView {
     seat: seat === null ? null : fill(t.seat, { n: formatCount(seat) }),
     seatNo: seat === null ? null : `No.${String(seat).padStart(6, "0")}`,
     from: input.country,
-    online: input.online === null ? null : input.online <= 1 ? t.alone : fill(t.reading, { n: input.online }),
     fine,
     sumBig: percent ? String(pct) : String(input.read),
     sumSmall: percent ? "%" : `/${input.total}`,

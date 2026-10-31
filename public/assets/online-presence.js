@@ -15,6 +15,7 @@
  *   data-online="site" | "page"           // which count to render
  *   data-online-template="· ● {n} online" // {n} placeholder; ignored if tiers set
  *   data-online-min="1"                   // optional, hide if count below this
+ *   data-online-countries="none"          // count only, no country summary control
  *
  * Pages can call `window.__onlineRefresh()` to re-render (e.g. after lang change).
  *
@@ -765,7 +766,7 @@
       // ── Country summary fallback ───────────────────────────────────────
       var countryMode = el.getAttribute('data-online-countries');
       var regionMin = parseInt(el.getAttribute('data-online-region-min') || '2', 10);
-      var shouldShowCountrySummary = countryMode === 'popover' ? rows.length >= regionMin : rows.length > 0;
+      var shouldShowCountrySummary = countryMode !== 'none' && (countryMode === 'popover' ? rows.length >= regionMin : rows.length > 0);
       if (shouldShowCountrySummary) {
         el.style.cursor = 'pointer';
         el.setAttribute('tabindex', '0');

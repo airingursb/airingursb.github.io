@@ -6,7 +6,7 @@ import { odometer } from "../src/lib/article-like-card.ts";
 const base = {
   lang: "zh", title: "月刊（第36期）：伊始", slug: "weekly-36", now: new Date(2026, 9, 31, 21, 5),
   seconds: 13 * 60, minutes: 12, read: 8, total: 8, progress: 1,
-  images: 18, words: 4994, views: 2178, country: { code: "SG", name: "新加坡" }, online: 1, regions: 20,
+  images: 18, words: 4994, views: 2178, country: { code: "SG", name: "新加坡" }, regions: 20,
   liked: false, likes: 17,
 };
 
@@ -19,7 +19,6 @@ test("a full read fills every cell from real data", () => {
   assert.equal(v.readCell, "8/8 节");
   assert.equal(v.seat, "第 2,179 位");
   assert.equal(v.seatNo, "No.002179");
-  assert.equal(v.online, "只有你在读");
   assert.equal(v.fine, "18 张配图 · 4,994 字 · 读者来自 20 个地区");
   assert.equal(`${v.sumBig}${v.sumSmall} ${v.sumState}`, "8/8 节 · 读完");
   assert.equal(v.code, "URSB-WEEK-002179");
@@ -27,11 +26,10 @@ test("a full read fills every cell from real data", () => {
 });
 
 test("missing data hides the cell instead of guessing", () => {
-  const v = buildTicket({ ...base, views: null, country: null, online: null, regions: null, images: 0 });
+  const v = buildTicket({ ...base, views: null, country: null, regions: null, images: 0 });
   assert.equal(v.seat, null);
   assert.equal(v.seatNo, null);
   assert.equal(v.from, null);
-  assert.equal(v.online, null);
   assert.equal(v.fine, "4,994 字");
   assert.equal(v.code, "URSB-WEEK-20261031");
 });

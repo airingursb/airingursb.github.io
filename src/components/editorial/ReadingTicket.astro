@@ -16,13 +16,13 @@ const { lang = 'zh', title, slug, url, minutes } = Astro.props;
 
 const t = lang === 'en'
   ? {
-      brand: 'URSB.ME · READING TICKET', stub: 'STUB', cells: { date: 'Date', time: 'Time', read: 'Read', seat: 'Seat', from: 'From', online: 'Now' },
+      brand: 'URSB.ME · READING TICKET', stub: 'STUB', cells: { date: 'Date', time: 'Time', read: 'Read', seat: 'Seat', from: 'From' },
       nobar: 'UNCHECKED', cta: 'Tear off · share', aria: 'Share this reading ticket',
       panel: 'Share', close: 'Close', copy: 'Copy link', copied: 'Copied ✓', copyFailed: 'Copy failed, copy it by hand',
       save: 'Save ticket image', saveNote: 'PNG · with stub', saved: 'Saved ✓', saveFailed: 'Could not create it', x: 'Share on X', xNote: 'new window ↗',
     }
   : {
-      brand: 'URSB.ME · 阅读票', stub: '存根', cells: { date: '日期', time: '用时', read: '已读', seat: '座位', from: '来自', online: '此刻' },
+      brand: 'URSB.ME · 阅读票', stub: '存根', cells: { date: '日期', time: '用时', read: '已读', seat: '座位', from: '来自' },
       nobar: '待检票', cta: '撕下存根 · 分享', aria: '分享这张阅读票',
       panel: '分享', close: '关闭', copy: '复制链接', copied: '已复制 ✓', copyFailed: '复制失败，请手动复制',
       save: '保存票根图片', saveNote: 'PNG · 带存根', saved: '已保存 ✓', saveFailed: '生成失败', x: '分享到 X', xNote: '新窗口 ↗',
@@ -31,7 +31,7 @@ const strings = JSON.stringify({
   brand: t.brand, stub: t.stub, cells: t.cells, panel: t.panel, close: t.close, copy: t.copy, copied: t.copied, copyFailed: t.copyFailed,
   save: t.save, saveNote: t.saveNote, saved: t.saved, saveFailed: t.saveFailed, x: t.x, xNote: t.xNote,
 });
-const cells = [['date', t.cells.date], ['time', t.cells.time], ['read', t.cells.read], ['seat', t.cells.seat], ['from', t.cells.from], ['online', t.cells.online]] as const;
+const cells = [['date', t.cells.date], ['time', t.cells.time], ['read', t.cells.read], ['seat', t.cells.seat], ['from', t.cells.from]] as const;
 ---
 
 <div class="reading-ticket" data-reading-ticket data-lang={lang} data-slug={slug} data-title={title} data-url={url} data-minutes={minutes ?? ''} data-strings={strings} data-pagefind-ignore>
@@ -41,7 +41,7 @@ const cells = [['date', t.cells.date], ['time', t.cells.time], ['read', t.cells.
       <div class="tk-title">{title}</div>
       <div class="tk-grid">
         {cells.map(([key, label]) => (
-          <div class="tk-cell" data-cell={key} hidden={key === 'seat' || key === 'from' || key === 'online'}>
+          <div class="tk-cell" data-cell={key} hidden={key === 'seat' || key === 'from'}>
             <span>{label}</span><b data-f={key}></b>
           </div>
         ))}
@@ -62,8 +62,6 @@ const cells = [['date', t.cells.date], ['time', t.cells.time], ['read', t.cells.
       <span class="tk-cta" aria-hidden="true">{t.cta} <i>✂</i></span>
     </div>
   </div>
-  <!-- online-presence.js only polls the counts when a [data-online] element exists; the ticket reads them from its `online-counts` event. -->
-  <span data-online="page" data-online-template="" data-online-min="1000000000" hidden></span>
 </div>
 
 <style>
