@@ -911,6 +911,8 @@ const jsonLd = {
   // =====================================================================
   var articleLiked = false;
   var likeTotal = 0;
+  var likeRevision = 0;
+  var likePending = false;
 
   function paintLike(liked, count, animate) {
     articleLiked = liked;
@@ -921,8 +923,10 @@ const jsonLd = {
   }
 
   function loadArticleLikes() {
+    var revision = likeRevision;
     apiGet('/api/posts/' + encodeURIComponent(POST_SLUG) + '/likes').then(function(res) {
-      paintLike(!!res.liked, res.count || 0, false);
+      // A slow initial read must not undo a like the reader has already sent.
+      if (revision === likeRevision) paintLike(!!res.liked, res.count || 0, false);
       // Populate sidebar likes
       if (res.count > 0) {
         var lkEl = document.getElementById('postLikesCount');
@@ -1015,6 +1019,10 @@ const jsonLd = {
   }
 
   articleLikeBtn.addEventListener('click', function() {
+    if (likePending) return;
+    likePending = true;
+    likeRevision++;
+    articleLikeBtn.disabled = true;
     // Optimistic update — instant UI feedback
     var prevLiked = articleLiked;
     var prevCount = likeTotal;
@@ -1047,6 +1055,9 @@ const jsonLd = {
     }).catch(function() {
       // Rollback on failure
       paintLike(prevLiked, prevCount, false);
+    }).finally(function() {
+      likePending = false;
+      articleLikeBtn.disabled = false;
     });
   });
 

@@ -134,7 +134,9 @@ export function buildTicket(input: TicketInput): TicketView {
   const time = shortDuration(input.seconds, input.lang);
   const readCell = percent ? `${pct}%` : fill(t.sections, { r: input.read, t: input.total });
   const seat = input.views === null ? null : input.views + 1;
-  const left = Math.max(1, Math.round(input.minutes * (1 - (percent ? pct / 100 : input.read / Math.max(1, input.total)))));
+  // What is left: the unread part, or (when the reader went too fast) the estimate minus the time spent.
+  const unread = input.minutes * (1 - (percent ? pct / 100 : input.read / Math.max(1, input.total)));
+  const left = Math.max(1, Math.round(Math.max(unread, input.minutes - input.seconds / 60)));
   const fine = skim
     ? fill(t.skimLine, { n: left })
     : [

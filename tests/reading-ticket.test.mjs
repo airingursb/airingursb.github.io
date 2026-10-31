@@ -46,8 +46,10 @@ test("a skim reads as halfway and asks the reader back", () => {
   assert.equal(v.skim, true);
   assert.equal(v.admit, "半程 · 未检票");
   assert.equal(v.sumState, "节 · 读到一半");
-  assert.match(v.fine, /^跳读到结尾 · 还剩约 8 分钟/);
+  assert.match(v.fine, /^跳读到结尾 · 还剩约 11 分钟/);
   assert.equal(v.shareText, "我在读《月刊（第36期）：伊始》");
+  // Every section passed in half a minute: still most of the reading to do.
+  assert.match(buildTicket({ ...base, seconds: 30 }).fine, /还剩约 12 分钟/);
 });
 
 test("articles without sections count in percent", () => {

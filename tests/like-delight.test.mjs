@@ -13,21 +13,22 @@ function likeFixture({ liked = false, response, reject = false } = {}) {
   const painted = [];
   let click;
   let resolve;
+  let requests = 0;
   const pending = new Promise(done => { resolve = done; });
   const button = {
     addEventListener: (_, callback) => { click = callback; },
     dispatchEvent: event => events.push(event.type),
   };
   const context = {
-    articleLiked: liked, likeTotal: liked ? 1 : 0, articleLikeBtn: button, POST_SLUG: 'fixture',
+    articleLiked: liked, likeTotal: liked ? 1 : 0, likePending: false, likeRevision: 0, articleLikeBtn: button, POST_SLUG: 'fixture',
     // paintLike lives above the handler slice; record what the card would paint.
     paintLike: (on, count, animate) => { context.articleLiked = on; context.likeTotal = count; painted.push({ on, count, animate }); },
-    apiPost: () => pending.then(() => { if (reject) throw new Error('offline'); return response; }),
+    apiPost: () => { requests++; return pending.then(() => { if (reject) throw new Error('offline'); return response; }); },
     document: { getElementById: () => null }, CustomEvent,
     localStorage: { getItem: () => '[]', setItem() {} },
   };
   vm.runInNewContext(handler, context);
-  return { events, painted, state: () => ({ liked: context.articleLiked, count: context.likeTotal }), click: () => click(), finish: async () => { resolve(); for (let i = 0; i < 5; i++) await Promise.resolve(); } };
+  return { events, painted, button, requests: () => requests, state: () => ({ liked: context.articleLiked, count: context.likeTotal }), click: () => click(), finish: async () => { resolve(); for (let i = 0; i < 5; i++) await Promise.resolve(); } };
 }
 
 test('optimistic like paints at once and reports the like only after the server confirms it', async () => {
@@ -55,6 +56,22 @@ test('a failed request rolls the card back to the previous state', async () => {
   f.click();
   await f.finish();
   assert.deepEqual(f.state(), { liked: false, count: 0 });
+  assert.equal(f.button.disabled, false);
+});
+
+test('repeated clicks wait for the pending like before allowing another toggle', async () => {
+  const f = likeFixture({ response: { liked: true, count: 1 } });
+  f.click();
+  f.click();
+  assert.equal(f.requests(), 1);
+  assert.deepEqual(f.state(), { liked: true, count: 1 });
+  assert.equal(f.button.disabled, true);
+  await f.finish();
+  assert.equal(f.button.disabled, false);
+  f.click();
+  assert.equal(f.requests(), 2);
+  assert.deepEqual(f.state(), { liked: false, count: 0 });
+  await f.finish();
 });
 
 test('heart path preserves both endpoints and targets only fully visible recipients', () => {

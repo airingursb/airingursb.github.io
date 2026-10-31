@@ -144,7 +144,8 @@ export function mountArticleFilmstrip(host: HTMLElement): () => void {
     const list = root.querySelector<HTMLElement>(".fs-list")!;
     const row = root.querySelector<HTMLElement>(".fs-row.is-cur");
     if (row && (manual || Date.now() > holdUntil)) {
-      const target = row.offsetTop - list.clientHeight * 0.4;
+      // offsetTop is measured from the ranger (the positioned ancestor), not the list.
+      const target = row.offsetTop - list.offsetTop - list.clientHeight * 0.4;
       if (Math.abs(list.scrollTop - target) > 2) list.scrollTo({ top: target, behavior: changed ? "smooth" : "auto" });
     }
     tuck();
@@ -210,7 +211,7 @@ export function mountArticleFilmstrip(host: HTMLElement): () => void {
       strip.querySelector(".fs-lb-t")!.textContent = figures[i].caption;
       roll.querySelectorAll<HTMLElement>(".fs-lb-frame").forEach((b) => b.classList.toggle("is-cur", Number(b.dataset.i) === i));
       const cur = roll.querySelector<HTMLElement>(".fs-lb-frame.is-cur");
-      if (cur) roll.scrollTo({ left: cur.offsetLeft - roll.clientWidth / 2 + cur.offsetWidth / 2, behavior: "smooth" });
+      if (cur) roll.scrollTo({ left: cur.offsetLeft - roll.offsetLeft - roll.clientWidth / 2 + cur.offsetWidth / 2, behavior: "smooth" });
     };
     strip.addEventListener("click", (e) => {
       e.stopPropagation();
