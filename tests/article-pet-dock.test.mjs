@@ -1,24 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { petDockTransform } from "../src/lib/article-pet-dock-geometry.ts";
+// The IP panda no longer reads the dismissal (it has no close button); the
+// preference module stays for the like-delight preview, so its contract does too.
 import {
   dismissBlogPet,
   isBlogPetDismissed,
 } from "../src/lib/blog-pet-preference.ts";
-
-test("docking aligns the complete floating sprite with the inline slot", () => {
-  const floating = { left: 1100, top: 700, width: 144 };
-  const inline = { left: 500, top: 420, width: 96 };
-  const transform = petDockTransform(floating, inline);
-  assert.equal(transform, "translate(-600px, -280px) scale(0.6666666666666666)");
-});
-
-test("docking preserves a same-sized sprite without deformation", () => {
-  const floating = { left: 40, top: 80, width: 96 };
-  const inline = { left: 180, top: 120, width: 96 };
-  const transform = petDockTransform(floating, inline);
-  assert.equal(transform, "translate(140px, 40px) scale(1)");
-});
 
 function browserStorage(t, storage) {
   const browser = new EventTarget();

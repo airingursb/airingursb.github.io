@@ -1,24 +1,19 @@
 ---
 /**
- * BlogPetWidget — SHU-818 oil-motion circular look.
- * Single 360° sprite atlas, pointer angle maps to frame via setDirection.
+ * BlogPetWidget — the author's IP panda reading in the corner (desktop only).
+ * Gaze: single 360° sprite atlas, pointer angle maps to frame via setDirection.
+ * End of article / poke: close and react layers from lib/blog-pet-stage.
  */
 interface Props { lang?: "zh" | "en"; }
 const { lang = "zh" } = Astro.props;
 ---
 
-<aside
+<div
   id="blog-pet"
   class="blog-pet"
   hidden
-  aria-label={lang === "en" ? "Watercolor panda companion" : "博客水墨熊猫桌宠"}
+  aria-label={lang === "en" ? "Poke the panda" : "戳一下熊猫"}
 >
-  <button
-    type="button"
-    class="blog-pet-dismiss"
-    id="blogPetDismiss"
-    aria-label={lang === "en" ? "Hide the panda" : "隐藏桌宠"}
-  >×</button>
   <canvas
     id="blogPetCanvas"
     class="blog-pet-canvas"
@@ -28,14 +23,14 @@ const { lang = "zh" } = Astro.props;
   ></canvas>
   <img
     class="blog-pet-fallback"
-    src="/oil-motion/blog-pet/poster.png"
+    src="/editorial-motion/ip-panda/gaze/poster.png"
     alt=""
     width="144"
     height="144"
     loading="eager"
     decoding="async"
   />
-</aside>
+</div>
 
 <style>
   .blog-pet {
@@ -47,26 +42,55 @@ const { lang = "zh" } = Astro.props;
     z-index: 80;
     width: 144px;
     height: 144px;
+    /* Only opaque pixels take the pointer (.is-hot, set by the hit test). */
     pointer-events: none;
     filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.18));
-    transform-origin: 0 0;
+    outline: none;
+  }
+  /* Dark mode: a faint light rim keeps the black ears and paws off the page. */
+  :global(html:not([data-mode="light"])) .blog-pet {
+    filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.35)) drop-shadow(0 0 0.5px rgba(255, 255, 255, 0.3)) drop-shadow(0 6px 14px rgba(0, 0, 0, 0.18));
   }
   .blog-pet[hidden] {
     display: none !important;
   }
-  .blog-pet[data-pet-docked="true"] {
-    visibility: hidden;
+  /* !important: global.css sets a custom cursor on * with !important. */
+  .blog-pet.is-hot {
+    pointer-events: auto;
+    cursor: pointer !important;
   }
-  .blog-pet[data-pet-travelling="true"] {
-    will-change: transform;
+  .blog-pet[data-pet-interactive]:focus-visible {
+    outline: 2px dashed rgba(var(--accent-rgb), 0.7);
+    outline-offset: 2px;
+    border-radius: 14px;
   }
-  .blog-pet[data-pet-travelling="true"] .blog-pet-dismiss {
-    display: none;
-  }
-  .blog-pet-canvas {
+  .blog-pet-canvas,
+  .blog-pet :global(.blog-pet-layer) {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     display: block;
+  }
+  .blog-pet :global(.blog-pet-layer) {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .blog-pet :global(.blog-pet-layer.is-on) {
+    opacity: 1;
+  }
+  /* The layers are pixel-aligned with the gaze atlas, so they swap without a fade. */
+  .blog-pet.is-layered .blog-pet-canvas {
+    opacity: 0;
+  }
+  /* A poke during the close: a small squash, nothing else. */
+  .blog-pet.is-ack canvas {
+    animation: blog-pet-ack 0.32s ease-out;
+    transform-origin: 50% 88%;
+  }
+  @keyframes blog-pet-ack {
+    35% { transform: scale(0.95, 0.93); }
+    70% { transform: scale(1.02); }
   }
   .blog-pet-fallback {
     position: absolute;
@@ -82,28 +106,6 @@ const { lang = "zh" } = Astro.props;
   }
   .blog-pet.is-fallback .blog-pet-fallback {
     display: block;
-  }
-  .blog-pet-dismiss {
-    position: absolute;
-    top: -4px;
-    left: -4px;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    border: 1px solid rgba(127, 127, 127, 0.35);
-    background: rgba(255, 255, 255, 0.72);
-    color: #666;
-    font-size: 14px;
-    line-height: 1;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.2s;
-    z-index: 2;
-    pointer-events: auto;
-  }
-  .blog-pet:hover .blog-pet-dismiss,
-  .blog-pet:focus-within .blog-pet-dismiss {
-    opacity: 1;
   }
   /* Article layouts go single-column at 1100px; below that the 144px pet
      would sit on top of the text column (42px overlap at 860px). */
@@ -134,42 +136,35 @@ const { lang = "zh" } = Astro.props;
     createFrameAnimator,
   } from "../lib/blog-pet-animator";
   import { computePointerVector } from "../lib/blog-pet-pointer";
-  import { BLOG_PET_DISMISSED, dismissBlogPet, isBlogPetDismissed } from "../lib/blog-pet-preference";
+  import { createBlogPetStage, createBlogPetStill } from "../lib/blog-pet-stage";
+  import { IP_PANDA_BASE } from "../lib/blog-pet-motion";
 
-  const BASE = "/oil-motion/blog-pet/";
+  const BASE = `${IP_PANDA_BASE}gaze/`;
 
   const root = document.getElementById("blog-pet");
   const canvas = document.querySelector<HTMLCanvasElement>("#blogPetCanvas");
-  const dismiss = document.getElementById("blogPetDismiss");
+  const still = root?.querySelector<HTMLImageElement>(".blog-pet-fallback");
 
-  if (!root || !canvas || !dismiss) {
-    // no-op
-  } else if (isBlogPetDismissed()) {
-    root.remove();
-  } else {
+  if (root && canvas && still) {
     let cleanup = () => {};
-    dismiss.addEventListener("click", () => {
-      dismissBlogPet();
-      cleanup();
-      root.remove();
-    });
-    window.addEventListener("storage", (event) => {
-      if (event.key !== BLOG_PET_DISMISSED || event.newValue !== "1") return;
-      cleanup();
-      root.remove();
-    });
     document.addEventListener("astro:before-swap", () => cleanup(), { once: true });
 
     const reduced =
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const desktop = window.matchMedia("(min-width: 1101px)"); // matches the CSS hide breakpoint
 
+    const fallback = () => {
+      root.classList.add("is-fallback");
+      cleanup = createBlogPetStill(root, still, `${BASE}poster.png`);
+    };
+
     const boot = async () => {
       if (!desktop.matches || !root.isConnected) return;
       root.hidden = false;
 
+      // Reduced motion: a still that swaps to the closed book at the end; no poking.
       if (reduced) {
-        root.classList.add("is-fallback");
+        fallback();
         return;
       }
 
@@ -186,7 +181,7 @@ const { lang = "zh" } = Astro.props;
           throw new Error("invalid circular atlas");
         }
       } catch {
-        root.classList.add("is-fallback");
+        fallback();
         return;
       }
 
@@ -197,7 +192,7 @@ const { lang = "zh" } = Astro.props;
       try {
         await image.decode();
       } catch {
-        root.classList.add("is-fallback");
+        fallback();
         return;
       }
 
@@ -219,7 +214,8 @@ const { lang = "zh" } = Astro.props;
       });
 
       const onMove = (e: PointerEvent) => {
-        if (document.hidden || root.dataset.petDocked || root.dataset.petTravelling) return;
+        // petHold: the stage owns the gaze while it turns, closes or reacts.
+        if (document.hidden || root.dataset.petHold) return;
         const rect = canvas.getBoundingClientRect();
         const vector = computePointerVector({
           clientX: e.clientX,
@@ -240,14 +236,16 @@ const { lang = "zh" } = Astro.props;
       window.addEventListener("pointermove", onMove, { passive: true });
       window.addEventListener("resize", onResize, { passive: true });
 
+      renderer.render(initialFrame);
+      const disposeStage = createBlogPetStage({ root, canvas, image, atlas, animator, startAngle });
+
       cleanup = () => {
+        disposeStage();
         animator.destroy();
         renderer.destroy();
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("resize", onResize);
       };
-
-      renderer.render(initialFrame);
     };
 
     desktop.addEventListener("change", () => {
