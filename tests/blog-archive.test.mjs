@@ -92,7 +92,7 @@ test('text covers: short phrase, tag pattern, English phrase on the English page
   assert.deepEqual(coverPhrase({ zh: '月刊（第24期）：十年编程之路', title: '月刊（第24期）：十年编程之路', tag: 'weekly', year: 2023, issue: 24 }), { kicker: '月刊 · No.24', big: '十年编程之路' });
   assert.deepEqual(coverPhrase({ zh: '2019，走走停停', title: '2019，走走停停', tag: 'annually', year: 2020, issue: null }), { kicker: '年度 · 2019', big: '走走停停' });
   assert.equal(coverPhrase({ zh: '前端安全 | HPP 的攻击举例与防范', title: '前端安全 | HPP 的攻击举例与防范', tag: 'tech', year: 2019, issue: null }).big, 'HPP');
-  assert.deepEqual(coverPhrase({ zh: '月刊（第36期）：伊始', title: 'Monthly #36: A Beginning', tag: 'weekly', year: 2026, issue: 36 }), { kicker: 'monthly · No.36', big: 'A Beginning' });
+  assert.deepEqual(coverPhrase({ zh: '月刊（第36期）：伊始', title: 'Weekly #36: A Beginning', tag: 'weekly', year: 2026, issue: 36 }), { kicker: 'monthly · No.36', big: 'A Beginning' });
   const html = textCoverHTML({ zh: '<x>', title: '<x>', tag: 'essays', year: 2020, issue: null });
   assert.match(html, /class="tc tc--essays"/);
   assert.doesNotMatch(html, /<x>/);

@@ -1,5 +1,5 @@
 ---
-title: "Monthly #36: A Beginning"
+title: "Weekly #36: A Beginning"
 date: 2026-09-06
 tags: ["weekly"]
 description: "June to August: a growing AI bill, little worlds of my own, a trip to Seoul and Busan, and finding my rhythm again through walks, games, and everyday life."
