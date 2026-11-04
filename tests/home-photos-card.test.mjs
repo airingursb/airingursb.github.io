@@ -40,3 +40,12 @@ test('the big photo and View all still open the photo pages', () => {
   assert.match(card, /<a class="ph-main" id="phMain" href=\{`\/photos\/\$\{openPhoto\.slug\}`\}/);
   assert.match(card, /<a class="photos-strip-more" href="\/photos"/);
 });
+
+test('switching a thumbnail repoints the big photo link and exif id to the shown photo', () => {
+  const show = card.slice(card.indexOf('function show(i)'), card.indexOf('var canHover'));
+  assert.match(show, /var p = photoView\[i\];/);
+  assert.match(show, /main\.href = '\/photos\/' \+ p\.slug;/);
+  assert.match(show, /exif <span class="ph-exif-id">' \+ esc\(p\.slug\)/);
+  assert.match(show, /img\.src = p\.webp;/);
+  assert.match(show, /avif\.srcset = p\.avif;/);
+});
