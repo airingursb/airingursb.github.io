@@ -1488,7 +1488,7 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
               </a>
               <div class="ph-side">
                 <div class="ph-exif" id="phExif">
-                  <div class="ph-exif-cmd"><span class="prompt">$</span> exif {openPhoto.slug}</div>
+                  <div class="ph-exif-cmd"><span class="prompt">$</span> exif <span class="ph-exif-id">{openPhoto.slug}</span></div>
                   {openPhoto.title && <div class="ph-exif-title">{openPhoto.title}</div>}
                   {openPhoto.shot && <div><span class="ph-exif-k">taken</span>{openPhoto.shot}</div>}
                   {openPhoto.camera && <div><span class="ph-exif-k">camera</span>{openPhoto.camera}</div>}
@@ -1505,10 +1505,12 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
                 </svg>
                 <div class="ph-thumbs">
                   {recentPhotos.slice(0, 8).map((p: any, i: number) => (
-                    <a
-                      href={`/photos/${p.slug}`}
+                    <button
+                      type="button"
                       class:list={['ph-thumb', { 'is-open': i === 0 }]}
                       data-i={i}
+                      aria-pressed={i === 0 ? 'true' : 'false'}
+                      aria-controls="phMain"
                       aria-label={p.title || p.slug}
                       style={`background: ${p.dominantColor}`}
                     >
@@ -1516,7 +1518,7 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
                         <source type="image/avif" srcset={p.variants.thumb.avif} />
                         <img src={p.variants.thumb.webp} alt="" loading="lazy" decoding="async" width="160" height="120" />
                       </picture>
-                    </a>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -1524,13 +1526,15 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
             {/* Dominant colour of each recent photo, newest on the left. */}
             <div class="ph-palette">
               {photoView.map((p, i) => (
-                <a
-                  href={`/photos/${p.slug}`}
+                <button
+                  type="button"
                   class:list={['ph-swatch', { 'is-open': i === 0 }]}
                   data-i={i}
+                  aria-pressed={i === 0 ? 'true' : 'false'}
+                  aria-controls="phMain"
                   aria-label={p.title || p.shot || p.slug}
                   style={`background: ${p.color}`}
-                ></a>
+                ></button>
               ))}
             </div>
             <div class="ph-palette-cap">
@@ -1566,7 +1570,7 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
                   img.src = p.webp;
                   img.alt = p.title || p.slug;
                   exif.innerHTML =
-                    '<div class="ph-exif-cmd"><span class="prompt">$</span> exif ' + esc(p.slug) + '</div>' +
+                    '<div class="ph-exif-cmd"><span class="prompt">$</span> exif <span class="ph-exif-id">' + esc(p.slug) + '</span></div>' +
                     (p.title ? '<div class="ph-exif-title">' + esc(p.title) + '</div>' : '') +
                     (p.shot ? '<div><span class="ph-exif-k">taken</span>' + esc(p.shot) + '</div>' : '') +
                     (p.camera ? '<div><span class="ph-exif-k">camera</span>' + esc(p.camera) + '</div>' : '') +
@@ -1575,17 +1579,20 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
                     ? '<path class="ph-hist-r" d="' + p.hist.r + '"/><path class="ph-hist-g" d="' + p.hist.g + '"/><path class="ph-hist-b" d="' + p.hist.b + '"/>'
                     : '';
                   card.querySelectorAll('[data-i]').forEach(function (a) {
-                    a.classList.toggle('is-open', +a.getAttribute('data-i') === i);
+                    var on = +a.getAttribute('data-i') === i;
+                    a.classList.toggle('is-open', on);
+                    a.setAttribute('aria-pressed', on ? 'true' : 'false');
                   });
                 }
-                // Hover swaps on pointer devices; a tap just opens the photo.
-                if (window.matchMedia('(hover: hover)').matches) {
-                  card.querySelectorAll('.ph-thumb, .ph-swatch').forEach(function (a) {
-                    var i = +a.getAttribute('data-i');
-                    a.addEventListener('mouseenter', function () { show(i); });
-                    a.addEventListener('focus', function () { show(i); });
-                  });
-                }
+                // Thumbnails and swatches switch the open photo in place (click,
+                // tap or Enter/Space); hover previews on pointer devices. Only the
+                // big photo and "View all" leave the homepage.
+                var canHover = window.matchMedia('(hover: hover)').matches;
+                card.querySelectorAll('.ph-thumb, .ph-swatch').forEach(function (a) {
+                  var i = +a.getAttribute('data-i');
+                  a.addEventListener('click', function (e) { e.preventDefault(); show(i); });
+                  if (canHover) a.addEventListener('mouseenter', function () { show(i); });
+                });
               })();
             </script>
           </>
