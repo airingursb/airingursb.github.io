@@ -1,0 +1,527 @@
+  <!-- CHAPTER 01 -->
+  <section class="chap" id="c1">
+    <div class="chap-num">CHAPTER&nbsp;01</div>
+    <h2 class="chap-title lang-zh-only">两个公式 — Agent 系统到底是什么</h2>
+    <h2 class="chap-title lang-en-only">Two formulas — what is an agent system, really?</h2>
+    <p class="chap-en lang-zh-only">两个公式，一具骨骼</p>
+    <p class="chap-en lang-en-only">two formulas, one anatomy</p>
+
+    <div class="lang-zh-only">
+      <p>用户在 Grok Bot 里看到的是「一个会写代码、会搜网页、会开终端的聊天窗口」。但把 Electron 外壳掀开，你看到的不是「一个大模型」，而是<strong>一组可替换的进程 + 一套内容寻址的状态机 + 一棵树状的子 Agent 协作图</strong>。</p>
+      <p>在读任何具体文件之前，先记住两个公式——它们是后面 15 章的骨骼。</p>
+    </div>
+    <div class="lang-en-only">
+      <p>In Grok Bot the user sees one chat window that codes, browses, and runs shells. Peel the Electron shell and you don't find "one big model" — you find <strong>replaceable processes + a content-addressed state machine + a tree of collaborating subagents</strong>.</p>
+      <p>Before any file path, fix two formulas in your head — the skeleton for the next 15 chapters.</p>
+    </div>
+
+    <figure>
+      <div class="figbox">
+        <table class="cmp">
+          <thead><tr><th></th><th><span class="lang-zh-only">公式</span><span class="lang-en-only">Formula</span></th><th><span class="lang-zh-only">含义</span><span class="lang-en-only">Meaning</span></th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="num">1</td>
+              <td><code>Agent Runtime = Host + BoxExec + BlobKV + Inference</code></td>
+              <td class="lang-zh-only">大脑在 <code>host/</code>（<code>AnysphereAgent</code>），手脚在 <code>box-exec-daemon</code>，记忆在 <code>agent-kv</code>，思考走 Cursor backend 或 inference router</td>
+              <td class="lang-en-only">Brain in <code>host/</code> (<code>AnysphereAgent</code>), hands in <code>box-exec-daemon</code>, memory in <code>agent-kv</code>, thinking via Cursor backend or inference router</td>
+            </tr>
+            <tr>
+              <td class="num">2</td>
+              <td><code>Multi-Agent = Parent Turn + Task(subagent_type) + Persisted Subtree</code></td>
+              <td class="lang-zh-only">父 Agent 用 <code>Task</code> 工具分叉；子状态挂在父 <code>ConversationStateStructure.subagentStates</code>；完成时 <code>BackgroundSubagentAction</code> 唤醒父 Agent</td>
+              <td class="lang-en-only">Parent forks via <code>Task</code> tool; child state hangs off parent <code>ConversationStateStructure.subagentStates</code>; completion uses <code>BackgroundSubagentAction</code> to wake parent</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <figcaption><span class="figid">FIG. 01</span><span class="lang-zh-only">Grok Bot 的 Agent 不是「一个 prompt 循环」，而是<strong>带持久化 DAG 的分布式运行时</strong>。</span><span class="lang-en-only lang-en-only">Grok Bot's agent is not "one prompt loop" but a <strong>persistent DAG runtime</strong>.</span></figcaption>
+    </figure>
+
+    <div class="note copper">
+      <span class="ntag">Field Note</span>
+      <span class="lang-zh-only">仓库 <code>b-nnett/grok-bot-0.18-reconstructed</code> 是社区对 0.18.0 发行版的可读重建，模块名可能与 Anysphere 内部 monorepo 不同，但边界（coordinator / host / agent-kv）与 shipped 行为一致。</span>
+      <span class="lang-en-only">Repo <code>b-nnett/grok-bot-0.18-reconstructed</code> is a readable rebuild of 0.18.0; names may differ from Anysphere's monorepo, but boundaries match shipped behavior.</span>
+    </div>
+  </section>
+
+  <!-- CHAPTER 02 -->
+  <section class="chap" id="c2">
+    <div class="chap-num">CHAPTER&nbsp;02</div>
+    <h2 class="chap-title lang-zh-only">四层进程 — 从 Renderer 到 Box</h2>
+    <h2 class="chap-title lang-en-only">Four layers — renderer to box</h2>
+    <p class="chap-en">renderer → coordinator → host → box-exec-daemon</p>
+
+    <div class="lang-zh-only">
+      <p>README 里的架构图只有五行。展开来看，每一层都有明确的<strong>不信任边界</strong>：</p>
+      <ol>
+        <li><strong>Renderer + preload</strong>（<code>electron-preload/</code>）：UI 只能通过 <code>COORDINATOR_METHOD_TABLE</code> 调用 <code>sendPrompt</code>、<code>getSubagents</code> 等 RPC，不能直接碰 host。</li>
+        <li><strong>electron-main</strong>：拥有窗口、密钥、MCP 桌面运行时；spawn <code>node-agent-coordinator</code> 子进程；通过 carrier 把 bootstrap 凭证交给 coordinator。</li>
+        <li><strong>node-agent-coordinator</strong>：SSE 网关客户端 + inference router + MCP OAuth 转发。非 Cursor provider 时，<em>不</em>走远程 host 的 <code>AnysphereAgent</code>，而是在本地模拟 transcript 事件形状。</li>
+        <li><strong>host (sand-host)</strong>：扩展图（turn-execution、inference、transcript…）+ <code>SandAgentRunner</code> + <code>AnysphereAgent</code>。真正执行 tool loop 的地方。</li>
+        <li><strong>box-exec-daemon</strong>：ConnectRPC <code>ExecService</code> / <code>ControlService</code>，在沙箱 VM 里跑 shell、读文件、加载 MCP server。</li>
+      </ol>
+    </div>
+    <div class="lang-en-only">
+      <p>The README diagram is five lines. Each layer is a <strong>trust boundary</strong>:</p>
+      <ol>
+        <li><strong>Renderer + preload</strong>: UI only calls coordinator RPCs like <code>sendPrompt</code>, never talks to host directly.</li>
+        <li><strong>electron-main</strong>: owns windows, secrets, MCP desktop runtime; spawns coordinator child.</li>
+        <li><strong>node-agent-coordinator</strong>: gateway SSE + inference router; non-Cursor providers fake transcript events locally.</li>
+        <li><strong>host</strong>: extension graph + <code>SandAgentRunner</code> + <code>AnysphereAgent</code> — the real tool loop.</li>
+        <li><strong>box-exec-daemon</strong>: sandboxed shell/file/MCP via ConnectRPC.</li>
+      </ol>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span class="src-path">source/node-agent-coordinator/main.ts · composeCoordinator()</span><span class="src-tag">hub</span></div>
+<span class="src-line"><span class="src-comment">// 1. carrier bootstrap · 2. control port → electron-main</span></span>
+<span class="src-line"><span class="src-comment">// 3. CoordinatorGatewayClient (SSE + HTTP)</span></span>
+<span class="src-line"><span class="src-comment">// 4. renderer port server · 5. local-exec supervisor</span></span>
+<span class="src-line"><span class="src-comment">// 6. inference router · 7. MCP OAuth + client-side-tool-v2 relay</span></span>
+    </div>
+
+    <h3 class="sub lang-zh-only">设计取舍：Coordinator 是传输适配器，不是第二大脑</h3>
+    <h3 class="sub lang-en-only">Tradeoff: coordinator is transport, not a second brain</h3>
+    <p class="lang-zh-only">Renderer 永远不直连 host。多一跳延迟，换来：统一鉴权、防火墙友好、以及把 Claude/Codex/OpenRouter 路由在桌面侧完成而不改 UI。</p>
+    <p class="lang-en-only">Renderer never talks to host directly. Extra hop buys unified auth, firewalling, and desktop-side routing for alternate providers without UI changes.</p>
+  </section>
+
+  <!-- CHAPTER 03 -->
+  <section class="chap" id="c3">
+    <div class="chap-num">CHAPTER&nbsp;03</div>
+    <h2 class="chap-title lang-zh-only">Agent 数据模型 — Metadata、Protobuf 与 Blob</h2>
+    <h2 class="chap-title lang-en-only">Agent data model — metadata, protobuf, blobs</h2>
+    <p class="chap-en">AgentMetadata · ConversationStateStructure · content-addressed KV</p>
+
+    <div class="lang-zh-only">
+      <p>「一个 Agent」在代码里是<strong>两层结构</strong>：</p>
+      <ul>
+        <li><strong>AgentMetadata</strong>（<code>packages/agent-kv/agent-store.ts</code>）：<code>agentId</code>、<code>name</code>、<code>mode</code>（default/plan/debug/search）、<code>latestRootBlobId</code>、可选 <code>subagentInfo</code>（若此 Agent 本身是子 Agent）。</li>
+        <li><strong>ConversationStateStructure</strong>（<code>proto/agent/v1/agent_pb.ts</code>）：真正的对话状态——<code>turns[]</code>、<code>todos[]</code>、<code>summary</code>、<code>subagentStates{}</code>、<code>subagentStateRefs{}</code>、<code>fileStatesV2</code>、<code>tokenDetails</code> 等。</li>
+      </ul>
+      <p>Checkpoint 时，整棵状态树序列化成 protobuf blob，按<strong>内容哈希</strong>存入 BlobStore；<code>latestRootBlobId</code> 指向最新根。这是 Git 式不可变历史——resume、分支、同步都建立在 blob 图上。</p>
+    </div>
+    <div class="lang-en-only">
+      <p>One agent is <strong>two layers</strong>:</p>
+      <ul>
+        <li><strong>AgentMetadata</strong>: id, name, mode, <code>latestRootBlobId</code>, optional <code>subagentInfo</code> if this agent is a child.</li>
+        <li><strong>ConversationStateStructure</strong>: turns, todos, summary, subagent maps, file states, token details.</li>
+      </ul>
+      <p>Checkpoints serialize to content-addressed protobuf blobs — Git-like immutable history for resume and sync.</p>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span class="src-path">source/packages/agent-kv/agent-store.ts</span><span class="src-tag">types</span></div>
+<span class="src-line"><span class="src-kw">export interface</span> <span class="src-type">AgentSubagentInfo</span> {</span>
+<span class="src-line">  <span class="src-arg">parentAgentId</span>: <span class="src-type">string</span>;</span>
+<span class="src-line">  <span class="src-arg">rootParentAgentId</span>: <span class="src-type">string</span>;</span>
+<span class="src-line">  <span class="src-arg">toolCallId</span>: <span class="src-type">string</span>;</span>
+<span class="src-line">  <span class="src-arg">typeName</span>: <span class="src-type">string</span>;</span>
+<span class="src-line">}</span>
+    </div>
+
+    <h3 class="sub lang-zh-only">子 Agent 状态：inline vs ref</h3>
+    <h3 class="sub lang-en-only">Subagent state: inline vs ref</h3>
+    <p class="lang-zh-only"><code>subagentStates{}</code> 存小状态；大的进 <code>subagentStateRefs{}</code>（blob id）。恢复时 <code>resolveSubagentPersistedStates()</code> 并发拉取（最多 8 路），缺 blob 且无 inline 则 <code>BlobNotFoundError</code>。</p>
+    <p class="lang-en-only">Small states stay in <code>subagentStates{}</code>; large ones use <code>subagentStateRefs{}</code>. <code>resolveSubagentPersistedStates()</code> loads up to 8 concurrent blob fetches.</p>
+
+    <div class="src-stack">
+      <div class="src-h"><span class="src-path">source/packages/agent-kv/subagent-states.ts</span><span class="src-tag">resolve</span></div>
+<span class="src-line"><span class="src-kw">const</span> SUBAGENT_STATE_BLOB_FETCH_CONCURRENCY = <span class="src-num">8</span>;</span>
+<span class="src-line"><span class="src-comment">// merge inline + blob refs → Record&lt;subagentId, SubagentPersistedState&gt;</span></span>
+    </div>
+  </section>
+
+  <!-- CHAPTER 04 -->
+  <section class="chap" id="c4">
+    <div class="chap-num">CHAPTER&nbsp;04</div>
+    <h2 class="chap-title lang-zh-only">Turn 执行链 — 从 sendPrompt 到 settle</h2>
+    <h2 class="chap-title lang-en-only">Turn execution — sendPrompt to settle</h2>
+    <p class="chap-en">TurnExecutionRegistry · SandAgentRunner · createTurnSettle</p>
+
+    <div class="lang-zh-only">
+      <p>一次用户消息不是「调一次 completion API」。在 host 里是一条<strong>受控流水线</strong>：</p>
+      <ol>
+        <li>Gateway <code>sendPrompt</code> → transcript send-pipeline 追加用户条目</li>
+        <li><code>turn-execution.createRunner(session, hooks)</code> — 必须通过已 bind 的 <code>TurnExecutionRegistry</code>（双 bind 直接抛错，防止两个 runner 抢同一 session）</li>
+        <li><code>SandAgentRunner.run()</code> → <code>createTurnAgentRunContext()</code>（推理 session、summarization session、shell-watch）</li>
+        <li><code>AnysphereAgent.runStream()</code> — 最多 ~1000 步 tool loop</li>
+        <li><code>createTurnSettle().onTurnCompleted()</code> — checkpoint + transcript 两阶段提交 + post-turn memory</li>
+      </ol>
+    </div>
+    <div class="lang-en-only">
+      <p>A user message is a <strong>controlled pipeline</strong> in host: send-pipeline → turn-execution registry (fail-closed double-bind) → SandAgentRunner → AnysphereAgent (~1000 tool steps) → turn settle checkpoint.</p>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span class="src-path">source/host/extensions/turn-execution/turn-execution-service.ts</span><span class="src-tag">guard</span></div>
+<span class="src-line"><span class="src-kw">export const</span> DOUBLE_BIND_MESSAGE = <span class="src-str">"Sand turn execution is already bound..."</span>;</span>
+<span class="src-line"><span class="src-fn">bindExecutor</span>(executor) {</span>
+<span class="src-line">  <span class="src-kw">if</span> (<span class="src-hl">this.executor !== undefined</span>) <span class="src-kw">throw new</span> Error(DOUBLE_BIND_MESSAGE);</span>
+<span class="src-line">}</span>
+    </div>
+
+    <div class="note accent">
+      <span class="ntag">Why</span>
+      <span class="lang-zh-only">Gateway 可能在 composition root 就绪前就 kickstart；单 bind 保证「一个 agent session 只有一个 runner」，失败要 loud，不要 silent race。</span>
+      <span class="lang-en-only">Gateway may kickstart before composition is ready; single-bind ensures one runner per session — fail loud, not silent race.</span>
+    </div>
+  </section>
+
+  <!-- CHAPTER 05 -->
+  <section class="chap" id="c5">
+    <div class="chap-num">CHAPTER&nbsp;05</div>
+    <h2 class="chap-title lang-zh-only">AnysphereAgent — 动作分发与 Tool Loop</h2>
+    <h2 class="chap-title lang-en-only">AnysphereAgent — action dispatch & tool loop</h2>
+    <p class="chap-en">packages/agent/index.ts · actionHandlers · SummarizationOrchestrator</p>
+
+    <div class="lang-zh-only">
+      <p><code>AnysphereAgent</code> 是包内的 Agent 根。构造函数注册一组 <strong>ActionHandler</strong>，<code>runStream</code> 按 <code>action.action.case</code> 分发：</p>
+      <ul>
+        <li><code>userMessageAction</code> — 主路径：可能先 compact，再组 prompt，再 tool loop</li>
+        <li><code>resumeAction</code> / <code>summarizeAction</code> / <code>cancelAction</code></li>
+        <li><code>backgroundSubagentAction</code> — 子 Agent 完成时合成消息唤醒父 Agent</li>
+        <li><code>backgroundTaskCompletionAction</code>、<code>executePlanAction</code>、<code>goalContinuationAction</code> …</li>
+      </ul>
+      <p>Tool 执行走 <code>RedactedPromptToolExecutor</code>（隐私 redaction 贯穿）。<code>SummarizationOrchestrator</code> 在 user/resume/background 路径共享，决定何时 self-summary vs LLM summary。</p>
+    </div>
+    <div class="lang-en-only">
+      <p><code>AnysphereAgent</code> registers action handlers; <code>runStream</code> dispatches by <code>action.case</code>. Tool loop via redacted executor; shared <code>SummarizationOrchestrator</code> for compaction triggers.</p>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span class="src-path">source/packages/agent/index.ts</span><span class="src-tag">handlers</span></div>
+<span class="src-line"><span class="src-kw">const</span> MAX_AGENT_STEPS = <span class="src-num">1_000</span>;</span>
+<span class="src-line">this.actionHandlers.set(<span class="src-str">"userMessageAction"</span>, user);</span>
+<span class="src-line">this.actionHandlers.set(<span class="src-str">"backgroundSubagentAction"</span>, <span class="src-kw">new</span> BackgroundSubagentActionHandler());</span>
+<span class="src-line"><span class="src-comment">// restore: ConversationStateHandle.fromConversationStateStructure(...)</span></span>
+    </div>
+  </section>
+
+  <!-- CHAPTER 06 -->
+  <section class="chap" id="c6">
+    <div class="chap-num">CHAPTER&nbsp;06</div>
+    <h2 class="chap-title lang-zh-only">工具与 MCP — ResourceAccessor 模型</h2>
+    <h2 class="chap-title lang-en-only">Tools & MCP — ResourceAccessor model</h2>
+    <p class="chap-en">host-runner-composition · box-exec-daemon · routed-mcp-bridge</p>
+
+    <div class="lang-zh-only">
+      <p>工具不直接 <code>exec()</code> 操作系统。它们通过 <code>ResourceAccessor</code> 申请<strong>远程执行器</strong>：</p>
+      <ul>
+        <li><code>shellStreamExecutorResource</code> → box-exec ConnectRPC 流式 shell</li>
+        <li><code>mcpExecutorResource</code> → 工作区 MCP 工具调用</li>
+        <li><code>subagentExecutorResource</code> → spawn 子 Agent</li>
+        <li><code>requestContextExecutorResource</code> → 组装 workspace 上下文</li>
+      </ul>
+      <p>每轮 <code>turn-toolset.ts</code> 组装工具面：read/write/edit、shell、web、MCP meta、<code>CloudAgent</code>、子 Agent 管理工具。Group room 成员有裁剪版 toolset + guardrail prompt。</p>
+    </div>
+    <div class="lang-en-only">
+      <p>Tools acquire remote executors via <code>ResourceAccessor</code> — shell stream, MCP, subagent spawn, request context. Per-turn toolset assembled in <code>turn-toolset.ts</code>; group members get restricted surfaces.</p>
+    </div>
+
+    <p class="lang-zh-only">Inference router 走 Claude/Codex 时，<code>routed-mcp-bridge.ts</code> 在 coordinator 侧建临时 MCP 桥，把 <code>listRoutedMcpTools</code> / <code>executeRoutedMcpTool</code> RPC 回 host——<em>不</em>在 coordinator 里再跑一遍 MCP server 进程。</p>
+    <p class="lang-en-only">For routed providers, <code>routed-mcp-bridge.ts</code> proxies MCP back to host instead of duplicating server processes in coordinator.</p>
+  </section>
+
+  <!-- CHAPTER 07 -->
+  <section class="chap" id="c7">
+    <div class="chap-num">CHAPTER&nbsp;07</div>
+    <h2 class="chap-title lang-zh-only">Task 工具 — 子 Agent 的「唯一官方分叉口」</h2>
+    <h2 class="chap-title lang-en-only">Task tool — the official fork for subagents</h2>
+    <p class="chap-en">packages/agent/tools/task.ts · task-subagent-preparation.ts</p>
+
+    <div class="lang-zh-only">
+      <p>多 Agent 协作的<strong>第一性接口</strong>是 <code>Task</code> 工具（不是随便再起一个 chat session）。流程：</p>
+      <ol>
+        <li><code>prepareTaskSubagent()</code> / <code>resolveTaskSubagentConfig()</code> 解析 <code>subagent_type</code>、model、environment（LOCAL vs CLOUD）</li>
+        <li>为子 Agent 构造独立 <code>AnysphereAgent</code>（可覆盖 systemPrompt、tools、modelId）</li>
+        <li><strong>Foreground</strong>：子 Agent 的 <code>InteractionUpdate</code> 经 <code>TaskToolCallDelta</code> 流式推到父气泡</li>
+        <li><strong>Background</strong>：注册到 <code>subagent-runtime</code>，完成时 <code>BackgroundSubagentActionHandler</code> 注入父对话</li>
+      </ol>
+      <p>Lineage：<code>computeSubagentRequestId(toolCallId)</code> → <code>subagent:{toolCallId}</code>，HTTP 头带 <code>x-parent-request-id</code> / <code>x-parent-agent-tool-call-id</code> 供遥测与计费归因。</p>
+    </div>
+    <div class="lang-en-only">
+      <p>Multi-agent collaboration's primary API is the <code>Task</code> tool: prepare config → isolated AnysphereAgent → foreground streaming deltas or background completion actions. Lineage via <code>subagent:{toolCallId}</code> request ids.</p>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span class="src-path">source/host/runner/subagent-runtime.ts</span><span class="src-tag">lineage</span></div>
+<span class="src-line"><span class="src-kw">export function</span> <span class="src-fn">computeSubagentRequestId</span>(toolCallId: <span class="src-type">string</span>): <span class="src-type">string</span> {</span>
+<span class="src-line">  <span class="src-kw">return</span> toolCallId.length &gt; <span class="src-num">0</span> ? <span class="src-str">`subagent:${toolCallId}`</span> : <span class="src-str">"subagent"</span>;</span>
+<span class="src-line">}</span>
+    </div>
+
+    <div class="note gpu">
+      <span class="ntag">Steering</span>
+      <span class="lang-zh-only"><code>MessageSubagent</code> 向<strong>已在跑</strong>的后台子 Agent 追加指令，而不是 duplicate spawn。Multitask 模式里这是「一个 stream 一个 executor」的关键纪律。</span>
+      <span class="lang-en-only"><code>MessageSubagent</code> steers running background subagents instead of spawning duplicates — core discipline in multitask mode.</span>
+    </div>
+  </section>
+
+  <!-- CHAPTER 08 -->
+  <section class="chap" id="c8">
+    <div class="chap-num">CHAPTER&nbsp;08</div>
+    <h2 class="chap-title lang-zh-only">子 Agent 类型谱 — 十二种专职工人</h2>
+    <h2 class="chap-title lang-en-only">Subagent catalog — twelve specialists</h2>
+    <p class="chap-en">proto/agent/v1/subagents_pb.ts · SubagentType oneof</p>
+
+    <figure>
+      <div class="figbox">
+        <table class="cmp">
+          <thead><tr><th><span class="lang-zh-only">类型</span><span class="lang-en-only">Type</span></th><th><span class="lang-zh-only">典型用途</span><span class="lang-en-only">Role</span></th></tr></thead>
+          <tbody>
+            <tr><td><code>explore</code></td><td class="lang-zh-only">代码库探索、语义搜索</td><td class="lang-en-only">Codebase exploration</td></tr>
+            <tr><td><code>bash</code> / <code>shell</code></td><td class="lang-zh-only">终端密集任务</td><td class="lang-en-only">Shell-heavy work</td></tr>
+            <tr><td><code>browserUse</code></td><td class="lang-zh-only">Box 内浏览器 CDP 自动化</td><td class="lang-en-only">In-box browser automation</td></tr>
+            <tr><td><code>computerUse</code></td><td class="lang-zh-only">GUI / 窗口级操作</td><td class="lang-en-only">GUI / window control</td></tr>
+            <tr><td><code>debug</code></td><td class="lang-zh-only">调试专用子循环</td><td class="lang-en-only">Debug-focused loop</td></tr>
+            <tr><td><code>mediaReview</code> / <code>watchVideo</code></td><td class="lang-zh-only">多模态审阅</td><td class="lang-en-only">Multimodal review</td></tr>
+            <tr><td><code>cursorGuide</code></td><td class="lang-zh-only">产品文档型问答</td><td class="lang-en-only">Product guide Q&A</td></tr>
+            <tr><td><code>custom</code></td><td class="lang-zh-only">用户/插件定义（含 <code>executor</code>）</td><td class="lang-en-only">User/plugin-defined (incl. executor)</td></tr>
+            <tr><td><code>vmSetupHelper</code></td><td class="lang-zh-only">环境/bootstrap 辅助</td><td class="lang-en-only">VM setup helper</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <figcaption><span class="figid">FIG. 08</span><span class="lang-zh-only">Protobuf <code>SubagentType</code> 是 discriminated union；每种类型可绑不同 model override、tool 面、是否允许 cloud。</span></figcaption>
+    </figure>
+
+    <p class="lang-zh-only"><code>environment_param_for_subagent</code> 等 feature gate 控制 LOCAL/CLOUD 解析顺序：显式 machine → environment → 恢复的状态 → 默认 cloud 字段。</p>
+    <p class="lang-en-only">Feature gates control LOCAL/CLOUD resolution: explicit machine → environment → restored state → cloud default.</p>
+  </section>
+
+  <!-- CHAPTER 09 -->
+  <section class="chap" id="c9">
+    <div class="chap-num">CHAPTER&nbsp;09</div>
+    <h2 class="chap-title lang-zh-only">Multitask — 父 Agent 当调度员，Executor 当苦力</h2>
+    <h2 class="chap-title lang-en-only">Multitask — parent dispatches, executor sweats</h2>
+    <p class="chap-en">host/sand-multitask.ts · Statsig gate · TodoWrite as coordination memory</p>
+
+    <div class="lang-zh-only">
+      <p>这是 Grok Bot 里<strong>最像「多 Agent 编排」</strong>的产品化模式（实验 gate：<code>multitask</code>）。核心思想写在 <code>SAND_MULTITASK_PROMPT_SECTION</code> 里，值得整段背诵：</p>
+      <ul>
+        <li>父 Agent 回合必须<strong>短</strong>——秒级回复用户；重活全部 <code>Task(subagent_type: "executor")</code></li>
+        <li>独立任务各起一个 executor，<strong>并行</strong>；同一 stream 的 follow-up 用 <code>MessageSubagent</code> steer，禁止 duplicate</li>
+        <li>Executor 启动<strong>空白</strong>——dispatch prompt 必须自包含目标、上下文、成功标准</li>
+        <li><code>TodoWrite</code> 是跨并行 stream 的<strong>外部记忆</strong>：pending / in_progress / completed 与 wake 时 reconcile</li>
+        <li>对用户<strong>不可见</strong>「dispatching / delegating」等词——产品人格是「一个人同时干很多事」</li>
+      </ul>
+    </div>
+    <div class="lang-en-only">
+      <p>The <strong>multitask</strong> experiment makes the parent a dispatcher: short turns, heavy work via <code>executor</code> subagents, parallel independent streams, <code>TodoWrite</code> as coordination memory, invisible orchestration vocabulary to the user.</p>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span class="src-path">source/host/sand-multitask.ts</span><span class="src-tag">prompt</span></div>
+<span class="src-line"><span class="src-str">"You are the dispatcher, never the workhorse."</span></span>
+<span class="src-line"><span class="src-str">"Never do heavy work inline."</span></span>
+<span class="src-line"><span class="src-str">"TodoWrite is your task queue and your multitasking memory."</span></span>
+    </div>
+
+    <div class="note copper">
+      <span class="ntag">Tradeoff</span>
+      <span class="lang-zh-only">并行度靠<strong> prompt 纪律 + Todo 状态</strong>，不是硬调度器。好处：灵活、可 A/B；风险：模型偶发 inline 重活或忘记 reconcile todos。</span>
+      <span class="lang-en-only">Parallelism is <strong>prompt discipline + todos</strong>, not a hard scheduler — flexible but model-dependent.</span>
+    </div>
+  </section>
+
+  <!-- CHAPTER 10 -->
+  <section class="chap" id="c10">
+    <div class="chap-num">CHAPTER&nbsp;10</div>
+    <h2 class="chap-title lang-zh-only">后台子 Agent — 注册表、完成与唤醒</h2>
+    <h2 class="chap-title lang-en-only">Background subagents — registry, completion, wake</h2>
+    <p class="chap-en">subagent-runtime.ts · onPendingWakeArmed · SUBAGENT_REVIVAL_EVENT</p>
+
+    <div class="lang-zh-only">
+      <p><code>createSubagentRuntime(host)</code> 维护三张表：</p>
+      <ul>
+        <li><code>subagentSessions</code> — 可 <code>run</code> / <code>interrupt</code> 的会话</li>
+        <li><code>backgroundSubagentRuns</code> — 进行中的 Promise</li>
+        <li><code>subagentRegistry</code> — UI/async-tasks 面板用的元数据（status: running/done/error/aborted）</li>
+      </ul>
+      <p>完成时构造 <code>BackgroundSubagentCompletion</code>，触发 <code>onPendingWakeArmed</code>：父 Agent 被标记 pending wake，下一轮合成 user-visible 结果。Computer-use 子 Agent 还有 <code>freeWindow</code>、usage telemetry、audit action counts。</p>
+    </div>
+    <div class="lang-en-only">
+      <p><code>subagent-runtime</code> tracks sessions, background promises, and registry metadata. Completion arms parent pending wake; computer-use paths add window freeing and telemetry.</p>
+    </div>
+  </section>
+
+  <!-- CHAPTER 11 -->
+  <section class="chap" id="c11">
+    <div class="chap-num">CHAPTER&nbsp;11</div>
+    <h2 class="chap-title lang-zh-only">Cloud Agent — 本地父 Agent 的云上保姆</h2>
+    <h2 class="chap-title lang-en-only">Cloud agents — babysitting from the desktop parent</h2>
+    <p class="chap-en">host/cloud-agents/cloud-agent-tool.ts · Background Composer bcId</p>
+
+    <div class="lang-zh-only">
+      <p>除了 <code>Task(environment: CLOUD)</code>，还有一等公民 <code>CloudAgent</code> 工具：<code>launch</code> / <code>watch</code> / <code>reply</code> / <code>dump</code> / <code>cancel</code> …</p>
+      <ul>
+        <li><strong>Launch</strong>：目标可以是 cloud VM、self-hosted pool、private worker</li>
+        <li><strong>Watch</strong>：注册完成回调，安静唤醒父 Agent（<code>quietOrigin</code> 追踪）</li>
+        <li><strong>Dump</strong>：把云 Agent JSONL transcript 拉到 box 供父 Agent 阅读</li>
+        <li><strong>FetchCloudAgentData</strong>：结构化拉取云状态</li>
+      </ul>
+      <p>本地子 Agent 状态在 blob KV；云 Agent 状态在服务端，桌面侧通过 stream hydration 对齐 transcript。</p>
+    </div>
+    <div class="lang-en-only">
+      <p><code>CloudAgent</code> tool launches/watches/replies to Background Composer agents; local subagent state in blob KV, cloud state hydrated from server streams.</p>
+    </div>
+  </section>
+
+  <!-- CHAPTER 12 -->
+  <section class="chap" id="c12">
+    <div class="chap-num">CHAPTER&nbsp;12</div>
+    <h2 class="chap-title lang-zh-only">Group Room — 跨用户的共享 Agent 房间</h2>
+    <h2 class="chap-title lang-en-only">Group rooms — shared agents across users</h2>
+    <p class="chap-en">host/groups/xuser.ts · createGroupMemberRunner</p>
+
+    <div class="lang-zh-only">
+      <p>多 Agent 协作的另一种形态不是父子树，而是<strong>横向房间</strong>：</p>
+      <ul>
+        <li><code>createGroup</code> / <code>setGroupMembers</code> RPC 建房间</li>
+        <li><code>createGroupMemberRunner</code> 为每个成员 Agent 生成受限 runner</li>
+        <li>Remote member turn：600s 超时、24 条消息窗口、8K 字符上限</li>
+        <li><code>buildSharedRoomGuardrailPrompt()</code>：外国 host 时强调「你发的内容离开用户机器」；box 工具禁用，仅 <code>SendMessage</code> 文本出房间</li>
+      </ul>
+    </div>
+    <div class="lang-en-only">
+      <p>Horizontal collaboration via group rooms: restricted runners, tight turn limits, guardrails that only plain SendMessage leaves the machine.</p>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span class="src-path">source/host/groups/xuser.ts</span><span class="src-tag">limits</span></div>
+<span class="src-line"><span class="src-kw">export const</span> REMOTE_MEMBER_TURN_TIMEOUT_MS = <span class="src-num">600_000</span>;</span>
+<span class="src-line"><span class="src-kw">export const</span> REMOTE_TURN_MESSAGE_LIMIT = <span class="src-num">24</span>;</span>
+<span class="src-line"><span class="src-kw">export const</span> REMOTE_TURN_TEXT_MAX_LENGTH = <span class="src-num">8_000</span>;</span>
+    </div>
+  </section>
+
+  <!-- CHAPTER 13 -->
+  <section class="chap" id="c13">
+    <div class="chap-num">CHAPTER&nbsp;13</div>
+    <h2 class="chap-title lang-zh-only">Summarization — 长对话的三层压缩</h2>
+    <h2 class="chap-title lang-en-only">Summarization — three tiers of compaction</h2>
+    <p class="chap-en">pipeline.ts · summarization-handler.ts · summarization-orchestrator.ts</p>
+
+    <div class="lang-zh-only">
+      <p>多 Agent 协作会让 transcript 爆炸式增长。压缩管线：</p>
+      <ol>
+        <li><strong>partition</strong> — 头部分要 summarize，尾部 <code>preservedTailMessages</code> 必须保留（且尾部形状 invariant：以 user 开头、中间不再出现 user）</li>
+        <li><strong>generateSummary</strong> — 默认 <code>gemini-2.5-flash</code>，失败则 deterministic fallback</li>
+        <li><strong>assemble</strong> — <code>[summary message] + preservedTail</code>；durable blocks 保留 skill/todo/plan</li>
+      </ol>
+      <p><code>SummarizationOrchestrator</code> 还在 token 阈值前做 cheap <strong>self-summary</strong>，并支持 background summarization（空闲时异步 compact）。<code>summaryArchives[]</code> 保留历史压缩版本。</p>
+    </div>
+    <div class="lang-en-only">
+      <p>Partition → LLM/deterministic summary → assemble with preserved tail. Orchestrator adds self-summary and background modes; archives keep compaction history.</p>
+    </div>
+  </section>
+
+  <!-- CHAPTER 14 -->
+  <section class="chap" id="c14">
+    <div class="chap-num">CHAPTER&nbsp;14</div>
+    <h2 class="chap-title lang-zh-only">Agent Store Sync — 本地 Index 与云端 BCS</h2>
+    <h2 class="chap-title lang-en-only">Agent store sync — local index & cloud BCS</h2>
+    <p class="chap-en">agent-store-sync/ · SyncRoundScheduler · path-first</p>
+
+    <div class="lang-zh-only">
+      <p>Agent 的文件（skills、workflows、附件）通过 <strong>Background Composer Service</strong> 与云端同步：</p>
+      <ul>
+        <li><code>MintAgentStoreToken</code> → 短期 token</li>
+        <li><code>PresignAgentStoreReads/Writes</code> → 直传对象存储</li>
+        <li><code>LocalAgentStoreIndex</code>（SQLite）记录 sha、etag、tombstone</li>
+        <li><code>SyncRoundScheduler</code>：<strong>path sync 插队</strong>并 abort 进行中的 full sync——用户改 SKILL.md 要先于昂贵全量对账</li>
+      </ul>
+    </div>
+    <div class="lang-en-only">
+      <p>BCS transport with presigned URLs; SQLite local index; path sync preempts full sync for responsive skill edits.</p>
+    </div>
+  </section>
+
+  <!-- CHAPTER 15 -->
+  <section class="chap" id="c15">
+    <div class="chap-num">CHAPTER&nbsp;15</div>
+    <h2 class="chap-title lang-zh-only">Inference Router — 同一 UI，四条推理后端</h2>
+    <h2 class="chap-title lang-en-only">Inference router — one UI, four backends</h2>
+    <p class="chap-en">node-agent-coordinator/inference-router.ts</p>
+
+    <div class="lang-zh-only">
+      <p>Settings → Router 可选 Cursor / Claude Code / Codex / OpenRouter。当 provider ≠ cursor 时，coordinator <strong>拦截 sendPrompt</strong>：</p>
+      <ol>
+        <li>追加用户消息到本地 <code>inference-router-transcript.json</code></li>
+        <li>向 renderer 发 transcript SSE（形状与官方一致）</li>
+        <li><code>runRoutedProviderText()</code> + MCP bridge 跑 tool loop</li>
+        <li>流式 assistant delta，落盘，清除 activity</li>
+      </ol>
+      <p>这意味着多 Agent 的<strong>完整语义</strong>（子 Agent、blob checkpoint）主要在 Cursor 路径；路由路径是「UI 兼容层」，边缘行为可能分叉。</p>
+    </div>
+    <div class="lang-en-only">
+      <p>Non-Cursor providers intercept sendPrompt, persist local transcript, fake SSE shape, run routed tool loop — UI-compatible layer, not full host semantics.</p>
+    </div>
+  </section>
+
+  <!-- CHAPTER 16 -->
+  <section class="chap" id="c16">
+    <div class="chap-num">CHAPTER&nbsp;16 · CODA</div>
+    <h2 class="chap-title lang-zh-only">一条消息的 16 站 — 全链路复盘</h2>
+    <h2 class="chap-title lang-en-only">Sixteen stations — full trace</h2>
+    <p class="chap-en">putting it all together</p>
+
+    <figure>
+      <div class="figbox">
+        <table class="cmp">
+          <thead><tr><th>#</th><th><span class="lang-zh-only">站</span><span class="lang-en-only">Station</span></th><th><span class="lang-zh-only">关键文件</span><span class="lang-en-only">Key file</span></th></tr></thead>
+          <tbody>
+            <tr><td class="num">1</td><td>sendPrompt RPC</td><td><code>shared/rpc/coordinator.ts</code></td></tr>
+            <tr><td class="num">2</td><td>coordinator dispatch</td><td><code>node-agent-coordinator/main.ts</code></td></tr>
+            <tr><td class="num">3</td><td>gateway SSE</td><td><code>gateway/gateway-client.ts</code></td></tr>
+            <tr><td class="num">4</td><td>turn-execution bind</td><td><code>extensions/turn-execution/</code></td></tr>
+            <tr><td class="num">5</td><td>SandAgentRunner</td><td><code>runner/sand-agent-runner.ts</code></td></tr>
+            <tr><td class="num">6</td><td>restore blob state</td><td><code>packages/agent/state.ts</code></td></tr>
+            <tr><td class="num">7</td><td>summarize?</td><td><code>summarization-orchestrator.ts</code></td></tr>
+            <tr><td class="num">8</td><td>prompt + skills</td><td><code>workflows/workflow-store.ts</code></td></tr>
+            <tr><td class="num">9</td><td>tool loop</td><td><code>packages/agent/index.ts</code></td></tr>
+            <tr><td class="num">10</td><td>shell/MCP exec</td><td><code>box-exec-daemon/server.ts</code></td></tr>
+            <tr><td class="num">11</td><td>Task spawn</td><td><code>packages/agent/tools/task.ts</code></td></tr>
+            <tr><td class="num">12</td><td>subagent run</td><td><code>runner/subagent-runtime.ts</code></td></tr>
+            <tr><td class="num">13</td><td>interaction delta</td><td><code>TaskToolCallDelta</code></td></tr>
+            <tr><td class="num">14</td><td>checkpoint</td><td><code>agent-kv/agent-store.ts</code></td></tr>
+            <tr><td class="num">15</td><td>transcript SSE</td><td><code>gateway-event-families.ts</code></td></tr>
+            <tr><td class="num">16</td><td>renderer reconcile</td><td>shipped UI</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <figcaption><span class="figid">FIG. 16</span><span class="lang-zh-only">从用户按下回车到子 Agent 结果回到气泡——<strong>16 站，4 个进程，1 棵可持久化的 Agent 树</strong>。</span></figcaption>
+    </figure>
+
+    <div class="lang-zh-only">
+      <h3 class="sub">你还可以继续挖</h3>
+      <ul>
+        <li><code>ConversationStateHandle.computeNewStructure()</code> — blob 图重建（仓库标注 partial recovery）</li>
+        <li><code>communicateUpdate</code> 子 Agent 流 — 多步对外沟通</li>
+        <li><code>experiment-config.gen.ts</code> — 上百个 feature gate 背后的产品实验史</li>
+        <li><code>hooks/</code> — Claude Code 兼容的 preCompact / ExecuteHook</li>
+      </ul>
+      <p>如果你只关心「怎么设计自己的多 Agent 系统」，带走这三条：<strong>内容寻址状态</strong>、<strong>Task 作为唯一分叉原语</strong>、<strong>父回合短 + 后台 executor 长</strong>。Grok Bot 用工程把这三条写进了 TypeScript。</p>
+    </div>
+    <div class="lang-en-only">
+      <h3 class="sub">Dig deeper</h3>
+      <ul>
+        <li><code>computeNewStructure()</code> blob graph rebuild</li>
+        <li><code>communicateUpdate</code> subagent flows</li>
+        <li><code>experiment-config.gen.ts</code> feature gate archaeology</li>
+      </ul>
+      <p>Three design lessons: <strong>content-addressed state</strong>, <strong>Task as the only fork primitive</strong>, <strong>short parent turns + long background executors</strong>.</p>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="ft-rule"><span class="ft-mark">END · FIELD NOTE 15</span></div>
+    <p class="lang-zh-only">基于 <a href="https://github.com/b-nnett/grok-bot-0.18-reconstructed">grok-bot-0.18-reconstructed</a> 源码阅读。非 Anysphere 官方文档；模块边界来自社区重建，行为以 pinned 0.18.0 为准。</p>
+    <p class="lang-en-only">Based on reading <a href="https://github.com/b-nnett/grok-bot-0.18-reconstructed">grok-bot-0.18-reconstructed</a>. Unofficial; boundaries from community rebuild of pinned 0.18.0.</p>
+    <div class="ft-links">
+      <a href="https://ursb.me/immersive/chromium-renderer/">Chromium 渲染流水线</a>
+      <a href="https://ursb.me/immersive/llm-inference-life/">LLM 推理的一生</a>
+      <a href="https://github.com/b-nnett/grok-bot-0.18-reconstructed">Source repo</a>
+    </div>
+  </footer>
