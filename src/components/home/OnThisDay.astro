@@ -1,0 +1,395 @@
+---
+// 那年今日 · 年轮
+// 每一圈是一年（内旧外新），圈越宽表示那一年留下的记录越多。
+// 一条指针从圆心指向“今天”在一年中的位置，划过的扇区就是往年的这几天。
+// 拖动年轮可以换一天。数据在构建时汇总：文章 / 豆瓣读书观影 / 相册。
+import { getCollection } from 'astro:content';
+import fs from 'node:fs';
+import path from 'node:path';
+import photosData from '../../data/photos.json';
+
+type Item = { d: string; t: 'post' | 'book' | 'movie' | 'photo'; zh: string; en?: string; href?: string; hrefEn?: string; img?: string; no?: string; note?: string; noteEn?: string };
+
+// COS 服务端缩图：封面原图 ~70KB，缩成 60×80 webp 约 1–2KB
+const coverThumb = (u: string) => /^https:\/\/airing\.ursb\.me\//.test(u) ? `${u}?imageMogr2/thumbnail/!60x80r/gravity/center/crop/60x80/format/webp` : u;
+const items: Item[] = [];
+
+const enPosts = new Map((await getCollection('postsEn')).map((p) => [p.id, p.data.title as string]));
+for (const p of await getCollection('posts')) {
+  if (!p.data.date) continue;
+  const d = new Date(p.data.date).toISOString().slice(0, 10);
+  const en = enPosts.get(p.id);
+  const no = (p.data.title as string).match(/第\s*(\d+)\s*期/)?.[1];
+  const cover = p.data.cover as string | undefined;
+  items.push({ d, t: 'post', zh: p.data.title, en, href: `/posts/${p.id}/`, hrefEn: en ? `/en/posts/${p.id}/` : undefined, img: cover ? coverThumb(cover) : undefined, no });
+}
+
+// 豆瓣：优先用完整历史（scripts/fetch-douban-history.mjs，含 R2 封面），没有时退回首页用的 6 条精选
+const DOUBAN_LABEL: Record<string, [string, string]> = {
+  'book:done': ['读完', 'Finished'], 'book:doing': ['开始读', 'Started reading'],
+  'movie:done': ['看过', 'Watched'], 'movie:doing': ['在看', 'Watching'],
+};
+const stars = (n: number) => (n ? ' · ' + '★'.repeat(n) : '');
+let doubanLoaded = false;
+try {
+  const hist = JSON.parse(fs.readFileSync(path.resolve('data/douban-history.json'), 'utf8'));
+  for (const x of hist.items ?? []) {
+    if (!x.date) continue;
+    const [zh, en] = DOUBAN_LABEL[`${x.t}:${x.s}`] ?? ['', ''];
+    items.push({ d: x.date, t: x.t, zh: `《${x.title}》`, img: x.cover, note: zh + stars(x.rating), noteEn: en + stars(x.rating), href: `https://${x.t}.douban.com/subject/${x.id}/` });
+  }
+  doubanLoaded = true;
+} catch {}
+if (!doubanLoaded) try {
+  const douban = JSON.parse(fs.readFileSync(path.resolve('data/douban.json'), 'utf8'));
+  const shelf: Record<string, string> = { read: 'book:done', reading: 'book:doing' };
+  for (const [k, key] of Object.entries(shelf)) for (const b of douban.books?.[k]?.items ?? []) {
+    if (!b.date) continue;
+    const [zh, en] = DOUBAN_LABEL[key];
+    items.push({ d: b.date, t: 'book', zh: `《${b.title}》`, note: zh + stars(b.rating), noteEn: en + stars(b.rating) });
+  }
+  const mv = douban.movies;
+  const lists = Array.isArray(mv) ? [{ items: mv }] : Object.values(mv ?? {});
+  for (const l of lists as any[]) for (const m of l.items ?? []) {
+    if (!m.date) continue;
+    items.push({ d: m.date, t: 'movie', zh: `《${m.title}》`, note: '看过' + stars(m.rating), noteEn: 'Watched' + stars(m.rating) });
+  }
+} catch {}
+
+// 照片没有标题：用拍摄地点，其次用相机
+const CITY: Record<string, [string, string]> = {
+  Singapore: ['新加坡', 'Singapore'], Bintan: ['民丹岛', 'Bintan'], Christchurch: ['基督城', 'Christchurch'],
+  Shanghai: ['上海', 'Shanghai'], 'Nanshan District': ['深圳', 'Shenzhen'], 'Xishan District': ['昆明', 'Kunming'],
+  'Westland District': ['新西兰西海岸', 'Westland, NZ'],
+};
+for (const p of photosData as any[]) {
+  if (!p.takenAt) continue;
+  const city = p.place?.city as string | undefined;
+  const [cZh, cEn] = city ? (CITY[city] ?? [city, city]) : [undefined, undefined];
+  const cam = (p.exif?.camera as string | undefined)?.replace(/^samsung /i, 'Samsung ');
+  const zh = p.title || (cZh ? `在${cZh}拍下` : cam ? `用 ${cam} 拍下` : '拍下一张照片');
+  const en = p.title || (cEn ? `Shot in ${cEn}` : cam ? `Shot on ${cam}` : 'A photo');
+  const meta = [cZh ? cam : undefined, p.exif?.aperture, p.exif?.shutter && `${p.exif.shutter}s`].filter(Boolean).join(' · ');
+  items.push({ d: p.takenAt.slice(0, 10), t: 'photo', zh, en, note: meta || undefined, noteEn: meta || undefined, href: `/photos/${p.slug}/`, img: p.variants?.thumb?.webp });
+}
+items.sort((a, b) => (a.d < b.d ? -1 : 1));
+---
+<div class="card card-otd" id="on-this-day">
+  <div class="otd-layout">
+    <div class="otd-disc-wrap">
+      <svg class="otd-disc" viewBox="0 0 240 240" role="img" aria-label="年轮：每一圈是一年" data-otd-svg>
+        <g data-otd-rings></g>
+        <path class="otd-wedge" data-otd-wedge></path>
+        <g data-otd-dots></g>
+        <line class="otd-hand" x1="120" y1="120" x2="120" y2="8" data-otd-hand></line>
+        <circle class="otd-hand-tip" r="3.5" cx="120" cy="8" data-otd-tip></circle>
+        <circle class="otd-pith" cx="120" cy="120" r="3"></circle>
+        <g class="otd-months" data-otd-months></g>
+      </svg>
+      <p class="otd-disc-hint" data-otd-hint>拖动年轮，换一天</p>
+    </div>
+
+    <div class="otd-panel">
+      <div class="otd-top">
+        <div class="section-title" data-i18n="sec_onthisday">On This Day</div>
+        <div class="otd-nav">
+          <button type="button" data-otd-step="-1" aria-label="Previous day">‹</button>
+          <button type="button" data-otd-today>今天</button>
+          <button type="button" data-otd-step="1" aria-label="Next day">›</button>
+        </div>
+      </div>
+      <div class="otd-date"><span data-otd-md>--·--</span><small data-otd-sub></small></div>
+      <ol class="otd-list" data-otd-list></ol>
+      <p class="otd-foot" data-otd-foot></p>
+    </div>
+  </div>
+</div>
+
+<script define:vars={{ OTD_ITEMS: items }}>window.__OTD_ITEMS = OTD_ITEMS;</script>
+
+<script is:inline>
+(function () {
+  var root = document.getElementById('on-this-day');
+  if (!root) return;
+  var ITEMS = window.__OTD_ITEMS || [];
+  var NS = 'http://www.w3.org/2000/svg';
+  var CX = 120, CY = 120, R_IN = 10, R_OUT = 100, WINDOW = 3, PER_YEAR = 2, YEARS_SHOWN = 4, expanded = false;
+  var TYPE_COLOR = { post: 'var(--accent)', book: '#f59e0b', movie: '#a78bfa', photo: '#60a5fa' };
+  var STR = {
+    zh: { today: '今天', hint: '拖动年轮，换一天', sub: '往年的这一周', ago: function (n) { return n + ' 年前'; }, same: '当天', after: function (n) { return n + ' 天后'; }, before: function (n) { return n + ' 天前'; }, more: function (n) { return '还有 ' + n + ' 条'; }, empty: '往年的这几天，没有留下记录。', next: function (n, y) { return n + ' 天后，' + y + ' 年的你留下了：'; }, foot: function (a, b, c) { return '每一圈是一年，越宽表示那年记录越多 · ' + a + ' 个年份留下了这一周 · 共 ' + b + ' 条，' + c + ' 圈'; }, tag: { post: '文', book: '书', movie: '影', photo: '照' }, growing: '今年 · 还在长', expand: function (n) { return '再往前翻 ' + n + ' 年'; }, batch: function (n, t) { return '一口气标记了 ' + n + (t === 'book' ? ' 本书' : ' 部电影'); } },
+    en: { today: 'Today', hint: 'Drag the rings to pick a day', sub: 'this week in past years', ago: function (n) { return n + (n > 1 ? ' years ago' : ' year ago'); }, same: 'same day', after: function (n) { return '+' + n + 'd'; }, before: function (n) { return '−' + n + 'd'; }, more: function (n) { return n + ' more'; }, empty: 'Nothing was recorded around this day.', next: function (n, y) { return n + ' days later, in ' + y + ':'; }, foot: function (a, b, c) { return 'One ring per year, wider = busier · ' + a + ' years marked this week · ' + b + ' records, ' + c + ' rings'; }, tag: { post: 'W', book: 'B', movie: 'F', photo: 'P' }, growing: 'This year · still growing', expand: function (n) { return n + ' more ' + (n > 1 ? 'years' : 'year'); }, batch: function (n, t) { return 'Marked ' + n + (t === 'book' ? ' books' : ' films') + ' in one go'; } }
+  };
+  // 封面小卡：有图用图；没图按类型生成稿纸 / 书 / 胶片
+  function glyph(t) {
+    var c = String(t).replace(/[《》「」『』“”"'()（）\[\]\s]/g, '');
+    var ch = c.charAt(0);
+    return /[a-z]/i.test(ch) ? ch.toUpperCase() : ch;
+  }
+  function cover(it, title) {
+    var h = Math.floor(hash(it.zh) * 360);
+    if (it.img) return '<span class="otd-cv cv-img" data-t="' + it.t + '"><img src="' + it.img + '" alt="" loading="lazy" decoding="async"></span>';
+    if (it.t === 'book') {
+      var name = String(it.zh).replace(/[《》]/g, '').split(/[:：·、，,\s]/)[0].slice(0, 4);
+      return '<span class="otd-cv cv-book" style="--h:' + h + '"><i>' + esc(name) + '</i></span>';
+    }
+    if (it.t === 'movie') return '<span class="otd-cv cv-movie" style="--h:' + h + '"><i>' + esc(glyph(it.zh)) + '</i></span>';
+    if (it.no) return '<span class="otd-cv cv-post cv-issue"><small>№</small><i>' + it.no + '</i></span>';
+    return '<span class="otd-cv cv-post"><i>' + esc(glyph(title)) + '</i></span>';
+  }
+  function L() { return STR[window.currentLang === 'en' ? 'en' : 'zh']; }
+  function el(tag, attrs) { var e = document.createElementNS(NS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); return e; }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function doy(m, d) { return (Date.UTC(2001, m - 1, d) - Date.UTC(2001, 0, 1)) / 864e5; } // 0..364，忽略闰日
+  function ang(day) { return (day / 365) * Math.PI * 2 - Math.PI / 2; } // 0 点在正上方，顺时针
+  function pt(r, a) { return [CX + r * Math.cos(a), CY + r * Math.sin(a)]; }
+  function hash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967295; }
+
+  var now = new Date();
+  var THIS_YEAR = now.getFullYear();
+  var cur = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  // ---- 年轮几何：越忙的年份越宽 ----
+  var years = [];
+  var counts = {};
+  ITEMS.forEach(function (it) { var y = +it.d.slice(0, 4); counts[y] = (counts[y] || 0) + 1; });
+  var minY = Math.min.apply(null, Object.keys(counts).map(Number).concat([THIS_YEAR - 1]));
+  for (var y = minY; y <= THIS_YEAR; y++) years.push(y);
+  var weights = years.map(function (y) { return 1 + Math.sqrt(counts[y] || 0); });
+  var wSum = weights.reduce(function (a, b) { return a + b; }, 0);
+  var ring = {}, acc = R_IN;
+  years.forEach(function (y, i) { var w = (weights[i] / wSum) * (R_OUT - R_IN); ring[y] = { r0: acc, r1: acc + w }; acc += w; });
+
+  function ringPath(r, seed, a0, a1) {
+    var steps = 120, d = '', span = a1 - a0;
+    for (var i = 0; i <= steps; i++) {
+      var a = a0 + (span * i) / steps;
+      var wob = Math.min(1.1, r * 0.03) * (Math.sin(a * 3 + seed * 6.28) * 0.6 + Math.sin(a * 7 + seed * 17) * 0.4);
+      var p = pt(r + wob, a);
+      d += (i ? 'L' : 'M') + p[0].toFixed(2) + ' ' + p[1].toFixed(2);
+    }
+    return d;
+  }
+
+  var svg = root.querySelector('[data-otd-svg]');
+  var gRings = root.querySelector('[data-otd-rings]');
+  var gDots = root.querySelector('[data-otd-dots]');
+  var gMonths = root.querySelector('[data-otd-months]');
+
+  function drawStatic() {
+    gRings.innerHTML = ''; gDots.innerHTML = ''; gMonths.innerHTML = '';
+    var todayA = ang(doy(now.getMonth() + 1, now.getDate()));
+    years.forEach(function (y) {
+      var g = ring[y], seed = hash(String(y));
+      var band = el('path', { class: 'otd-band' + ((y - minY) % 2 ? ' alt' : ''), 'data-year': y, d: ringPath(g.r1, seed, -Math.PI / 2, Math.PI * 1.5) + ringPath(g.r0, hash(String(y - 1)), Math.PI * 1.5, -Math.PI / 2) + 'Z' });
+      if (y === THIS_YEAR) {
+        // 今年的这一圈只长到今天
+        band = el('path', { class: 'otd-band growing', 'data-year': y, d: ringPath(g.r1, seed, -Math.PI / 2, todayA) + ringPath(g.r0, hash(String(y - 1)), todayA, -Math.PI / 2) + 'Z' });
+        gRings.appendChild(el('path', { class: 'otd-ghost', d: ringPath((g.r0 + g.r1) / 2, seed, todayA, Math.PI * 1.5) }));
+      }
+      gRings.appendChild(band);
+      gRings.appendChild(el('path', { class: 'otd-line', d: ringPath(g.r1, seed, -Math.PI / 2, y === THIS_YEAR ? todayA : Math.PI * 1.5) }));
+    });
+    ITEMS.forEach(function (it, i) {
+      var y = +it.d.slice(0, 4), g = ring[y]; if (!g) return;
+      var m = +it.d.slice(5, 7), d = +it.d.slice(8, 10);
+      var r = g.r0 + (g.r1 - g.r0) * (0.25 + 0.5 * hash(it.d + i));
+      var p = pt(r, ang(doy(m, d)));
+      var c = el('circle', { class: 'otd-dot', cx: p[0].toFixed(2), cy: p[1].toFixed(2), r: 1.3, fill: TYPE_COLOR[it.t] });
+      c.dataset.i = i; gDots.appendChild(c);
+    });
+    for (var k = 0; k < 12; k++) {
+      var a = ang(doy(k + 1, 1)), p1 = pt(R_OUT + 3, a), p2 = pt(R_OUT + (k % 3 ? 5 : 8), a);
+      gMonths.appendChild(el('line', { x1: p1[0], y1: p1[1], x2: p2[0], y2: p2[1], class: k % 3 ? 'tick' : 'tick major' }));
+      if (k % 3 === 0) { var pl = pt(R_OUT + 15, a); var t = el('text', { x: pl[0], y: pl[1] + 3, 'text-anchor': 'middle' }); t.textContent = (k + 1); gMonths.appendChild(t); }
+    }
+  }
+
+  function diffDays(itemD, ref) {
+    var m = +itemD.slice(5, 7), d = +itemD.slice(8, 10);
+    var diff = doy(m, d) - doy(ref.getMonth() + 1, ref.getDate());
+    if (diff > 182) diff -= 365; if (diff < -182) diff += 365;
+    return diff;
+  }
+
+  function render() {
+    var s = L(), ref = cur;
+    var day = doy(ref.getMonth() + 1, ref.getDate()), a = ang(day);
+    var tip = pt(R_OUT + 1, a);
+    var hand = root.querySelector('[data-otd-hand]');
+    hand.setAttribute('x2', tip[0]); hand.setAttribute('y2', tip[1]);
+    root.querySelector('[data-otd-tip]').setAttribute('cx', tip[0]);
+    root.querySelector('[data-otd-tip]').setAttribute('cy', tip[1]);
+    var w = (WINDOW + 0.5) / 365 * Math.PI * 2, outerPast = ring[THIS_YEAR - 1] ? ring[THIS_YEAR - 1].r1 : R_OUT;
+    var p0 = pt(outerPast, a - w), p1 = pt(outerPast, a + w);
+    root.querySelector('[data-otd-wedge]').setAttribute('d', 'M' + CX + ' ' + CY + 'L' + p0[0] + ' ' + p0[1] + 'A' + outerPast + ' ' + outerPast + ' 0 0 1 ' + p1[0] + ' ' + p1[1] + 'Z');
+
+    root.querySelector('[data-otd-md]').textContent = pad(ref.getMonth() + 1) + '·' + pad(ref.getDate());
+    root.querySelector('[data-otd-sub]').textContent = s.sub;
+    root.querySelector('[data-otd-today]').textContent = s.today;
+    root.querySelector('[data-otd-hint]').textContent = s.hint;
+
+    var hits = [], byYear = {};
+    ITEMS.forEach(function (it, i) {
+      var y = +it.d.slice(0, 4); if (y >= THIS_YEAR) return;
+      var df = diffDays(it.d, ref);
+      if (Math.abs(df) <= WINDOW) { hits.push(i); (byYear[y] = byYear[y] || []).push({ it: it, df: df }); }
+    });
+    gDots.querySelectorAll('.otd-dot').forEach(function (c) {
+      var on = hits.indexOf(+c.dataset.i) > -1;
+      c.classList.toggle('on', on); c.setAttribute('r', on ? 3 : 1.3);
+    });
+    gRings.querySelectorAll('.otd-band').forEach(function (b) { b.classList.toggle('lit', !!byYear[b.dataset.year]); });
+
+    var en = window.currentLang === 'en';
+    var ys = Object.keys(byYear).map(Number).sort(function (a, b) { return b - a; });
+    var allYs = ys; if (!expanded && ys.length > YEARS_SHOWN) ys = ys.slice(0, YEARS_SHOWN);
+    var list = root.querySelector('[data-otd-list]');
+    if (!ys.length) {
+      var best = null;
+      ITEMS.forEach(function (it) { var y = +it.d.slice(0, 4); if (y >= THIS_YEAR) return; var df = diffDays(it.d, ref); if (df > 0 && (!best || df < best.df)) best = { it: it, df: df }; });
+      list.innerHTML = '<li class="otd-empty"><p>' + s.empty + '</p>' + (best ? '<p class="otd-empty-next">' + s.next(best.df, best.it.d.slice(0, 4)) + ' ' + esc(en && best.it.en ? best.it.en : best.it.zh) + '</p>' : '') + '</li>';
+    } else {
+      list.innerHTML = ys.map(function (y) {
+        // 同一天同类型 ≥4 条（豆瓣集中补标）合并成一行叠封面
+        var groups = {}, rows = [];
+        byYear[y].forEach(function (r) { var k = r.it.d + r.it.t; (groups[k] = groups[k] || []).push(r); });
+        Object.keys(groups).forEach(function (k) {
+          var g = groups[k];
+          if (g.length >= 4) rows.push({ batch: g, df: g[0].df, it: g[0].it }); else rows.push.apply(rows, g);
+        });
+        rows.sort(function (a, b) { return Math.abs(a.df) - Math.abs(b.df); });
+        var html = rows.slice(0, PER_YEAR).map(function (r) {
+          var when0 = r.df === 0 ? s.same : r.df > 0 ? s.after(r.df) : s.before(-r.df);
+          if (r.batch) {
+            var imgs = r.batch.filter(function (x) { return x.it.img; }).slice(0, 3);
+            var stack = '<span class="otd-stack">' + imgs.map(function (x, i) { return '<span class="otd-cv cv-img" style="--i:' + i + '"><img src="' + x.it.img + '" alt="" loading="lazy" decoding="async"></span>'; }).join('') + '</span>';
+            var names = r.batch.slice(0, 3).map(function (x) { return x.it.zh; }).join(' ');
+            return '<li class="otd-row otd-batch"><div>' + stack + '<span class="otd-title">' + s.batch(r.batch.length, r.it.t) + '<small>' + esc(names) + ' …</small></span><span class="otd-when">' + when0 + '</span></div></li>';
+          }
+          var it = r.it, title = en && it.en ? it.en : it.zh, href = en && it.hrefEn ? it.hrefEn : it.href;
+          var note = en ? it.noteEn : it.note;
+          var when = r.df === 0 ? s.same : r.df > 0 ? s.after(r.df) : s.before(-r.df);
+          var inner = cover(it, title) + '<span class="otd-title">' + esc(title) + (note ? '<small>' + esc(note) + '</small>' : '') + '</span><span class="otd-when">' + when + '</span>';
+          return '<li class="otd-row">' + (href ? '<a href="' + href + '"' + (/^https?:/.test(href) ? ' target="_blank" rel="noopener"' : '') + '>' + inner + '</a>' : '<div>' + inner + '</div>') + '</li>';
+        }).join('');
+        if (rows.length > PER_YEAR) html += '<li class="otd-more">' + s.more(rows.length - PER_YEAR) + '</li>';
+        return '<li class="otd-year" data-year="' + y + '"><div class="otd-year-label"><b>' + s.ago(ref.getFullYear() - y) + '</b><span>' + y + '</span></div><ul>' + html + '</ul></li>';
+      }).join('') + (allYs.length > ys.length ? '<li class="otd-expand"><button type="button" data-otd-expand>' + s.expand(allYs.length - ys.length) + '</button></li>' : '');
+      var ex = list.querySelector('[data-otd-expand]');
+      if (ex) ex.addEventListener('click', function () { expanded = true; render(); });
+      list.querySelectorAll('.otd-year').forEach(function (li) {
+        var band = gRings.querySelector('.otd-band[data-year="' + li.dataset.year + '"]');
+        li.addEventListener('mouseenter', function () { band && band.classList.add('hover'); });
+        li.addEventListener('mouseleave', function () { band && band.classList.remove('hover'); });
+      });
+    }
+    root.querySelector('[data-otd-foot]').textContent = s.foot(allYs.length, ITEMS.length, years.length);
+  }
+
+  // ---- 交互：拖动年轮 / 按钮 ----
+  var dragging = false, raf = 0;
+  function setFromPointer(e) {
+    var r = svg.getBoundingClientRect();
+    var x = (e.clientX - r.left) / r.width * 240 - CX, y = (e.clientY - r.top) / r.height * 240 - CY;
+    var a = Math.atan2(y, x) + Math.PI / 2; if (a < 0) a += Math.PI * 2;
+    var day = Math.round(a / (Math.PI * 2) * 365) % 365;
+    var d = new Date(Date.UTC(2001, 0, 1) + day * 864e5);
+    var next = new Date(cur.getFullYear(), d.getUTCMonth(), d.getUTCDate());
+    if (+next !== +cur) { cur = next; expanded = false; cancelAnimationFrame(raf); raf = requestAnimationFrame(render); }
+  }
+  svg.addEventListener('pointerdown', function (e) { dragging = true; svg.setPointerCapture(e.pointerId); root.classList.add('is-dragging'); setFromPointer(e); });
+  svg.addEventListener('pointermove', function (e) { if (dragging) setFromPointer(e); });
+  ['pointerup', 'pointercancel'].forEach(function (t) { svg.addEventListener(t, function () { dragging = false; root.classList.remove('is-dragging'); }); });
+  root.querySelectorAll('[data-otd-step]').forEach(function (b) { b.addEventListener('click', function () { cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + Number(b.dataset.otdStep)); expanded = false; render(); }); });
+  root.querySelector('[data-otd-today]').addEventListener('click', function () { cur = new Date(now.getFullYear(), now.getMonth(), now.getDate()); expanded = false; render(); });
+  window.addEventListener('langchange', render);
+  if (window._i18nReady) window._i18nReady.then(render);
+
+  drawStatic();
+  render();
+})();
+</script>
+
+<style is:global>
+  .card-otd { position: relative; overflow: hidden; }
+  .otd-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 28px; align-items: start; }
+  .otd-disc-wrap { position: relative; }
+  .otd-disc { width: 100%; height: auto; display: block; touch-action: none; cursor: grab; user-select: none; overflow: visible; }
+  .card-otd.is-dragging .otd-disc { cursor: grabbing; }
+  .otd-disc-hint { margin: 6px 0 0; text-align: center; font-size: 11px; color: var(--c-text-dim); }
+
+  .otd-band { fill: rgba(var(--c-overlay-rgb), 0.025); transition: fill .3s; }
+  .otd-band.alt { fill: rgba(var(--c-overlay-rgb), 0.05); }
+  .otd-band.lit { fill: rgba(var(--accent-rgb), 0.09); }
+  .otd-band.hover { fill: rgba(var(--accent-rgb), 0.2); }
+  .otd-band.growing { fill: rgba(var(--accent-rgb), 0.05); }
+  .otd-line { fill: none; stroke: rgba(var(--c-overlay-rgb), 0.12); stroke-width: .6; }
+  .otd-ghost { fill: none; stroke: rgba(var(--c-overlay-rgb), 0.12); stroke-width: .8; stroke-dasharray: 1.5 2.5; }
+  .otd-dot { opacity: .45; transition: r .25s, opacity .25s; }
+  .otd-dot.on { opacity: 1; stroke: var(--c-bg); stroke-width: 1; }
+  .otd-wedge { fill: rgba(var(--accent-rgb), 0.12); }
+  .otd-hand { stroke: var(--accent); stroke-width: 1.2; stroke-linecap: round; }
+  .otd-hand-tip { fill: var(--accent); filter: drop-shadow(0 0 4px rgba(var(--accent-rgb), .7)); }
+  .otd-pith { fill: var(--accent); }
+  .otd-months .tick { stroke: rgba(var(--c-overlay-rgb), 0.18); stroke-width: .8; }
+  .otd-months .tick.major { stroke: rgba(var(--c-overlay-rgb), 0.35); }
+  .otd-months text { font: 8px var(--font-mono, ui-monospace, SFMono-Regular, monospace); fill: var(--c-text-dim); }
+
+  .otd-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .otd-top .section-title { margin-bottom: 0; }
+  .otd-nav { display: flex; gap: 4px; }
+  .otd-nav button { font: inherit; font-size: 12px; line-height: 1; color: var(--c-text-muted); background: rgba(var(--c-overlay-rgb), .04); border: 1px solid var(--c-border); border-radius: 6px; padding: 6px 9px; cursor: pointer; transition: color .2s, border-color .2s; }
+  .otd-nav button:hover { color: var(--accent); border-color: var(--accent); }
+  .otd-date { display: flex; align-items: baseline; gap: 10px; margin: 10px 0 14px; }
+  .otd-date span { font: 600 38px/1 var(--font-mono, ui-monospace, SFMono-Regular, monospace); color: var(--accent); letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+  .otd-date small { font-size: 12px; color: var(--c-text-muted); }
+
+  .otd-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  .otd-year-label { display: flex; gap: 8px; align-items: baseline; margin-bottom: 6px; }
+  .otd-year-label b { font-size: 13px; font-weight: 600; color: var(--c-text); }
+  .otd-year-label span { font: 11px var(--font-mono, ui-monospace, SFMono-Regular, monospace); color: var(--c-text-dim); }
+  .otd-year ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .otd-row > a, .otd-row > div { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 6px 10px 6px 8px; border-radius: 6px; color: inherit; text-decoration: none; background: rgba(var(--c-overlay-rgb), .025); border: 1px solid transparent; transition: border-color .2s, background .2s; }
+  .otd-row > a:hover { border-color: rgba(var(--accent-rgb), .4); background: rgba(var(--accent-rgb), .06); }
+  /* 封面小卡：统一 3:4 竖版 */
+  .otd-cv { position: relative; width: 30px; height: 40px; border-radius: 3px; overflow: hidden; display: flex; align-items: center; justify-content: center; flex: none; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .25s; }
+  .otd-row > a:hover .otd-cv { transform: rotate(-4deg) translateY(-1px); }
+  .otd-cv i { font-style: normal; }
+  .cv-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cv-img[data-t="post"]::after { content: ''; position: absolute; inset: 0; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+  .cv-img[data-t="photo"] { background: #f4f1ea; padding: 2px 2px 6px; }
+  .cv-img[data-t="photo"] img { border-radius: 1px; }
+  .otd-stack { position: relative; width: 30px; height: 40px; }
+  .otd-stack .otd-cv { position: absolute; inset: 0; transform: translateX(calc(var(--i) * 3px)) rotate(calc(var(--i) * 7deg - 7deg)); z-index: calc(3 - var(--i)); }
+  .otd-batch .otd-title small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cv-post { background: linear-gradient(180deg, rgba(var(--c-overlay-rgb),.10), rgba(var(--c-overlay-rgb),.05)); color: var(--accent); font: 600 15px/1 'Songti SC', 'Noto Serif SC', Georgia, serif; }
+  .cv-post::before { content: ''; position: absolute; left: 5px; right: 5px; bottom: 6px; height: 6px; background: repeating-linear-gradient(180deg, rgba(var(--c-overlay-rgb),.18) 0 1px, transparent 1px 3px); }
+  .cv-post::after { content: ''; position: absolute; top: 0; right: 0; border-style: solid; border-width: 0 8px 8px 0; border-color: transparent var(--c-bg) rgba(var(--c-overlay-rgb),.22) transparent; }
+  .cv-issue { flex-direction: column; gap: 1px; font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace); font-size: 12px; margin-top: 0; }
+  .cv-issue small { font-size: 7px; opacity: .7; }
+  .cv-book { background: linear-gradient(90deg, hsl(var(--h) 32% 22%) 0 4px, hsl(var(--h) 36% 34%) 4px); color: hsl(var(--h) 40% 92%); }
+  .cv-book::before { content: ''; position: absolute; left: 7px; right: 3px; top: 4px; height: 1px; background: rgba(255,214,140,.55); box-shadow: 0 31px 0 rgba(255,214,140,.55); }
+  .cv-book i { writing-mode: vertical-rl; font: 500 8px/1.05 'Songti SC', 'Noto Serif SC', serif; letter-spacing: 1px; margin-left: 4px; max-height: 30px; overflow: hidden; }
+  .cv-movie { background: #15151b; color: hsl(var(--h) 70% 72%); font: 600 14px/1 'Songti SC', 'Noto Serif SC', serif; }
+  .cv-movie::before, .cv-movie::after { content: ''; position: absolute; left: 2px; right: 2px; height: 3px; background: radial-gradient(circle, rgba(255,255,255,.35) 0 1px, transparent 1.3px) 0 0 / 5px 3px repeat-x; }
+  .cv-movie::before { top: 2px; } .cv-movie::after { bottom: 2px; }
+  .otd-title { font-size: 13px; line-height: 1.45; min-width: 0; overflow-wrap: anywhere; }
+  .otd-title small { display: block; font-size: 11px; color: var(--c-text-muted); }
+  .otd-when { font: 11px var(--font-mono, ui-monospace, SFMono-Regular, monospace); color: var(--c-text-dim); white-space: nowrap; }
+  .otd-expand button { width: 100%; font: inherit; font-size: 12px; color: var(--c-text-muted); background: none; border: 1px dashed var(--c-border-light); border-radius: 6px; padding: 8px; cursor: pointer; transition: color .2s, border-color .2s; }
+  .otd-expand button:hover { color: var(--accent); border-color: var(--accent); }
+  .otd-more { font-size: 11px; color: var(--c-text-dim); padding-left: 10px; }
+  .otd-empty p { margin: 0 0 6px; font-size: 13px; color: var(--c-text-muted); }
+  .otd-empty .otd-empty-next { font-size: 12px; color: var(--c-text-dim); }
+  .otd-foot { margin: 14px 0 0; font-size: 11px; color: var(--c-text-dim); }
+
+  @media (max-width: 640px) {
+    .otd-layout { grid-template-columns: 1fr; gap: 12px; }
+    .otd-disc-wrap { max-width: 260px; margin: 0 auto; width: 100%; }
+    .otd-date span { font-size: 32px; }
+  }
+</style>
+<style is:global>
+  @media (min-width: 768px) { .cards-grid > .card-otd { grid-column: 1 / -1; } }
+</style>
