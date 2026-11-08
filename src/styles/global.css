@@ -65,6 +65,26 @@
     html {
       -webkit-text-size-adjust: 100%;
       text-size-adjust: 100%;
+      /* iOS Safari：页面一旦被放大，就能左右拖动。双击卡片会触发
+         “双击放大”，manipulation 只关掉双击缩放，双指缩放照常可用。 */
+      touch-action: manipulation;
+    }
+
+    /* 兜底：任何元素在真机上意外溢出（iPhone 的字体回退和 Mac 不同，
+       模拟器里测不出来），页面也不会横向滑动。用 clip 而不是 hidden，
+       hidden 会让 body 变成滚动容器，导致 position: sticky 失效。 */
+    body {
+      overflow-x: clip;
+    }
+
+    /* iOS Safari 点进字号小于 16px 的输入框会自动放大页面，
+       离开后也不会缩回去，于是整页可以左右拖。触屏设备上统一用 16px。 */
+    @media (hover: none) and (pointer: coarse) {
+      input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]),
+      textarea,
+      select {
+        font-size: 16px !important;
+      }
     }
 
     body {
