@@ -64,6 +64,16 @@ jobs:
           python3 -c "import PIL" 2>/dev/null || python3 -m pip install --quiet Pillow || python3 -m pip install --quiet --break-system-packages Pillow
           python3 scripts/fetch_telegram.py
 
+      - name: Fetch Rize work time
+        # Homepage Work Sessions card: refreshes the last few days of
+        # src/data/rize.json from the Rize API (company tools and
+        # entertainment apps are filtered out before writing). On failure the
+        # previous JSON stays; the deploy goes on either way.
+        continue-on-error: true
+        env:
+          RIZE_API_KEY: ${{ secrets.RIZE_API_KEY }}
+        run: node scripts/fetch-rize.mjs
+
       - name: Reconcile public Reading Stream
         continue-on-error: true
         env:

@@ -1,93 +1,289 @@
 ---
 // src/components/SessionsCard.astro
 //
-// Homepage "Work Sessions" card: Rize totals printed as the output of
-// `time` (real = everything, user = focus, sys = meetings, idle = breaks),
-// and beside it one stack of squares per month, one square per hour, focus
-// at the bottom, then meetings, then breaks.
+// Homepage "Work Sessions" card, built from src/data/rize.json (refreshed
+// daily by scripts/fetch-rize.mjs in the deploy workflow).
 //
-// The numbers are the Rize export that used to be written into index.astro;
-// Rize stopped syncing after March 2026, so the header says how long ago.
-interface Month {
-  m: string; y: number; full: string;
-  focus: number; meeting: number; brk: number;
-  top: [string, number][];
-}
-const MONTHS: Month[] = [
-  { m: 'Nov', y: 25, full: 'November 2025', focus: 19.1, meeting: 12.1, brk: 12.7, top: [['Meetings', 12], ['Code', 8], ['Docs', 3]] },
-  { m: 'Dec', y: 25, full: 'December 2025', focus: 68.0, meeting: 25.4, brk: 26.4, top: [['Code', 36], ['Meetings', 22], ['Docs', 9]] },
-  { m: 'Jan', y: 26, full: 'January 2026', focus: 31.0, meeting: 12.8, brk: 15.8, top: [['Code', 19], ['Meetings', 13], ['Design', 2]] },
-  { m: 'Feb', y: 26, full: 'February 2026', focus: 24.8, meeting: 17.7, brk: 15.0, top: [['Meetings', 18], ['Code', 9], ['Docs', 8]] },
-  { m: 'Mar', y: 26, full: 'March 2026', focus: 22.6, meeting: 22.6, brk: 11.1, top: [['Meetings', 23], ['Code', 12], ['Docs', 5]] },
+//   1. `time`-style readout of the last 365 days + the latest day's bar
+//   2. a year of days (26 weeks on phones, so nothing scrolls sideways)
+//   3. hours by month, split into five buckets · weekday × hour rhythm
+//   4. a 24-hour dial of the latest day over the 60-day average · top apps
+import rize from '../data/rize.json';
+
+type Bucket = 'build' | 'talk' | 'write' | 'read' | 'off';
+const BK: [Bucket, string, string][] = [
+  ['build', 'sess_build', 'Coding'],
+  ['talk', 'sess_talk', 'Comms'],
+  ['write', 'sess_write', 'Writing'],
+  ['read', 'sess_read', 'Research'],
+  ['off', 'sess_off', 'Leisure'],
 ];
-// First day after the last synced month; the header counts months since.
-const SYNCED_UNTIL = '2026-04-01';
+const M = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const TARGET = 8;
 
-const total = (s: Month) => s.focus + s.meeting + s.brk;
-const sum = MONTHS.reduce((a, s) => ({ focus: a.focus + s.focus, meeting: a.meeting + s.meeting, brk: a.brk + s.brk }), { focus: 0, meeting: 0, brk: 0 });
-const sumAll = sum.focus + sum.meeting + sum.brk;
-const busiest = MONTHS.reduce((a, s) => (total(s) > total(a) ? s : a));
-const hm = (h: number) => { const m = Math.round(h * 60); return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}m`; };
-const pc = (v: number) => Math.round(v / sumAll * 100) + '%';
-const h1 = (n: number) => n.toFixed(1);
+interface Day { d: string; w: number; mt: number; br: number; c: Record<Bucket, number> }
+const days: Day[] = (rize.days as number[][] & string[][]).map((r: any[]) => ({
+  d: r[0], w: r[1], mt: r[2], br: r[3],
+  c: { build: r[4], talk: r[5], write: r[6], read: r[7], off: r[8] },
+}));
+const byD = new Map(days.map((x) => [x.d, x]));
+const p2 = (n: number) => String(n).padStart(2, '0');
+const hm = (h: number) => { const m = Math.round(h * 60); return `${Math.floor(m / 60)}h${p2(m % 60)}m`; };
+const wdOf = (s: string) => (new Date(s + 'T00:00:00Z').getUTCDay() + 6) % 7;
+const isoAdd = (s: string, n: number) => { const d = new Date(s + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const ctot = (c: Record<string, number>) => Object.values(c).reduce((a, b) => a + b, 0) || 1;
 
-// Whole hours per month (largest remainder, so the three parts add up to the
-// month's rounded total).
-function split(s: Month) {
-  const parts = ([['f', s.focus], ['mt', s.meeting], ['b', s.brk]] as const)
-    .map(([k, v]) => ({ k, n: Math.floor(v), r: v - Math.floor(v) }));
-  const left = Math.round(total(s)) - parts.reduce((a, p) => a + p.n, 0);
-  [...parts].sort((a, b) => b.r - a.r).slice(0, left).forEach(p => p.n++);
-  return parts.flatMap(p => Array.from({ length: p.n }, () => p.k));
+// The deploy runs at 08:00, when today has barely started: show the latest
+// day with real tracking instead of an empty one.
+let ti = days.length - 1;
+while (ti > 0 && days[ti].w < 0.3) ti--;
+const td = days[ti] ?? { d: '', w: 0, mt: 0, br: 0, c: { build: 0, talk: 0, write: 0, read: 0, off: 0 } };
+const tdc = ctot(td.c);
+
+// 365-day readout
+const last = days.slice(-365);
+const sum = { w: 0, br: 0 };
+const cs: Record<Bucket, number> = { build: 0, talk: 0, write: 0, read: 0, off: 0 };
+for (const x of last) { sum.w += x.w; sum.br += x.br; for (const [k] of BK) cs[k] += x.c[k]; }
+const cT = ctot(cs);
+const active = last.filter((x) => x.w >= 1);
+const longest = last.reduce((a, b) => (b.w > a.w ? b : a), last[0] ?? td);
+let streak = 0;
+for (let i = ti; i >= 0 && days[i].w >= 1; i--) streak++;
+const wk = days.slice(ti - 6, ti + 1).reduce((a, x) => a + x.w, 0);
+const pwk = days.slice(Math.max(0, ti - 13), ti - 6).reduce((a, x) => a + x.w, 0);
+const ROWS = [
+  { k: 'real', v: sum.w, key: 'sess_work', lb: 'work', pc: '', color: 'var(--c-text)' },
+  ...BK.slice(0, 4).map(([k, key, lb]) => ({ k, v: cs[k] / cT * sum.w, key, lb, pc: Math.round(cs[k] / cT * 100) + '%', color: `var(--rz-${k})` })),
+  { k: 'idle', v: sum.br, key: 'sess_break', lb: 'break', pc: '', color: 'var(--c-text-muted)' },
+];
+
+// Year of days: n weeks (Mon rows) ending with the latest day's week
+const AL = [0, 0.22, 0.4, 0.6, 0.8, 1];
+const lvl = (w: number) => (w <= 0.05 ? 0 : w < 2 ? 1 : w < 4 ? 2 : w < 6 ? 3 : w < 8 ? 4 : 5);
+const lastDate = days.at(-1)?.d ?? td.d;
+function yearCells(nW: number) {
+  const start = isoAdd(lastDate, -wdOf(lastDate) - (nW - 1) * 7);
+  const months: { col: number; m: string }[] = [];
+  const cells: { col: number; row: number; tip?: string; l: number; fut: boolean }[] = [];
+  let lm = -1;
+  for (let w = 0; w < nW; w++) {
+    const ws = isoAdd(start, w * 7), mo = +ws.slice(5, 7) - 1;
+    if (mo !== lm && +ws.slice(8) <= 7) { months.push({ col: w + 2, m: M[mo] }); lm = mo; }
+    for (let r = 0; r < 7; r++) {
+      const k = isoAdd(start, w * 7 + r), x = byD.get(k);
+      if (k > lastDate) { cells.push({ col: w + 2, row: r + 2, l: 0, fut: true }); continue; }
+      const top = x ? BK.map(([b, , n]) => [n, x.c[b]] as const).sort((a, b) => b[1] - a[1]).filter((t) => t[1] > 0.1).slice(0, 2) : [];
+      cells.push({
+        col: w + 2, row: r + 2, fut: false, l: x ? lvl(x.w) : 0,
+        tip: x && x.w > 0.05 ? `${k} ${WD[r]} · ${x.w.toFixed(1)}h · ${top.map(([n, h]) => `${n.toLowerCase()} ${h.toFixed(1)}h`).join(' · ')}` : `${k} · —`,
+      });
+    }
+  }
+  return { nW, months, cells };
 }
+const YEARS = [yearCells(53), yearCells(26)];
 
-const ageMonths = (d: Date) => {
-  const from = new Date(SYNCED_UNTIL + 'T00:00:00');
-  return Math.max(0, (d.getFullYear() - from.getFullYear()) * 12 + d.getMonth() - from.getMonth() + 1);
+// Hours by month, last 13 months
+const mo = new Map<string, { w: number; c: Record<Bucket, number> }>();
+for (const x of days) {
+  const k = x.d.slice(0, 7);
+  if (!mo.has(k)) mo.set(k, { w: 0, c: { build: 0, talk: 0, write: 0, read: 0, off: 0 } });
+  const m = mo.get(k)!; m.w += x.w; for (const [b] of BK) m.c[b] += x.c[b];
+}
+const MK = [...mo.keys()].sort().slice(-13);
+const moMax = Math.max(1, ...MK.map((k) => mo.get(k)!.w));
+const MIX = MK.map((k) => {
+  const m = mo.get(k)!, ct = ctot(m.c), name = M[+k.slice(5) - 1];
+  return {
+    k, name, tot: Math.round(m.w), h: (m.w / moMax).toFixed(3),
+    segs: BK.map(([b]) => ({ b, pct: (m.c[b] / ct * 100).toFixed(1) })),
+    tip: `${k} · ${Math.round(m.w)}h · ` + BK.map(([b, , n]) => `${n.toLowerCase()} ${Math.round(m.c[b] / ct * 100)}%`).join(' · '),
+  };
+});
+
+// Weekday × hour rhythm and the dial, from the 60-day hourly table
+const hourly = rize.hourly as Record<string, number[][]>;
+const hDays = Object.keys(hourly).sort();
+const grid = WD.map(() => new Array(24).fill(0));
+const wdCount = new Array(7).fill(0);
+const avgHour = new Array(24).fill(0);
+for (const d of hDays) {
+  const w = wdOf(d); wdCount[w]++;
+  hourly[d].forEach(([a, m], h) => { grid[w][h] += a + m; avgHour[h] += a + m; });
+}
+grid.forEach((row, w) => row.forEach((_, h) => { row[h] = wdCount[w] ? row[h] / wdCount[w] : 0; }));
+avgHour.forEach((_, h) => { avgHour[h] = hDays.length ? avgHour[h] / hDays.length : 0; });
+const gMax = Math.max(1, ...grid.flat());
+let pk = [0, 0];
+grid.forEach((r, w) => r.forEach((v, h) => { if (v > grid[pk[0]][pk[1]]) pk = [w, h]; }));
+const busyHours = avgHour.map((v, h) => [h, v]).filter(([, v]) => v > 5).map(([h]) => h);
+const daySpan = busyHours.length ? `${p2(busyHours[0])}:00–${p2(busyHours.at(-1)! + 1)}:00` : '';
+
+// Dial: latest calendar day with at least half an hour tracked
+const dialDay = [...hDays].reverse().find((d) => hourly[d].reduce((a, [w, m]) => a + w + m, 0) >= 30) ?? hDays.at(-1) ?? '';
+const today = hourly[dialDay] ?? new Array(24).fill([0, 0, 0]);
+const aMax = Math.max(1, ...avgHour);
+const cx = 150, cy = 150, R0 = 62, R1 = 104, R2 = 112, R3 = 138;
+const ang = (h: number) => (h / 24) * Math.PI * 2 - Math.PI / 2;
+const f1 = (n: number) => n.toFixed(1);
+const arc = (r0: number, r1: number, a0: number, a1: number) => {
+  const [c0, s0, c1, s1] = [Math.cos(a0), Math.sin(a0), Math.cos(a1), Math.sin(a1)];
+  return `M${f1(cx + r1 * c0)} ${f1(cy + r1 * s0)}A${r1} ${r1} 0 0 1 ${f1(cx + r1 * c1)} ${f1(cy + r1 * s1)}L${f1(cx + r0 * c1)} ${f1(cy + r0 * s1)}A${r0} ${r0} 0 0 0 ${f1(cx + r0 * c0)} ${f1(cy + r0 * s0)}Z`;
 };
-const TIME_ROWS = [
-  { cls: 'real', k: 'real', v: sumAll, key: 'sess_total', label: 'Total', pct: '' },
-  { cls: 'user', k: 'user', v: sum.focus, key: 'sess_focus', label: 'Focus', pct: pc(sum.focus) },
-  { cls: 'sys', k: 'sys', v: sum.meeting, key: 'sess_meeting', label: 'Meeting', pct: pc(sum.meeting) },
-  { cls: 'idle', k: 'idle', v: sum.brk, key: 'sess_break', label: 'Break', pct: pc(sum.brk) },
-];
+const AVG_ARCS: { d: string; tip: string }[] = [];
+const DAY_ARCS: { d: string; fill: string; op: string; tip: string }[] = [];
+for (let h = 0; h < 24; h++) {
+  const a0 = ang(h) + 0.015, a1 = ang(h + 1) - 0.015, v = avgHour[h];
+  if (v > 0.5) AVG_ARCS.push({ d: arc(R2, R2 + (R3 - R2) * v / aMax, a0, a1), tip: `${p2(h)}:00 · 60-day avg ${Math.round(v)}m` });
+  const [w, m, b] = today[h], tot = Math.min(60, w + m);
+  const tip = `${p2(h)}:00 · work ${w}m${m ? ` · meeting ${m}m` : ''}${b ? ` · break ${b}m` : ''} · avg ${Math.round(v)}m`;
+  if (tot) DAY_ARCS.push({ d: arc(R0, R0 + (R1 - R0) * tot / 60, a0, a1), fill: m > w / 2 ? 'var(--rz-talk)' : 'var(--rz-build)', op: (0.45 + 0.55 * tot / 60).toFixed(2), tip });
+  else if (b > 15) DAY_ARCS.push({ d: arc(R0, R0 + 8, a0, a1), fill: 'var(--rz-brk)', op: '1', tip });
+}
+const TICKS = Array.from({ length: 8 }, (_, i) => i * 3).map((h) => {
+  const a = ang(h), big = h % 6 === 0;
+  return { h: p2(h), big, x1: f1(cx + (R1 + 2) * Math.cos(a)), y1: f1(cy + (R1 + 2) * Math.sin(a)), x2: f1(cx + (R1 + (big ? 8 : 5)) * Math.cos(a)), y2: f1(cy + (R1 + (big ? 8 : 5)) * Math.sin(a)), tx: f1(cx + (R3 + 9) * Math.cos(a)), ty: f1(cy + (R3 + 9) * Math.sin(a) + 3.5) };
+});
+const act = today.map(([w, m], h) => [h, w + m]).filter(([, v]) => v >= 5).map(([h]) => h);
+const dialSpan = act.length ? `${p2(act[0])}–${p2(act.at(-1)! + 1)}` : '—';
+
+// Top apps over the last 365 days, with hours per month for 12 months
+const APP_CAT: Record<string, Bucket> = {
+  Warp: 'build', Ghostty: 'build', Superset: 'build', Cursor: 'build', Code: 'build', 'Visual Studio Code': 'build', 'Google Chrome': 'read', 'Google Chrome Canary': 'build', Zed: 'build', Xcode: 'build', Terminal: 'build', iTerm2: 'build', Codex: 'build', Figma: 'build',
+  Tana: 'write', Notion: 'write', Linear: 'write', Obsidian: 'write', Todoist: 'write', TickTick: 'write', Bear: 'write', Drafts: 'write', 'Roam Research': 'write',
+  Telegram: 'talk', WeChat: 'talk', '微信': 'talk', Slack: 'talk', Discord: 'talk', Mail: 'talk', Zoom: 'talk',
+};
+const apps = rize.apps as Record<string, Record<string, number>>;
+const appCut = isoAdd(lastDate, -364);
+const AM = Array.from({ length: 12 }, (_, i) => { const d = new Date(lastDate + 'T00:00:00Z'); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - 11 + i); return d.toISOString().slice(0, 7); });
+const appTot = new Map<string, number>(), appMo = new Map<string, Map<string, number>>();
+for (const [d, o] of Object.entries(apps)) {
+  if (d < appCut) continue;
+  for (const [n, m] of Object.entries(o)) {
+    appTot.set(n, (appTot.get(n) ?? 0) + m);
+    if (!appMo.has(n)) appMo.set(n, new Map());
+    appMo.get(n)!.set(d.slice(0, 7), (appMo.get(n)!.get(d.slice(0, 7)) ?? 0) + m);
+  }
+}
+const topApps = [...appTot.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+const spMax = Math.max(1, ...topApps.flatMap(([n]) => AM.map((m) => appMo.get(n)!.get(m) ?? 0)));
+// Shorter display names so the column doesn't truncate.
+const ALIAS: Record<string, string> = { 'Google Chrome': 'Chrome', 'Google Chrome Canary': 'Canary', 'Visual Studio Code': 'VS Code' };
+const APPS = topApps.map(([n, min], i) => {
+  const c = APP_CAT[n] ?? 'read';
+  return {
+    i: i + 1, n: ALIAS[n] ?? n, c, h: Math.round(min / 60),
+    sp: AM.map((m) => { const v = appMo.get(n)!.get(m) ?? 0; return { h: v ? Math.max(8, v / spMax * 100).toFixed(0) : '6', on: v > 0, tip: `${n} · ${M[+m.slice(5) - 1]} '${m.slice(2, 4)} · ${(v / 60).toFixed(1)}h` }; }),
+  };
+});
+const amLabel = (m: string) => `${M[+m.slice(5) - 1]} '${m.slice(2, 4)}`;
 ---
 <div class="card card-sessions" id="sessions">
   <div class="section-title" data-i18n="sec_sessions">Work Sessions</div>
   <div class="feed-head">
-    <span class="feed-head-cmd"><span class="prompt">$</span> time rize work --since 2025-11 --until 2026-03</span>
-    <span class="feed-head-total">
-      <span data-i18n="sess_last_sync">last sync</span>{' '}<strong id="sessAge" data-since={SYNCED_UNTIL}>{ageMonths(new Date())}</strong>{' '}<span data-i18n="sess_months_ago">months ago</span>
-    </span>
+    <span class="feed-head-cmd"><span class="prompt">$</span> rize log --last 365d</span>
+    <span class="feed-head-total rz-live"><i></i><span data-i18n="sess_synced">synced</span>{' '}<strong id="rzAgo" data-ts={rize.updatedAt}>·</strong></span>
   </div>
-  <div class="tm">
-    <div class="tm-out">
-      {TIME_ROWS.map(r => (
-        <div class:list={['r', r.cls]}>
-          <span class="k">{r.k}</span><span class="v">{hm(r.v)}</span><span class="lb" data-i18n={r.key}>{r.label}</span><span class="pc">{r.pct}</span>
-        </div>
-      ))}
-      <div class="note">
-        # <span data-i18n="sess_note_span">5 months</span>, Nov 2025 – Mar 2026<br>
-        # <span data-i18n="sess_busiest">busiest</span>: {busiest.m} ({Math.round(total(busiest))}h, {Math.round(busiest.focus / total(busiest) * 100)}% <span class="lc" data-i18n="sess_focus">Focus</span>)
-      </div>
-    </div>
-    <div>
-      <div class="wf-wrap" id="sessWaffle">
-        {MONTHS.map(s => (
-          <div class="wf" data-tip={`${s.full} · ${h1(total(s))}h · focus ${h1(s.focus)} · meeting ${h1(s.meeting)} · break ${h1(s.brk)} · ${s.top.map(([a, h]) => `${a} ${h}h`).join(' · ')}`}>
-            <span class="wf-tot">{Math.round(total(s))}h</span>
-            <div class="wf-grid">{split(s).map(k => <i class={k}></i>)}</div>
-            <span class="wf-lab">{s.m} '{s.y}</span>
-            <span class="wf-top">{s.top[0][0]}<span class="h"> {s.top[0][1]}h</span></span>
+
+  <div class="rz">
+    <div class="rz-top">
+      <div class="tm">
+        {ROWS.map((r) => (
+          <div class="r">
+            <span class="k">{r.k}</span><span class="v" style={`color:${r.color}`}>{hm(r.v)}</span><span class="lb" data-i18n={r.key}>{r.lb}</span><span class="pc">{r.pc}</span>
           </div>
         ))}
+        <div class="note"># {active.length} <span data-i18n="sess_working_days">working days</span> · avg {(sum.w / Math.max(1, active.length)).toFixed(1)}h<br># <span data-i18n="sess_longest">longest</span>: {longest?.d} ({longest?.w.toFixed(1)}h)</div>
       </div>
-      <div class="wf-lg">
-        <span class="lk"><i class="f"></i><span data-i18n="sess_focus">Focus</span></span>
-        <span class="lk"><i class="mt"></i><span data-i18n="sess_meeting">Meeting</span></span>
-        <span class="lk"><i class="b"></i><span data-i18n="sess_break">Break</span></span>
-        <span class="src"><span data-i18n="sess_cell">1 cell = 1h</span> · <a href="https://rize.io" target="_blank" rel="noopener">Rize</a></span>
+      <div class="rz-day">
+        <div class="t1">
+          <span class="big">{hm(td.w)} <small>/ {TARGET}h · <span class="rz-rel" data-day={td.d}>{td.d.slice(5)}</span></small></span>
+          <span class="pct">{Math.round(td.w / TARGET * 100)}%</span>
+        </div>
+        <div class="bar">{BK.map(([k]) => <span style={`width:${(td.c[k] / tdc * Math.min(td.w / TARGET, 1) * 100).toFixed(2)}%;background:var(--rz-${k})`}></span>)}</div>
+        <div class="lg">{BK.map(([k, key, n]) => <span><i style={`background:var(--rz-${k})`}></i><span data-i18n={key}>{n}</span> {hm(td.c[k] / tdc * td.w)}</span>)}</div>
+        <div class="chips">
+          <span class="chip">streak <b>{streak}d</b></span>
+          <span class="chip">7d <b>{wk.toFixed(0)}h</b> {wk >= pwk ? '↑' : '↓'}{Math.abs(wk - pwk).toFixed(0)}h</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub">
+      <span><span class="h"><span class="yr-full">52 weeks</span><span class="yr-half">26 weeks</span></span> · 1 cell = 1 day</span>
+      <span class="scale">less {AL.map((a, i) => <i style={i ? `background:rgba(var(--rz-heat),${a})` : ''}></i>)} more</span>
+    </div>
+    {YEARS.map((y, yi) => (
+      <div class:list={['year', yi ? 'yr-half' : 'yr-full']} style={`--weeks:${y.nW}`}>
+        {y.months.map((m) => <span class="ml" style={`grid-column:${m.col}`}>{m.m}</span>)}
+        {['M', '', 'W', '', 'F', '', ''].map((l, i) => <span class="wl" style={`grid-row:${i + 2}`}>{l}</span>)}
+        {y.cells.map((c) => c.fut
+          ? <i class="fut" style={`grid-column:${c.col};grid-row:${c.row}`}></i>
+          : <i data-tip={c.tip} style={`grid-column:${c.col};grid-row:${c.row}${c.l ? `;background:rgba(var(--rz-heat),${AL[c.l]})` : ''}`}></i>)}
+      </div>
+    ))}
+
+    <div class="rz-two">
+      <div>
+        <div class="sub"><span><span class="h" data-i18n="sess_by_month">by month</span></span></div>
+        <div class="mix">
+          {MIX.map((m) => (
+            <div class="col" data-tip={m.tip}>
+              <div class="tot">{m.tot}</div>
+              <div class="stk" style={`--h:${m.h}`}>{m.segs.map((s) => <span style={`height:${s.pct}%;background:var(--rz-${s.b})`}></span>)}</div>
+              <div class="lab" data-s={m.name[0]}>{m.name}</div>
+            </div>
+          ))}
+        </div>
+        <div class="lg" style="margin-top:10px">{BK.map(([k, key, n]) => <span><i style={`background:var(--rz-${k})`}></i><span data-i18n={key}>{n}</span></span>)}</div>
+      </div>
+      <div>
+        <div class="sub"><span><span class="h" data-i18n="sess_rhythm">rhythm</span> · 60d</span></div>
+        <div class="pc-grid">
+          <span></span>
+          {Array.from({ length: 24 }, (_, h) => <span class="hl">{h % 6 === 0 ? p2(h) : ''}</span>)}
+          {grid.map((row, w) => [
+            <span class="wl">{WD[w]}</span>,
+            ...row.map((v, h) => <i data-tip={`${WD[w]} ${p2(h)}:00 · ${Math.round(v)}m avg`} style={v > 0.5 ? `--s:${(0.35 + 0.65 * v / gMax).toFixed(2)};background:rgba(var(--rz-heat),${(0.25 + 0.75 * v / gMax).toFixed(2)})` : ''}></i>),
+          ])}
+        </div>
+        <div class="note" style="margin-top:8px"># busiest: <b>{WD[pk[0]]} {p2(pk[1])}:00</b>{daySpan && ` · ${daySpan}`}</div>
+      </div>
+    </div>
+
+    <div class="rz-two rz-low">
+      <div class="rz-dial">
+        <svg class="dial" viewBox="-14 -14 328 328" role="img" aria-label="24-hour dial of the latest day">
+          <circle cx={cx} cy={cy} r={(R0 + R1) / 2} fill="none" stroke="rgba(var(--c-overlay-rgb),0.06)" stroke-width={R1 - R0} />
+          {AVG_ARCS.map((a) => <path d={a.d} fill="var(--c-text-muted)" opacity="0.4" data-tip={a.tip} />)}
+          {DAY_ARCS.map((a) => <path d={a.d} fill={a.fill} opacity={a.op} data-tip={a.tip} />)}
+          {TICKS.map((t) => [
+            <line x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2} stroke="var(--c-text-muted)" stroke-width="1" />,
+            t.big && <text x={t.tx} y={t.ty} text-anchor="middle" font-size="10" fill="var(--c-text-muted)">{t.h}</text>,
+          ])}
+          <text x={cx} y={cy - 4} text-anchor="middle" font-size="22" font-weight="700" fill="var(--c-text)">{dialSpan}</text>
+          <text x={cx} y={cy + 15} text-anchor="middle" font-size="10.5" fill="var(--c-text-muted)" class="rz-rel" data-day={dialDay} data-fmt="active">{dialDay.slice(5)}</text>
+        </svg>
+        <div class="lg dial-lg">
+          <span><i style="background:var(--rz-build)"></i><span data-i18n="sess_work">work</span></span>
+          <span><i style="background:var(--rz-talk)"></i><span data-i18n="sess_meeting">meeting</span></span>
+          <span><i style="background:var(--c-text-muted);opacity:.5"></i>60d avg</span>
+        </div>
+      </div>
+      <div>
+        <div class="sub"><span><span class="h" data-i18n="sess_top_apps">top apps</span> · 365d</span><span class="ax">{amLabel(AM[0])} → {M[+AM[11].slice(5) - 1]}</span></div>
+        <div class="apps">
+          {APPS.map((a) => (
+            <div class="app">
+              <span class="rk">{a.i}</span>
+              <span class="nm" title={a.n}><i style={`background:var(--rz-${a.c})`}></i>{a.n}</span>
+              <span class="sp">{a.sp.map((s) => <b data-tip={s.tip} style={`height:${s.h}%${s.on ? `;background:var(--rz-${a.c})` : ''}`}></b>)}</span>
+              <span class="h">{a.h}h</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   </div>
@@ -96,104 +292,131 @@ const TIME_ROWS = [
 <script>
   import { bindTips } from '../scripts/card-tips';
 
-  bindTips(document.getElementById('sessWaffle'));
-  // The build may be older than today; recount the months since the last sync.
-  const age = document.getElementById('sessAge');
-  if (age?.dataset.since) {
-    const from = new Date(age.dataset.since + 'T00:00:00'), now = new Date();
-    age.textContent = String(Math.max(0, (now.getFullYear() - from.getFullYear()) * 12 + now.getMonth() - from.getMonth() + 1));
+  const card = document.getElementById('sessions');
+  bindTips(card);
+
+  const zh = () => ((window as any).currentLang ?? document.documentElement.lang ?? '').startsWith('zh');
+  function relabel() {
+    // "synced 6h ago"
+    const ago = document.getElementById('rzAgo');
+    if (ago?.dataset.ts) {
+      const h = Math.max(0, (Date.now() - Date.parse(ago.dataset.ts)) / 3600e3);
+      const v = h < 1 ? `${Math.max(1, Math.round(h * 60))}m` : h < 48 ? `${Math.round(h)}h` : `${Math.round(h / 24)}d`;
+      ago.textContent = zh() ? `${v} 前` : `${v} ago`;
+    }
+    // Day labels relative to the viewer's today in the account timezone (+08)
+    const now = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+    const y = new Date(Date.parse(now + 'T00:00:00Z') - 864e5).toISOString().slice(0, 10);
+    card?.querySelectorAll<HTMLElement | SVGElement>('.rz-rel').forEach((el) => {
+      const d = el.getAttribute('data-day') ?? '';
+      const rel = d === now ? (zh() ? '今天' : 'today') : d === y ? (zh() ? '昨天' : 'yesterday') : d.slice(5);
+      el.textContent = el.getAttribute('data-fmt') === 'active' ? (zh() ? `活跃 · ${rel}` : `active · ${rel}`) : rel;
+    });
   }
+  relabel();
+  window.addEventListener('langchange', relabel);
 </script>
 
 <style>
-  .tm {
-    --mt: #a78bfa;
-    display: grid;
-    grid-template-columns: 252px minmax(0, 1fr);
-    gap: 28px;
-    align-items: end;
+  .card-sessions {
+    --rz-build: #4ade80; --rz-talk: #a78bfa; --rz-write: #fbbf24; --rz-read: #22d3ee; --rz-off: #6e7681;
+    --rz-brk: #3b434d; --rz-heat: 74, 222, 128;
   }
-  :global([data-mode='light']) .tm { --mt: #7c3aed; }
-  .tm-out { font-size: 12px; line-height: 1.75; }
-  .tm-out .r {
-    display: grid;
-    grid-template-columns: 4.5ch 8ch minmax(0, 1fr) 4ch;
-    column-gap: 1ch;
+  :global([data-mode='light']) .card-sessions {
+    --rz-build: #16a34a; --rz-talk: #7c3aed; --rz-write: #d97706; --rz-read: #0891b2; --rz-off: #9aa3ad;
+    --rz-brk: #c3cad3; --rz-heat: 22, 163, 74;
   }
-  .tm-out .k { color: var(--c-text-muted); }
-  .tm-out .v { text-align: right; font-variant-numeric: tabular-nums; }
-  .tm-out .lb { color: var(--c-text-dim); text-transform: lowercase; }
-  .tm-out .pc { text-align: right; color: var(--c-text-muted); }
-  .tm-out .real .v { color: var(--c-text); font-weight: 700; }
-  .tm-out .user .v { color: var(--accent); }
-  .tm-out .sys .v { color: var(--mt); }
-  .tm-out .idle .v { color: var(--c-text-muted); }
-  .tm-out .note { margin-top: 8px; font-size: 10.5px; line-height: 1.6; color: var(--c-text-dim); }
-  .tm-out .note .lc { text-transform: lowercase; }
+  .rz { container-type: inline-size; font-size: 12px; }
+  .rz-live { display: inline-flex; align-items: center; gap: 6px; }
+  .rz-live i { width: 6px; height: 6px; border-radius: 50%; background: var(--rz-build); }
+  .rz-live strong { color: var(--c-text); font-weight: 600; }
 
-  /* One square per hour; the grid is flipped so the stack grows upward. */
-  .wf-wrap {
-    --cell: 6px;
-    --cg: 2px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: 10px;
-  }
-  .wf {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-    min-width: 0;
-  }
-  .wf-tot { font-size: 11px; font-weight: 600; color: var(--c-text); }
-  .wf-grid {
-    display: grid;
-    grid-template-columns: repeat(10, var(--cell));
-    grid-auto-rows: var(--cell);
-    gap: var(--cg);
-    transform: scaleY(-1);
-  }
-  .wf-grid i,
-  .wf-lg i { border-radius: 1px; background: rgba(var(--c-overlay-rgb), 0.22); }
-  .wf-grid i.f,
-  .wf-lg i.f { background: var(--accent); }
-  .wf-grid i.mt,
-  .wf-lg i.mt { background: var(--mt); }
-  .wf:hover .wf-grid { filter: brightness(1.2); }
-  .wf-lab { font-size: 10px; letter-spacing: 1px; color: var(--c-text-muted); text-transform: uppercase; }
-  .wf-top { margin-top: -4px; font-size: 9.5px; white-space: nowrap; color: var(--c-text-dim); }
-  .wf-lg {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 14px;
-    margin-top: 14px;
-    font-size: 10.5px;
-    color: var(--c-text-muted);
-  }
-  .wf-lg i {
-    display: inline-block;
-    width: 7px;
-    height: 7px;
-    margin-right: 5px;
-  }
-  .wf-lg .lk { text-transform: lowercase; }
-  .wf-lg .src { margin-left: auto; color: var(--c-text-dim); }
-  .wf-lg .src a { color: inherit; text-decoration: none; }
-  .wf-lg .src a:hover { color: var(--c-text-muted); }
+  .rz-top { display: grid; grid-template-columns: 252px minmax(0, 1fr); gap: 28px; align-items: start; }
+  .tm { line-height: 1.75; }
+  .tm .r { display: grid; grid-template-columns: 4.5ch 9ch minmax(0, 1fr) 4ch; column-gap: 1ch; }
+  .tm .k { color: var(--c-text-muted); }
+  .tm .v { text-align: right; font-variant-numeric: tabular-nums; }
+  .tm .r:first-child .v { font-weight: 700; }
+  .tm .lb { color: var(--c-text-dim); text-transform: lowercase; }
+  .tm .pc { text-align: right; color: var(--c-text-muted); font-variant-numeric: tabular-nums; }
+  .note { font-size: 10.5px; line-height: 1.6; color: var(--c-text-dim); }
+  .note b { color: var(--c-text); font-weight: 600; }
+  .tm .note { margin-top: 8px; }
 
-  /* The command gets its own line on phones instead of being cut short. */
+  .rz-day { display: grid; gap: 10px; min-width: 0; }
+  .rz-day .t1 { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .big { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; color: var(--c-text); }
+  .big small { font-size: 12px; font-weight: 400; letter-spacing: 0; color: var(--c-text-muted); }
+  .pct { color: var(--c-text-muted); }
+  .bar { height: 10px; border-radius: 2px; display: flex; overflow: hidden; background: rgba(var(--c-overlay-rgb), 0.06); }
+  .lg { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 10.5px; color: var(--c-text-muted); }
+  .lg i { display: inline-block; width: 7px; height: 7px; border-radius: 1px; margin-right: 5px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { border: 1px solid rgba(var(--c-overlay-rgb), 0.15); border-radius: 3px; padding: 1px 7px; font-size: 10.5px; color: var(--c-text-muted); white-space: nowrap; }
+  .chip b { color: var(--c-text); font-weight: 600; }
+
+  .sub { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; margin: 22px 0 8px; font-size: 10.5px; color: var(--c-text-muted); }
+  .sub .h { color: var(--c-text); }
+  .scale { display: inline-flex; align-items: center; gap: 3px; }
+  .scale i { width: 8px; height: 8px; border-radius: 2px; background: rgba(var(--c-overlay-rgb), 0.06); }
+
+  .year { display: grid; grid-template-columns: 14px repeat(var(--weeks), minmax(0, 1fr)); grid-template-rows: 14px repeat(7, auto); gap: 2px; }
+  .year .ml { width: 0; overflow: visible; white-space: nowrap; grid-row: 1; font-size: 10px; color: var(--c-text-muted); }
+  .year .wl { grid-column: 1; align-self: center; font-size: 9px; line-height: 1; color: var(--c-text-dim); }
+  .year i { aspect-ratio: 1; border-radius: 2px; background: rgba(var(--c-overlay-rgb), 0.06); }
+  .year i.fut { background: transparent; outline: 1px dashed rgba(var(--c-overlay-rgb), 0.08); outline-offset: -1px; }
+  .yr-half { display: none !important; }
+  .sub .yr-full { display: inline; }
+  [data-tip]:hover { filter: brightness(1.25); }
+  .year i[data-tip]:hover, .pc-grid i[data-tip]:hover { outline: 1px solid var(--c-text); outline-offset: -1px; }
+
+  .rz-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; }
+  .mix { --mixH: 96px; display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 4px; align-items: end; }
+  .mix .col { display: flex; flex-direction: column; justify-content: flex-end; height: calc(var(--mixH) + 32px); }
+  .mix .stk { display: flex; flex-direction: column-reverse; height: calc(var(--h) * var(--mixH)); border-radius: 2px; overflow: hidden; }
+  .mix .tot { margin-bottom: 3px; text-align: center; font-size: 9px; color: var(--c-text-dim); }
+  .mix .lab { margin-top: 5px; text-align: center; font-size: 0; color: var(--c-text-muted); }
+  .mix .lab::after { content: attr(data-s); font-size: 9.5px; }
+  .pc-grid { display: grid; grid-template-columns: 24px repeat(24, minmax(0, 1fr)); gap: 1px; }
+  .pc-grid .wl { align-self: center; font-size: 9.5px; color: var(--c-text-muted); }
+  .pc-grid .hl { width: 0; overflow: visible; white-space: nowrap; font-size: 9px; color: var(--c-text-dim); }
+  .pc-grid i { aspect-ratio: 1; border-radius: 50%; background: rgba(var(--c-overlay-rgb), 0.06); transform: scale(var(--s, 0.25)); }
+
+  .rz-low { grid-template-columns: 210px minmax(0, 1fr); align-items: start; }
+  .rz-dial { padding-top: 22px; }
+  .dial { display: block; width: 100%; max-width: 210px; aspect-ratio: 1; margin: 0 auto; }
+  .dial text { font-family: var(--font-mono); }
+  .dial-lg { justify-content: center; gap: 2px 10px; margin-top: 6px; text-transform: lowercase; }
+  .apps { display: grid; gap: 5px; }
+  .app { display: grid; grid-template-columns: 2.5ch 13ch minmax(0, 1fr) 4.5ch; gap: 10px; align-items: center; }
+  .app .rk { text-align: right; color: var(--c-text-dim); font-variant-numeric: tabular-nums; }
+  .app .nm { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--c-text); }
+  .app .nm i { display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; }
+  .app .sp { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 2px; align-items: end; height: 18px; }
+  .app .sp b { display: block; min-height: 1px; border-radius: 1px; background: rgba(var(--c-overlay-rgb), 0.08); }
+  .app .h { text-align: right; font-variant-numeric: tabular-nums; }
+  .sub .ax { color: var(--c-text-dim); }
+
+  @container (min-width: 600px) {
+    .mix .lab { font-size: 9.5px; }
+    .mix .lab::after { content: none; }
+  }
+  @container (max-width: 640px) {
+    .rz-top, .rz-two, .rz-low { grid-template-columns: 1fr; gap: 18px; }
+    .rz-dial { padding-top: 8px; }
+    .dial { max-width: 240px; }
+  }
+  @container (max-width: 520px) {
+    .yr-full { display: none !important; }
+    .yr-half { display: grid !important; }
+    .sub .yr-half { display: inline !important; }
+    .mix { --mixH: 80px; gap: 3px; }
+    .mix .tot { display: none; }
+    .mix .col { height: calc(var(--mixH) + 18px); }
+    .app { grid-template-columns: 2ch 11ch minmax(0, 1fr) 4.5ch; gap: 8px; }
+  }
   @media (max-width: 480px) {
     .feed-head { flex-wrap: wrap; row-gap: 2px; }
     .feed-head-cmd { flex-basis: 100%; }
-  }
-  @media (max-width: 640px) {
-    .tm { grid-template-columns: 1fr; gap: 18px; }
-    .wf-wrap { --cell: 4px; --cg: 1.5px; gap: 6px; }
-    .wf-top .h { display: none; }
-  }
-  @media (max-width: 340px) {
-    .wf-wrap { --cell: 3.5px; --cg: 1px; }
   }
 </style>
