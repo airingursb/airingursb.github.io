@@ -4,10 +4,10 @@
 // Homepage "Work Sessions" card, built from src/data/rize.json (refreshed
 // daily by scripts/fetch-rize.mjs in the deploy workflow).
 //
-//   1. `time`-style readout of the last 365 days + the latest day's bar
+//   1. `time`-style readout of the last 365 days + yesterday's bar
 //   2. a year of days (26 weeks on phones, so nothing scrolls sideways)
 //   3. hours by month, split into five buckets · weekday × hour rhythm
-//   4. a 24-hour dial of the latest day over the 60-day average · top apps
+//   4. a 24-hour dial of yesterday over the 60-day average · top apps
 import rize from '../data/rize.json';
 
 type Bucket = 'build' | 'talk' | 'write' | 'read' | 'off';
@@ -34,11 +34,13 @@ const wdOf = (s: string) => (new Date(s + 'T00:00:00Z').getUTCDay() + 6) % 7;
 const isoAdd = (s: string, n: number) => { const d = new Date(s + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const ctot = (c: Record<string, number>) => Object.values(c).reduce((a, b) => a + b, 0) || 1;
 
-// The deploy runs at 08:00, when today has barely started: show the latest
-// day with real tracking instead of an empty one.
-let ti = days.length - 1;
-while (ti > 0 && days[ti].w < 0.3) ti--;
-const td = days[ti] ?? { d: '', w: 0, mt: 0, br: 0, c: { build: 0, talk: 0, write: 0, read: 0, off: 0 } };
+// Mid-day deploys would otherwise show a partial "today". Feature yesterday
+// in Asia/Singapore (a complete day), even when it is 0h. Today's hours still
+// roll into the 365-day and monthly totals.
+const sgtToday = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+const yesterday = isoAdd(sgtToday, -1);
+const ti = days.findIndex((x) => x.d === yesterday);
+const td = (ti >= 0 ? days[ti] : undefined) ?? { d: yesterday, w: 0, mt: 0, br: 0, c: { build: 0, talk: 0, write: 0, read: 0, off: 0 } };
 const tdc = ctot(td.c);
 
 // 365-day readout
@@ -50,9 +52,11 @@ const cT = ctot(cs);
 const active = last.filter((x) => x.w >= 1);
 const longest = last.reduce((a, b) => (b.w > a.w ? b : a), last[0] ?? td);
 let streak = 0;
-for (let i = ti; i >= 0 && days[i].w >= 1; i--) streak++;
-const wk = days.slice(ti - 6, ti + 1).reduce((a, x) => a + x.w, 0);
-const pwk = days.slice(Math.max(0, ti - 13), ti - 6).reduce((a, x) => a + x.w, 0);
+if (ti >= 0) {
+  for (let i = ti; i >= 0 && days[i].w >= 1; i--) streak++;
+}
+const wk = ti >= 0 ? days.slice(Math.max(0, ti - 6), ti + 1).reduce((a, x) => a + x.w, 0) : 0;
+const pwk = ti >= 0 ? days.slice(Math.max(0, ti - 13), Math.max(0, ti - 6)).reduce((a, x) => a + x.w, 0) : 0;
 const ROWS = [
   { k: 'real', v: sum.w, key: 'sess_work', lb: 'work', pc: '', color: 'var(--c-text)' },
   ...BK.slice(0, 4).map(([k, key, lb]) => ({ k, v: cs[k] / cT * sum.w, key, lb, pc: Math.round(cs[k] / cT * 100) + '%', color: `var(--rz-${k})` })),
@@ -62,7 +66,8 @@ const ROWS = [
 // Year of days: n weeks (Mon rows) ending with the latest day's week
 const AL = [0, 0.22, 0.4, 0.6, 0.8, 1];
 const lvl = (w: number) => (w <= 0.05 ? 0 : w < 2 ? 1 : w < 4 ? 2 : w < 6 ? 3 : w < 8 ? 4 : 5);
-const lastDate = days.at(-1)?.d ?? td.d;
+// Heatmap ends at yesterday so today's partial cell is not shown as a short day.
+const lastDate = yesterday;
 function yearCells(nW: number) {
   const start = isoAdd(lastDate, -wdOf(lastDate) - (nW - 1) * 7);
   const months: { col: number; m: string }[] = [];
@@ -121,9 +126,9 @@ grid.forEach((r, w) => r.forEach((v, h) => { if (v > grid[pk[0]][pk[1]]) pk = [w
 const busyHours = avgHour.map((v, h) => [h, v]).filter(([, v]) => v > 5).map(([h]) => h);
 const daySpan = busyHours.length ? `${p2(busyHours[0])}:00–${p2(busyHours.at(-1)! + 1)}:00` : '';
 
-// Dial: latest calendar day with at least half an hour tracked
-const dialDay = [...hDays].reverse().find((d) => hourly[d].reduce((a, [w, m]) => a + w + m, 0) >= 30) ?? hDays.at(-1) ?? '';
-const today = hourly[dialDay] ?? new Array(24).fill([0, 0, 0]);
+// Dial: the same complete day as the featured bar (yesterday).
+const dialDay = yesterday;
+const dialHrs = hourly[dialDay] ?? new Array(24).fill([0, 0, 0]);
 const aMax = Math.max(1, ...avgHour);
 const cx = 150, cy = 150, R0 = 62, R1 = 104, R2 = 112, R3 = 138;
 const ang = (h: number) => (h / 24) * Math.PI * 2 - Math.PI / 2;
@@ -137,7 +142,7 @@ const DAY_ARCS: { d: string; fill: string; op: string; tip: string }[] = [];
 for (let h = 0; h < 24; h++) {
   const a0 = ang(h) + 0.015, a1 = ang(h + 1) - 0.015, v = avgHour[h];
   if (v > 0.5) AVG_ARCS.push({ d: arc(R2, R2 + (R3 - R2) * v / aMax, a0, a1), tip: `${p2(h)}:00 · 60-day avg ${Math.round(v)}m` });
-  const [w, m, b] = today[h], tot = Math.min(60, w + m);
+  const [w, m, b] = dialHrs[h], tot = Math.min(60, w + m);
   const tip = `${p2(h)}:00 · work ${w}m${m ? ` · meeting ${m}m` : ''}${b ? ` · break ${b}m` : ''} · avg ${Math.round(v)}m`;
   if (tot) DAY_ARCS.push({ d: arc(R0, R0 + (R1 - R0) * tot / 60, a0, a1), fill: m > w / 2 ? 'var(--rz-talk)' : 'var(--rz-build)', op: (0.45 + 0.55 * tot / 60).toFixed(2), tip });
   else if (b > 15) DAY_ARCS.push({ d: arc(R0, R0 + 8, a0, a1), fill: 'var(--rz-brk)', op: '1', tip });
@@ -146,7 +151,7 @@ const TICKS = Array.from({ length: 8 }, (_, i) => i * 3).map((h) => {
   const a = ang(h), big = h % 6 === 0;
   return { h: p2(h), big, x1: f1(cx + (R1 + 2) * Math.cos(a)), y1: f1(cy + (R1 + 2) * Math.sin(a)), x2: f1(cx + (R1 + (big ? 8 : 5)) * Math.cos(a)), y2: f1(cy + (R1 + (big ? 8 : 5)) * Math.sin(a)), tx: f1(cx + (R3 + 9) * Math.cos(a)), ty: f1(cy + (R3 + 9) * Math.sin(a) + 3.5) };
 });
-const act = today.map(([w, m], h) => [h, w + m]).filter(([, v]) => v >= 5).map(([h]) => h);
+const act = dialHrs.map(([w, m], h) => [h, w + m]).filter(([, v]) => v >= 5).map(([h]) => h);
 const dialSpan = act.length ? `${p2(act[0])}–${p2(act.at(-1)! + 1)}` : '—';
 
 // Top apps over the last 365 days, with hours per month for 12 months
@@ -309,7 +314,8 @@ const amLabel = (m: string) => `${M[+m.slice(5) - 1]} '${m.slice(2, 4)}`;
     const y = new Date(Date.parse(now + 'T00:00:00Z') - 864e5).toISOString().slice(0, 10);
     card?.querySelectorAll<HTMLElement | SVGElement>('.rz-rel').forEach((el) => {
       const d = el.getAttribute('data-day') ?? '';
-      const rel = d === now ? (zh() ? '今天' : 'today') : d === y ? (zh() ? '昨天' : 'yesterday') : d.slice(5);
+      const md = d.slice(5);
+      const rel = d === y ? (zh() ? `昨天 ${md}` : `yesterday ${md}`) : md;
       el.textContent = el.getAttribute('data-fmt') === 'active' ? (zh() ? `活跃 · ${rel}` : `active · ${rel}`) : rel;
     });
   }
