@@ -73,6 +73,15 @@
     /* 兜底：任何元素在真机上意外溢出（iPhone 的字体回退和 Mac 不同，
        模拟器里测不出来），页面也不会横向滑动。用 clip 而不是 hidden，
        hidden 会让 body 变成滚动容器，导致 position: sticky 失效。 */
+    /* 放在 html 上才会作用到视口；只写在 body 上时 Safari/Chrome
+       都不会把 clip 传给视口，页面照样能左右滑。hidden 是给不支持
+       clip 的旧 Safari 的回退（html 的 overflow 交给视口，html 本身
+       不会变成滚动容器，sticky 不受影响）。body 只能用 clip，hidden 会
+       让 body 变成滚动容器。 */
+    html {
+      overflow-x: hidden;
+      overflow-x: clip;
+    }
     body {
       overflow-x: clip;
     }
@@ -2035,10 +2044,12 @@
     }
     .cm-prev {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      /* minmax(0, …)：1fr 的最小值是内容宽度，长标题会把列撑出屏幕。 */
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       column-gap: var(--space-5);
     }
     .cm-row {
+      min-width: 0;
       display: flex;
       align-items: center;
       gap: var(--space-2);
@@ -2068,7 +2079,7 @@
     @media (max-width: 480px) {
       .cm-strip { grid-template-columns: 1fr 1fr; }
       .cm-hike { margin-left: 0; }
-      .cm-prev { grid-template-columns: 1fr; }
+      .cm-prev { grid-template-columns: minmax(0, 1fr); }
     }
     @media (prefers-reduced-motion: reduce) {
       .cm-panel { transition: none; }

@@ -2607,3 +2607,10 @@
 - [ ] 常用软件 Top 10 带 12 个月小柱；悬停各格子有 tooltip
 - [ ] 「同步于 Xh 前」与「今天 / 昨天」按访问时实时计算；切换中英文后文案跟着变
 - [ ] 1280 / 390px、明暗主题显示正常
+
+## 首页窄屏不能左右滑（2026-11-20）
+
+- [ ] 视口 320px（iPhone 折叠屏折叠态）打开首页，`document.documentElement.scrollWidth === clientWidth`，`scrollTo(300,0)` 后 `scrollX === 0`
+- [ ] 漫画卡片「previously」列表：长标题末尾省略号，不撑宽卡片
+- [ ] 足迹卡片标题行：「N cities · N countries · N continents」窄屏可换行
+- [ ] 兜底：临时插入 900px 宽元素，页面仍不能横向滚动
