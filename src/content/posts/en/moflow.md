@@ -184,7 +184,7 @@ MoFlow is now available for pre-order on the App Store for iOS. Search "MoFlow" 
 
 More product details:
 
-- MoFlow website: [https://moflowapp.com](https://moflowapp.com)
+- MoFlow website: [https://moflow.ursb.me](https://moflow.ursb.me)
 - App Store: [https://apps.apple.com/cn/app/id6737146258](https://apps.apple.com/cn/app/id6737146258)
 
 > This post is by [Airing](https://ursb.me), MoFlow Founder. Blog at [ursb.me](https://ursb.me).

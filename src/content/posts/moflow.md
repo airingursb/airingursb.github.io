@@ -167,7 +167,7 @@ MoFlow  鼓励你享受每一个小的进步和意外的发现，享受使用 Mo
 
 更多产品详情可见：
 
-- MoFlow 官网：[https://moflowapp.com](https://moflowapp.com)
+- MoFlow 官网：[https://moflow.ursb.me](https://moflow.ursb.me)
 - App Store 产品页：[https://apps.apple.com/cn/app/id6737146258](https://apps.apple.com/cn/app/id6737146258)
 
 > 本文作者 [Airing](https://ursb.me)，MoFlow Founder，博客 [ursb.me](https://ursb.me)。

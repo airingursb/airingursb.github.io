@@ -9,7 +9,7 @@ cover: "https://i.typlog.com/airing/8264279749_315481.jpg?x-oss-process=style/l"
 This issue is a record of and reflection on November and December 2024.
 
 ## **AI Has No Capacity for Experience**
-[MoFlow](https://moflowapp.com) launched on the [App Store](https://itunes.apple.com/app/id6737146258) last night — New Year's Eve 2024. Three months of intensity have produced something tangible. And so, at last, I have time to write this issue.
+[MoFlow](https://moflow.ursb.me) launched on the [App Store](https://itunes.apple.com/app/id6737146258) last night — New Year's Eve 2024. Three months of intensity have produced something tangible. And so, at last, I have time to write this issue.
 
 The question people have asked me most often while building MoFlow: "Can AI actually help people heal emotionally?" This piece is my attempt at a simple answer.
 

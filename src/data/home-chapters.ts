@@ -20,7 +20,7 @@ export const HOME_CHAPTERS: HomeChapter[] = [
     cards: ['writing', 'ai-weekly', 'channel', 'comics-card', 'letter'],
     desc: { zh: '长文、周刊、频道碎碎念、四格漫画，还有读者来信', en: 'Essays, the weekly, channel posts, comics and letters' } },
   { id: 'building', path: '~/building', zh: '作品', en: 'building',
-    cards: ['projects', 'github', 'repos', 'vibe-coding', 'sessions', 'skills', 'setup'],
+    cards: ['alice', 'projects', 'github', 'repos', 'vibe-coding', 'sessions', 'skills', 'setup'],
     desc: { zh: '上架的 App、开源仓库，以及背后的工时、技能和装备', en: 'Apps, repos, and the hours, skills and gear behind them' } },
   { id: 'life', path: '~/life', zh: '生活', en: 'life',
     cards: ['on-this-day', 'photos-card', 'footprints', 'workouts-card', 'music', 'now-playing', 'mood', 'activity'],

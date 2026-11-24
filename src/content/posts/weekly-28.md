@@ -9,7 +9,7 @@ cover: "https://i.typlog.com/airing/8264279749_315481.jpg?x-oss-process=style/l"
 本篇是对二〇二四年十一月至十二月的记录与思考。
 
 ## **AI 没有体验世界的能力**
-[MoFlow](https://moflowapp.com) 于昨夜——2024 的跨年夜上线了 [App Store](https://itunes.apple.com/app/id6737146258)，这标识着这三个月的忙碌换得了一个阶段性的结果。于是，我终于有时间来写写月刊了。
+[MoFlow](https://moflow.ursb.me) 于昨夜——2024 的跨年夜上线了 [App Store](https://itunes.apple.com/app/id6737146258)，这标识着这三个月的忙碌换得了一个阶段性的结果。于是，我终于有时间来写写月刊了。
 
 在做 MoFlow 这段期间，我被人问到最多的问题是 ——“AI 真的有可能帮助人们实现心理疗愈吗？”在这篇文章中，我想对这个问题做出一个简单的解答。
 

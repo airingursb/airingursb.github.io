@@ -1,0 +1,220 @@
+---
+// src/components/AliceCard.astro
+//
+// Homepage "New project" card for Alice, which is not on the App Store yet:
+// the pitch on the left (same App Store result layout as ProjectsCard), three
+// phone screenshots fanned out on the right, and a "notify me at launch" pill
+// in place of the store link. Screenshots and links switch with the language
+// (img[data-src-zh/en] and [data-href-zh/en] are swapped by the page's i18n
+// script). Copy lives in public/i18n (al_*); the Chinese here is the no-JS
+// fallback. When Alice ships, swap the notify pill for the App Store link.
+const SITE_ZH = 'https://alice.ursb.me';
+const SITE_EN = 'https://alice.ursb.me/en/';
+const SHOTS = [
+  { pos: 'l', name: 'ask', alt: '问 Alice', key: 'al_shot_ask' },
+  { pos: 'c', name: 'axis', alt: '今日时间线', key: 'al_shot_axis' },
+  { pos: 'r', name: 'agentRead', alt: '给 Agent 读', key: 'al_shot_agent' },
+];
+const FEATS = [
+  ['al_feat_1', '对话转写 · 区分说话人 · 按活动切分'],
+  ['al_feat_2', 'MCP / CLI 接入 Claude、ChatGPT、Codex'],
+  ['al_feat_3', '默认关闭 · 只读 · 随时吊销'],
+];
+const TAGS: [string, string][] = [['iOS', ''], ['watchOS', ''], ['MCP', ''], ['个人上下文', 'al_tag_memory'], ['Agent', '']];
+---
+<div class="card card-alice" id="alice">
+  <div class="al-copy">
+    <div class="section-title" data-i18n="sec_project_new">新作</div>
+    <div class="feed-head">
+      <span class="feed-head-cmd"><span class="prompt">$</span> testflight status alice</span>
+      <span class="al-badge"><span class="al-dot"></span><span data-i18n="al_badge">即将上架</span></span>
+    </div>
+    <div class="al-top">
+      <img class="al-ic" src="/projects/alice/icon.webp" alt="Alice" width="64" height="64" loading="lazy" decoding="async">
+      <div class="al-head">
+        <div class="al-name"><a href={SITE_ZH} data-href-zh={SITE_ZH} data-href-en={SITE_EN} target="_blank" rel="noopener">Alice</a></div>
+        <div class="al-slogan" data-i18n="al_slogan">记下你的一天，给你的 Agent 用。</div>
+        <a class="al-pill" href={`${SITE_ZH}/#notify`} data-href-zh={`${SITE_ZH}/#notify`} data-href-en={`${SITE_EN}#notify`} target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          <span data-i18n="al_notify">订阅上架通知</span> ↗
+        </a>
+      </div>
+    </div>
+    <div class="al-desc" data-i18n="al_desc">安静地收集你的一天：说过的话、去过的地方、日程、照片、花销、读过的、做完的，自动排成一条时间线。Claude、ChatGPT 通过 MCP 直接读，不用再解释背景。</div>
+    <div class="al-feat">
+      {FEATS.map(([key, t]) => <span data-i18n={key}>{t}</span>)}
+    </div>
+    <div class="al-foot">
+      {TAGS.map(([t, key]) => key ? <span class="al-chip" data-i18n={key}>{t}</span> : <span class="al-chip">{t}</span>)}
+      <a class="al-web" href={SITE_ZH} data-href-zh={SITE_ZH} data-href-en={SITE_EN} target="_blank" rel="noopener">→ alice.ursb.me</a>
+    </div>
+  </div>
+  <a class="al-shots" href={SITE_ZH} data-href-zh={SITE_ZH} data-href-en={SITE_EN} target="_blank" rel="noopener" aria-label="Alice">
+    {SHOTS.map((s) => (
+      <img
+        class={`al-shot al-shot-${s.pos}`}
+        src={`/projects/alice/iphone-${s.name}.webp`}
+        data-src-zh={`/projects/alice/iphone-${s.name}.webp`}
+        data-src-en={`/projects/alice/iphone-${s.name}.en.webp`}
+        alt={s.alt}
+        data-i18n-alt={s.key}
+        width="440" height="956" loading="lazy" decoding="async"
+      >
+    ))}
+  </a>
+</div>
+
+<style>
+  .card-alice {
+    --al-ink: 232, 84, 30; /* ribbon orange from the app icon */
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 12px;
+    overflow: hidden;
+    padding-bottom: 0;
+    border-color: rgba(var(--al-ink), 0.22);
+    background:
+      radial-gradient(120% 90% at 100% 100%, rgba(var(--al-ink), 0.09), transparent 60%),
+      var(--c-surface, rgba(var(--c-overlay-rgb), 0.03));
+  }
+  .card-alice:hover { border-color: rgba(var(--al-ink), 0.38); }
+  .al-copy {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+    padding-bottom: 22px;
+  }
+  .al-copy .section-title,
+  .al-copy .feed-head { margin-bottom: 0; }
+  .al-copy .feed-head { margin-top: -12px; }
+  .al-badge {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+    padding: 1px 8px;
+    border: 1px solid rgba(var(--al-ink), 0.3);
+    border-radius: 999px;
+    background: rgba(var(--al-ink), 0.08);
+    color: rgb(var(--al-ink));
+    font-size: 10.5px;
+    white-space: nowrap;
+  }
+  .al-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgb(var(--al-ink));
+    animation: al-pulse 2s ease-out infinite;
+  }
+  @keyframes al-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(232, 84, 30, 0.5); }
+    70% { box-shadow: 0 0 0 5px rgba(232, 84, 30, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(232, 84, 30, 0); }
+  }
+  .al-top {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 14px;
+    align-items: center;
+  }
+  .al-head { min-width: 0; }
+  .al-ic {
+    display: block;
+    width: 64px;
+    height: 64px;
+    border-radius: 15px;
+    background: #f5f1e8;
+    box-shadow: 0 0 0 1px rgba(var(--c-overlay-rgb), 0.1);
+  }
+  .al-name { font-size: 16px; font-weight: 700; }
+  .al-name a { color: var(--c-text); text-decoration: none; transition: color 0.2s; }
+  .al-name a:hover { color: rgb(var(--al-ink)); }
+  .al-slogan { margin: 1px 0 6px; font-size: 12px; color: var(--c-text-muted); }
+  .al-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 12px;
+    border-radius: 999px;
+    background: rgba(var(--al-ink), 0.14);
+    color: rgb(var(--al-ink));
+    font-size: 11.5px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.2s;
+  }
+  .al-pill:hover { background: rgba(var(--al-ink), 0.24); }
+  .al-pill svg { width: 11px; height: 11px; }
+  .al-desc { font-size: 12.5px; line-height: 1.7; color: var(--c-text-muted); }
+  .al-feat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--c-text);
+  }
+  .al-feat span::before { content: '✓ '; color: rgb(var(--al-ink)); }
+  .al-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(var(--c-overlay-rgb), 0.06);
+  }
+  .al-chip {
+    display: inline-block;
+    padding: 0 6px;
+    border: 1px solid rgba(var(--c-overlay-rgb), 0.14);
+    border-radius: 3px;
+    background: rgba(var(--c-overlay-rgb), 0.03);
+    font-size: 10.5px;
+    color: var(--c-text-muted);
+  }
+  .al-web {
+    margin-left: auto;
+    font-size: 11.5px;
+    color: rgb(var(--al-ink));
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .al-web:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+  .al-shots { position: relative; display: block; min-height: 270px; }
+  .al-shot {
+    position: absolute;
+    top: 34px;
+    left: 50%;
+    width: 104px;
+    height: auto;
+    border: 1px solid rgba(var(--c-overlay-rgb), 0.12);
+    border-radius: 14px;
+    background: #f7f5f0;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08);
+    transition: transform 0.45s cubic-bezier(.2, .8, .2, 1);
+  }
+  .al-shot-l { z-index: 1; transform: translateX(-122%) translateY(14px) rotate(-6deg); }
+  .al-shot-r { z-index: 1; transform: translateX(22%) translateY(14px) rotate(6deg); }
+  .al-shot-c { z-index: 2; top: 20px; width: 118px; transform: translateX(-50%); }
+  .card-alice:hover .al-shot-l { transform: translateX(-130%) translateY(10px) rotate(-9deg); }
+  .card-alice:hover .al-shot-r { transform: translateX(30%) translateY(10px) rotate(9deg); }
+  .card-alice:hover .al-shot-c { transform: translateX(-50%) translateY(-4px); }
+
+  @media (max-width: 767px) {
+    .card-alice { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    .al-copy { padding-bottom: 6px; }
+    .al-shots { min-height: 0; height: 200px; }
+    .al-shot { top: 12px; width: 98px; }
+    .al-shot-c { top: 0; width: 108px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .al-dot { animation: none; }
+    .al-shot, .al-name a, .al-pill { transition: none; }
+  }
+</style>

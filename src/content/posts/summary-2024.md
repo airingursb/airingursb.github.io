@@ -37,7 +37,7 @@ cover: "https://i.typlog.com/airing/8261594421_771976.jpg?x-oss-process=style/l"
 
 ## 创业
 ### MoFlow
-离开 TME 之后，我选择创业。在今年 8 月做了一个月的赛道分析和用研之后，召集了几个小伙伴，立项了 AI + 心理的产品 —— [MoFlow](https://moflowapp.com/)。
+离开 TME 之后，我选择创业。在今年 8 月做了一个月的赛道分析和用研之后，召集了几个小伙伴，立项了 AI + 心理的产品 —— [MoFlow](https://moflow.ursb.me)。
 
 关于 MoFlow 的内容写过[《AI 心理疗愈应用的探索与实现》](https://blog.ursb.me/posts/moflow/)介绍分析过，这里不再赘述项目内容了。我期望能够通过这款产品普及大家对于心理健康领域的关注，以鼓励用户进行自我对话、自我成长、自我关爱。
 

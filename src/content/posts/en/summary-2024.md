@@ -42,7 +42,7 @@ Name a clear goal. Then find a path to it, by any means necessary.
 
 ### MoFlow
 
-After leaving TME, I started a company. After a month of market research in August, I pulled together a small team and launched an AI-powered mental wellness product — [MoFlow](https://moflowapp.com/).
+After leaving TME, I started a company. After a month of market research in August, I pulled together a small team and launched an AI-powered mental wellness product — [MoFlow](https://moflow.ursb.me).
 
 I've written a full breakdown of MoFlow in [*Exploring and Building an AI Mental Wellness App*](https://blog.ursb.me/posts/moflow/), so I won't repeat it here. What I wanted to build was something that could make mental health a more everyday conversation — encouraging users toward self-dialogue, self-growth, and self-care.
 

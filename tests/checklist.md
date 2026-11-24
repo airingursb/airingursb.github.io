@@ -2614,3 +2614,14 @@
 - [ ] 漫画卡片「previously」列表：长标题末尾省略号，不撑宽卡片
 - [ ] 足迹卡片标题行：「N cities · N countries · N continents」窄屏可换行
 - [ ] 兜底：临时插入 900px 宽元素，页面仍不能横向滚动
+
+## 首页 · Alice 新作卡片
+- [ ] 桌面（≥768px）：Alice 卡片通栏，位于「~/building」章节第一张、Projects 卡片之前；左文案右三机扇形截图，截图不压文字
+- [ ] 「~/building」章节头的卡片数随之 +1
+- [ ] hover 卡片：三张截图扇形展开；「即将上架」徽标圆点有呼吸动画（prefers-reduced-motion 下关闭）
+- [ ] 移动端（390px / 320px）：截图在文案下方，订阅按钮不折行，无横向滚动
+- [ ] 中英切换：sec_project_new / al_* 文案正确切换
+- [ ] 链接指向 https://alice.ursb.me；「订阅上架通知 / Notify me at launch」按钮跳到 https://alice.ursb.me/#notify
+- [ ] 英文模式下 Alice 三张截图切换为 `*.en.webp`（真实英文界面），alt 也切换为英文；切回中文恢复中文截图
+- [ ] 英文模式下 Alice 卡片 4 个链接都指向 https://alice.ursb.me/en/（订阅按钮指向 /en/#notify），切回中文恢复中文站
+- [ ] Projects 卡片：MoFlow 官网为 https://moflow.ursb.me，MoneyWise 官网为 https://moneywise.ursb.me/
