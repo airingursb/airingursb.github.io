@@ -648,8 +648,19 @@ window.FOREST_LAYOUTS={"banyan":{"pullAnchor":{"x":302,"y":263},"bells":[{"ancho
  const tabletPoints=[{x:310,y:60},{x:425,y:70},{x:210,y:115},{x:505,y:165},{x:130,y:180},{x:365,y:175},{x:555,y:270},{x:230,y:235},{x:430,y:285}];
  const phone=matchMedia('(max-width:600px)'),tablet=matchMedia('(max-width:1100px)'),reduced=matchMedia('(prefers-reduced-motion:reduce)');
  const treeFriends=friends.map((f,i)=>i).filter(i=>friends[i].availability!=='archive');
- const groupSize=Math.ceil(treeFriends.length/variants.length);
- const initialTree=Math.floor(Math.random()*variants.length);
+ const treeCaps=variants.map(v=>window.FOREST_LAYOUTS[v.id].bells.length);
+ function forestPages(){
+  const pages=[]; let offset=0;
+  while(offset<treeFriends.length&&pages.length<80){
+   const tree=pages.length%variants.length;
+   const count=Math.min(treeCaps[tree],treeFriends.length-offset);
+   if(!count) break;
+   pages.push({tree,offset,count}); offset+=count;
+  }
+  return pages.length?pages:[{tree:0,offset:0,count:0}];
+ }
+ const forestPage=()=>forestPages()[Math.min(Math.max(branch,0),forestPages().length-1)];
+ const initialTree=Math.floor(Math.random()*Math.min(variants.length,forestPages().length));
  let mode='forest',branch=initialTree,selected=-1,paused=false,speechTimer=0,directoryFilter='all',visible=true,transitionId=0,busy=false,animations=[];
  const branches={wind:0,forest:initialTree};
  const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -658,22 +669,23 @@ window.FOREST_LAYOUTS={"banyan":{"pullAnchor":{"x":302,"y":263},"bells":[{"ancho
  const bellArt='<svg viewBox="0 0 40 68" aria-hidden="true" shape-rendering="crispEdges"><g class="bell-assembly"><path d="M20 0v18" stroke="var(--wood)" stroke-width="1.5"/><path d="M17 17h6v4h4v4h3v15H10V25h3v-4h4z" fill="var(--bell-tint)" stroke="var(--wood)" stroke-width="1.5"/><path d="M15 24h7v3h-7v9h-3V27h3z" fill="var(--bell-light)"/><path d="M9 39h22v4H9z" fill="var(--bell-tint)" stroke="var(--wood)" stroke-width="1.5"/><path d="M20 43v7m-2 0h4v4h-4z" fill="var(--wood)" stroke="var(--wood)"/><path d="M20 54v14" stroke="var(--wood)"/></g></svg>';
  const ropes=document.createElementNS('http://www.w3.org/2000/svg','g');ropes.id='bell-ropes';root.querySelector('.tree-cord').prepend(ropes);
  const camera=window.createTreeRoam({viewport:root,world,onCameraChange:s=>{document.getElementById('roam-scale').value=Math.round(s.zoom*100)+'%';document.getElementById('roam-out').disabled=s.zoom<=1.001;document.getElementById('roam-in').disabled=s.zoom>=3.199;},onEmptyClick:()=>window.friendTreeWind?.gust()});
- const forestLayout=()=>window.FOREST_LAYOUTS[variants[branch].id];
+ const forestLayout=()=>window.FOREST_LAYOUTS[variants[forestPage().tree].id];
  const pointSet=()=>mode==='roam'?window.ROAM_POINTS:mode==='forest'?forestLayout().bells.map(p=>phone.matches&&p.mobile?{...p,...p.mobile}:p):(phone.matches?phonePoints:tablet.matches?tabletPoints:allPoints);
- const pageSize=()=>mode==='roam'?treeFriends.length:mode==='forest'?groupSize:pointSet().length;
- const pageCount=()=>Math.ceil(treeFriends.length/pageSize());
+ const pageSize=()=>mode==='roam'?treeFriends.length:mode==='forest'?forestPage().count:pointSet().length;
+ const pageCount=()=>mode==='forest'?forestPages().length:Math.ceil(treeFriends.length/(pageSize()||1));
  function updateControls(){
   document.getElementById('roam-controls').hidden=mode!=='roam';document.getElementById('mode-controls').hidden=mode==='roam';
   document.getElementById('branch-prev').textContent=mode==='forest'?'← 上一棵树':'← 上一阵风';document.getElementById('branch-next').textContent=mode==='forest'?'去下一棵树 →':'借下一阵风 →';
   document.getElementById('branch-prev').disabled=busy;document.getElementById('branch-next').disabled=busy;
-  document.getElementById('branch-count').textContent=mode==='forest'?variants[branch].name:'';
+  document.getElementById('branch-count').textContent=mode==='forest'?variants[forestPage().tree].name:'';
  }
  function paint(){
-  const size=pageSize(),points=pointSet(),shown=mode==='roam'?treeFriends:treeFriends.slice(branch*size,(branch+1)*size);
-  bells.innerHTML=shown.map((i,slot)=>{const p=points[slot],f=friends[i];return '<button class="bell" data-slot="'+slot+'" data-friend="'+i+'" data-roam-x="'+p.x+'" data-roam-y="'+p.y+'" style="--x:'+p.x/6+'%;--y:'+p.y/4.2+'%" aria-label="摇响 '+esc(f.name)+' 的友人铃" title="'+esc(f.name)+'" aria-pressed="'+(selected===i)+'"><span class="bell-hanging">'+bellArt+'<span class="bell-name">'+esc(f.name)+'</span></span></button>';}).join('');
-  ropes.innerHTML=shown.map((_,slot)=>{const p=points[slot],a=p.anchor||{x:p.x,y:p.y-9};return '<path data-slot="'+slot+'" d="M'+p.x+' '+a.y+'L'+p.x+' '+p.y+'"/>';}).join('');
-  root.dataset.pageSize=String(size);root.dataset.branch=String(branch);root.querySelector('.tree-art').src=mode==='forest'?variants[branch].src:window.TREE_ASSETS.tree;
-  root.dataset.tree=mode==='forest'?variants[branch].id:'banyan';updatePullCord();
+  const size=pageSize(),points=pointSet(),page=mode==='forest'?forestPage():null,shown=mode==='roam'?treeFriends:page?treeFriends.slice(page.offset,page.offset+page.count):treeFriends.slice(branch*size,(branch+1)*size);
+  bells.innerHTML=shown.map((i,slot)=>{const p=points[slot];if(!p)return '';const f=friends[i];return '<button class="bell" data-slot="'+slot+'" data-friend="'+i+'" data-roam-x="'+p.x+'" data-roam-y="'+p.y+'" style="--x:'+p.x/6+'%;--y:'+p.y/4.2+'%" aria-label="摇响 '+esc(f.name)+' 的友人铃" title="'+esc(f.name)+'" aria-pressed="'+(selected===i)+'"><span class="bell-hanging">'+bellArt+'<span class="bell-name">'+esc(f.name)+'</span></span></button>';}).join('');
+  ropes.innerHTML=shown.map((_,slot)=>{const p=points[slot];if(!p)return '';const a=p.anchor||{x:p.x,y:p.y-9};return '<path data-slot="'+slot+'" d="M'+p.x+' '+a.y+'L'+p.x+' '+p.y+'"/>';}).join('');
+  const tree=variants[(page?page.tree:branch)%variants.length];
+  root.dataset.pageSize=String(size);root.dataset.branch=String(branch);root.querySelector('.tree-art').src=mode==='forest'?tree.src:window.TREE_ASSETS.tree;
+  root.dataset.tree=mode==='forest'?tree.id:'banyan';updatePullCord();
   updateControls();
  }
  const overlayOpen=()=>document.getElementById('directory-dialog').open;
@@ -700,7 +712,7 @@ window.FOREST_LAYOUTS={"banyan":{"pullAnchor":{"x":302,"y":263},"bells":[{"ancho
   if(isWind)await animate([...bells.querySelectorAll('.bell-hanging')],[{opacity:0,transform:'translate(-14px,-3px) rotate(-15deg)'},{opacity:1,transform:'rotate(8deg)',offset:.48},{opacity:1,transform:'rotate(0)'}],{duration:600,stagger:22,easing:'ease-out'});
   else await animate([root.querySelector('.tree-art'),bells,ropes],[{opacity:0},{opacity:1}],{duration:250});
   if(id!==transitionId)return;
-  busy=false;syncWind();updateControls();document.getElementById('selection-status').textContent=isWind?'风带来了另一枝朋友。':'来到'+variants[branch].name+'，这里住着'+bells.children.length+'位朋友。';
+  busy=false;syncWind();updateControls();document.getElementById('selection-status').textContent=isWind?'风带来了另一枝朋友。':'来到'+variants[forestPage().tree].name+'，这里住着'+bells.children.length+'位朋友。';
  }
  const descriptions={roam:'朋友一直挂在同一根枝头。拖动树冠、靠近铃签，像在树下慢慢散步；也可以直接搜名字。',wind:'树留在原地。一阵风把这一枝铃签轻轻翻过，带来下一组朋友；没有页码，也不自动翻走正在看的内容。',forest:'把友人帐种成一小片林子。每棵树有自己的样子，也住着固定的一组朋友。'};
  const hints={roam:'拖动树冠 · 双指缩放 · 键盘方向键移动，＋ / − 缩放，Home 看全树。',wind:'点“借下一阵风”换一枝朋友；摸摸树叶，只会把铃轻轻摇响。',forest:'摸摸树叶，让风吹过。换一棵树继续逛，也可以直接找一位朋友。'};
@@ -726,7 +738,7 @@ window.FOREST_LAYOUTS={"banyan":{"pullAnchor":{"x":302,"y":263},"bells":[{"ancho
  }
  function pick(index,{perform=true,locate=true}={}){
   if(!friends[index])return;cancelTransition();selected=index;const position=treeFriends.indexOf(index);
-  if(mode!=='roam'&&position>=0){const next=Math.floor(position/pageSize());if(next!==branch){branch=next;branches[mode]=branch;paint();}}
+  if(mode!=='roam'&&position>=0){const next=mode==='forest'?Math.max(0,forestPages().findIndex(p=>position>=p.offset&&position<p.offset+p.count)):Math.floor(position/pageSize());if(next!==branch){branch=next;branches[mode]=branch;paint();}}
   bells.querySelectorAll('[data-friend]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.friend)===index)));updateControls();showFriend(friends[index],index);
   if(mode==='roam'&&position>=0&&locate){const p=window.ROAM_POINTS[position];camera.focusAt(p.x,p.y);}
   syncWind();
